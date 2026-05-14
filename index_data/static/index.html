@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeniusStroke - 投资组合</title>
+    <!-- 引入提取的 CSS -->
+    <link rel="stylesheet" href="/static/css/base.css?v=20260420-f06-css-modules-r6">
+    <link rel="stylesheet" href="/static/css/layout.css?v=20260420-f06-css-modules-r6">
+    <link rel="stylesheet" href="/static/css/components.css?v=20260509-trade-fix-r2">
+    <link rel="stylesheet" href="/static/css/pages.css?v=20260420-f06-css-modules-r6">
+    <link rel="stylesheet" href="/static/css/utilities.css?v=20260420-f06-css-modules-r6">
+</head>
+
+<body>
+    <!-- App Chrome -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="#" class="logo">GeniusStroke</a>
+            <div class="navbar-actions">
+                <button id="navSyncButton" class="nav-sync-btn" type="button" aria-label="数据更新" hidden>
+                    <span class="icon" id="navSyncButtonIcon">⟳</span>
+                    <span id="navSyncButtonLabel">数据更新</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 数据更新进度横幅 -->
+    <div id="dataSyncBanner" class="data-sync-banner" role="status" aria-live="polite">
+        <div class="data-sync-banner-info">
+            <span class="data-sync-banner-pulse" id="dataSyncBannerPulse"></span>
+            <span class="data-sync-banner-text" id="dataSyncBannerText">数据更新中...</span>
+            <span class="data-sync-banner-sub" id="dataSyncBannerSub"></span>
+        </div>
+        <div class="data-sync-banner-actions" id="dataSyncBannerActions">
+            <button class="data-sync-banner-btn" id="dataSyncBannerDetailBtn" type="button">查看详情 ▼</button>
+        </div>
+    </div>
+
+    <!-- App Shell -->
+    <main class="app-shell">
+        <div class="container">
+            <!-- Account Context -->
+        <div class="account-switcher-bar hidden" id="accountSwitcherBar">
+            <div class="account-switcher" id="accountSwitcher">
+                <button class="account-switcher-trigger" id="accountSwitcherTrigger" type="button" data-action="toggle-account-menu" aria-haspopup="menu" aria-expanded="false">
+                    <span id="accountSwitcherCurrentName">--</span>
+                    <svg class="account-switcher-chevron" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="account-switcher-menu hidden" id="accountSwitcherMenu"></div>
+            </div>
+            
+            <!-- 交易按钮区 -->
+            <div class="transaction-actions" id="transactionActionBar">
+                <div class="split-btn-group">
+                    <button class="btn-split-main" data-action="open-trade-modal" data-side="buy">添加交易</button>
+                    <button class="btn-split-arrow" data-action="toggle-transaction-menu">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 6 8 9 5"></polyline></svg>
+                    </button>
+                </div>
+                <!-- 交易类型下拉菜单 -->
+                <div class="transaction-dropdown-menu hidden" id="transactionMenu">
+                    <button type="button" class="dropdown-item" data-action="open-trade-modal" data-side="buy">
+                        <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                        <span>买入</span>
+                    </button>
+                    <button type="button" class="dropdown-item" data-action="open-trade-modal" data-side="sell">
+                        <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                        <span>卖出</span>
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item" data-action="open-modal" data-modal="depositModal">
+                        <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg>
+                        <span>入金</span>
+                    </button>
+                    <button type="button" class="dropdown-item" data-action="open-modal" data-modal="withdrawModal">
+                        <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></svg>
+                        <span>出金</span>
+                    </button>
+                    <div class="dropdown-divider"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 核心指标卡片区 -->
+        <section class="metrics-section" id="metricsSection">
+            <div class="external-update-date" id="summary-data-updated-to">数据更新至 --</div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">账户总资产</div>
+                    <div class="metric-value" id="summary-total-asset">--</div>
+                    <div class="metric-sub metric-sub-stack">
+                        <div class="metric-sub-row">证券市值 <span id="summary-market-value">--</span></div>
+                        <div class="metric-sub-row metric-sub-row-inline">
+                            <span>可用现金 <span id="summary-cash">--</span></span>
+                            <img src="/static/icon/edit.png" class="edit-icon hidden" id="edit-cash-btn" alt="编辑" title="手工校准可用现金" data-action="open-modal" data-modal="cashAdjustModal" />
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">当日收益</div>
+                    <div class="metric-value" id="summary-daily-return">--</div>
+                    <div class="metric-sub" id="summary-daily-return-rate">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">持仓收益</div>
+                    <div class="metric-value" id="summary-holding-pnl">--</div>
+                    <div class="metric-sub" id="summary-holding-pnl-rate">--</div>
+                </div>
+                <div class="metric-card metric-card-wide">
+                    <div class="metric-label">总收益</div>
+                    <div class="metric-value" id="summary-total-return">--</div>
+                    <div class="metric-sub metric-sub-stack">
+                        <div class="metric-kv-row">
+                            <span class="metric-kv-label">累计收益率</span>
+                            <span class="metric-kv-value metric-kv-value-inline">
+                                <span id="summary-history-total-pnl-rate">--</span>
+                                <span class="tooltip-trigger" tabindex="0" aria-label="累计收益率说明">
+                                    ?
+                                    <span class="tooltip-bubble">累计收益率 = 历史累计收益 ÷ 净投入，其中净投入 = 累计入金 - 累计出金。</span>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="metric-kv-row">
+                            <span class="metric-kv-label">年化收益率</span>
+                            <span class="metric-kv-value metric-kv-value-inline">
+                                <span id="summary-account-xirr">--</span>
+                                <span class="tooltip-trigger" tabindex="0" aria-label="年化收益率说明">
+                                    ?
+                                    <span class="tooltip-bubble">年化收益率使用 XIRR 口径，考虑每笔现金流发生时间和当前总资产，反推年化内部收益率。</span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主Tab导航 -->
+        <div class="main-tabs">
+            <div class="main-tab-nav">
+                <div class="main-tab-item active" data-tab="positions">持仓</div>
+                <div class="main-tab-item" data-tab="transactions">交易</div>
+                <div class="main-tab-item" data-tab="analysis">指数分析</div>
+                <div class="main-tab-item" data-tab="watchlist">自选</div>
+            </div>
+        </div>
+
+        <div id="accountEmptyState" class="empty-account-state hidden">
+            <div class="empty-account-state-card">
+                <div class="empty-account-state-title">暂无资产账户</div>
+                <div class="empty-account-state-desc">创建账户后即可查看账户总资产、持仓、交易记录与分析数据。</div>
+                <button class="btn btn-add empty-account-state-btn" type="button" data-action="open-create-account-modal">手动创建</button>
+            </div>
+        </div>
+
+            <!-- App Views -->
+            <section class="app-views" aria-label="主内容视图">
+                <!-- 1. 持仓管理 View -->
+                <div id="view-positions">
+            <div class="section-header">
+                <h1 class="section-title">
+                    <span class="section-title-main">
+                        <span>持仓管理</span>
+                        <button class="btn-refresh btn-refresh-inline" id="btn-refresh-positions" type="button" data-action="refresh-quotes" disabled aria-label="刷新持仓行情" title="刷新持仓行情">
+                            <img src="/static/icon/refresh.svg" alt="" aria-hidden="true" />
+                        </button>
+                    </span>
+                    <div class="section-desc">查看和管理您的所有ETF持仓</div>
+                </h1>
+                <!-- 已将添加交易按钮移动至顶部 account-switcher-bar 栏 -->
+            </div>
+
+            <div class="sub-tabs sub-tabs-with-top-gap">
+                <div class="sub-tab-item active">持仓明细</div>
+                <div class="sub-tab-item">技术指标</div>
+            </div>
+
+            <div class="table-container table-container-full-width">
+                <table class="data-table fixed-layout">
+                <colgroup>
+                    <col class="col-w-9">  <!-- 代码 -->
+                    <col class="col-w-10"> <!-- 名称 -->
+                    <col class="col-w-7">  <!-- 最新价 -->
+                    <col class="col-w-7">  <!-- 涨跌幅 -->
+                    <col class="col-w-9">  <!-- 持仓市值 -->
+                    <col class="col-w-9">  <!-- 持仓数量 -->
+                    <col class="col-w-9">  <!-- 持仓收益 -->
+                    <col class="col-w-8">  <!-- 持仓收益率 -->
+                    <col class="col-w-9">  <!-- 历史累计收益 -->
+                    <col class="col-w-7">  <!-- 成交量 -->
+                    <col class="col-w-7">  <!-- 成交额 -->
+                    <col class="col-w-6">  <!-- 振幅 -->
+                    <col class="col-w-6">  <!-- 涨跌额 -->
+                    <col class="col-w-6">  <!-- 换手率 -->
+                    <col class="col-w-8">  <!-- 更新日期 -->
+                    <col class="col-w-8">  <!-- 操作 -->
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>代码</th>
+                        <th>名称</th>
+                        <th>最新价</th>
+                        <th>涨跌幅</th>
+                        <th>持仓市值</th>
+                        <th>持仓数量</th>
+                        <th>持仓收益</th>
+                        <th>持仓收益率</th>
+                        <th>历史累计收益</th>
+                        <th>成交量</th>
+                        <th>成交额</th>
+                        <th>振幅</th>
+                        <th>涨跌额</th>
+                        <th>换手率</th>
+                        <th>更新日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JS 加载 -->
+                </tbody>
+            </table>
+            </div>
+            <div class="list-pagination" data-list-pagination="positions">
+                <div class="list-pagination-loading hidden"></div>
+                <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="positions">了解更多</button>
+                <div class="list-pagination-end hidden">已经到底线了</div>
+            </div>
+                </div>
+
+                <!-- 2. 交易记录 View -->
+                <div id="view-transactions" class="hidden">
+            <h1 class="section-title">交易管理</h1>
+            <div class="sub-tabs">
+                <div class="sub-tab-item active" data-action="switch-tab" data-group="transaction" data-tab="trade_orders">交易记录</div>
+                <div class="sub-tab-item" data-action="switch-tab" data-group="transaction" data-tab="corporate_actions">企业事件</div>
+            </div>
+            <div id="transactions-orders-panel">
+                <table class="data-table fixed-layout">
+                    <colgroup>
+                        <col class="col-w-12"> <!-- 业务日期 -->
+                        <col class="col-w-11"> <!-- 代码 -->
+                        <col class="col-w-14"> <!-- 名称 -->
+                        <col class="col-w-10"> <!-- 类型 -->
+                        <col class="col-w-11"> <!-- 价格 -->
+                        <col class="col-w-10"> <!-- 数量 -->
+                        <col class="col-w-12"> <!-- 金额 -->
+                        <col class="col-w-9">  <!-- 状态 -->
+                        <col class="col-w-15"> <!-- 备注 -->
+                        <col class="col-w-10"> <!-- 操作 -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>业务日期</th>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>类型</th>
+                            <th>价格</th>
+                            <th>数量</th>
+                            <th>成交额</th>
+                            <th>状态</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- JS 加载 -->
+                    </tbody>
+                </table>
+                <div class="list-pagination" data-list-pagination="transaction_orders">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_orders">了解更多</button>
+                    <div class="list-pagination-end hidden">已经到底线了</div>
+                </div>
+            </div>
+            <div id="transactions-corporate-actions-panel" class="hidden">
+                <table class="data-table fixed-layout">
+                    <colgroup>
+                        <col class="col-w-11"> <!-- 生效日 -->
+                        <col class="col-w-11"> <!-- 代码 -->
+                        <col class="col-w-14"> <!-- 名称 -->
+                        <col class="col-w-13"> <!-- 事件类型 -->
+                        <col class="col-w-14"> <!-- 参数摘要 -->
+                        <col class="col-w-10"> <!-- 状态 -->
+                        <col class="col-w-14"> <!-- 失败原因 -->
+                        <col class="col-w-14"> <!-- 备注 -->
+                        <col class="col-w-11"> <!-- 操作 -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>生效日</th>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>事件类型</th>
+                            <th>参数摘要</th>
+                            <th>状态</th>
+                            <th>失败原因</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- JS 加载 -->
+                    </tbody>
+                </table>
+                <div class="list-pagination" data-list-pagination="transaction_actions">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_actions">了解更多</button>
+                    <div class="list-pagination-end hidden">已经到底线了</div>
+                </div>
+            </div>
+                </div>
+
+                <!-- 3. 指数分析 View -->
+                <div id="view-analysis" class="hidden">
+            <h1 class="section-title">指数行情</h1>
+            <div class="sub-tabs">
+                <div class="sub-tab-item active" data-action="switch-tab" data-group="analysis" data-tab="market">行情概览</div>
+                <div class="sub-tab-item" data-action="switch-tab" data-group="analysis" data-tab="fundamental">基本面分析</div>
+                <div class="sub-tab-item" data-action="switch-tab" data-group="analysis" data-tab="technical">技术分析</div>
+            </div>
+
+            <!-- TODO: 迁移原 report.js 的逻辑到这里 -->
+            <!-- 1. 行情概览表格 -->
+            <div id="analysis-market">
+                <table class="data-table fixed-layout">
+                    <colgroup>
+                        <col class="col-w-15"> <!-- 交易日期 -->
+                        <col class="col-w-10"> <!-- 代码 -->
+                        <col class="col-w-20"> <!-- 名称 -->
+                        <col class="col-w-15"> <!-- 收盘价 -->
+                        <col class="col-w-20"> <!-- 成交量 -->
+                        <col class="col-w-20"> <!-- 成交额 -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>交易日期</th>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>收盘价</th>
+                            <th>成交量</th>
+                            <th>成交额</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="list-pagination" data-list-pagination="analysis_market">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_market">了解更多</button>
+                    <div class="list-pagination-end hidden">已经到底线了</div>
+                </div>
+            </div>
+
+            <!-- 2. 基本面分析表格 -->
+            <div id="analysis-fundamental" class="hidden">
+                <table class="data-table fixed-layout fundamental-table">
+                    <colgroup>
+                        <col class="col-w-12"> <!-- 交易日期 -->
+                        <col class="col-w-8"> <!-- 代码 -->
+                        <col class="col-w-12"> <!-- 名称 -->
+                        <col class="col-w-10"> <!-- PE-TTM -->
+                        <col class="col-w-8"> <!-- PB -->
+                        <col class="col-w-12"> <!-- PE 5年分位 -->
+                        <col class="col-w-12"> <!-- PE低估(20%) -->
+                        <col class="col-w-12"> <!-- PE中位(50%) -->
+                        <col class="col-w-12"> <!-- PE高估(80%) -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>交易日期</th>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>PE-TTM</th>
+                            <th>PB</th>
+                            <th>PE 5年分位</th>
+                            <th>PE低估(20%)</th>
+                            <th>PE中位(50%)</th>
+                            <th>PE高估(80%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="list-pagination" data-list-pagination="analysis_fundamental">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_fundamental">了解更多</button>
+                    <div class="list-pagination-end hidden">已经到底线了</div>
+                </div>
+            </div>
+            <tbody></tbody>
+            </table>
+            <!-- 3. 技术分析表格 -->
+            <div id="analysis-technical" class="hidden">
+                <table class="data-table fixed-layout technical-table">
+                    <colgroup>
+                        <col class="col-w-10"> <!-- 交易日期 -->
+                        <col class="col-w-6"> <!-- 代码 -->
+                        <col class="col-w-8"> <!-- 名称 -->
+                        <col class="col-w-7"> <!-- 收盘价 -->
+                        <col class="col-w-65"> <!-- MA5 -->
+                        <col class="col-w-65"> <!-- MA10 -->
+                        <col class="col-w-65"> <!-- MA20 -->
+                        <col class="col-w-55"> <!-- RSI6 -->
+                        <col class="col-w-55"> <!-- RSI14 -->
+                        <col class="col-w-65"> <!-- DIF -->
+                        <col class="col-w-65"> <!-- DEA -->
+                        <col class="col-w-65"> <!-- MACD -->
+                        <col class="col-w-65"> <!-- ATR14 -->
+                        <col class="col-w-12"> <!-- 2.5倍ATR点位 -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>交易日期</th>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>收盘价</th>
+                            <th>MA5</th>
+                            <th>MA10</th>
+                            <th>MA20</th>
+                            <th>RSI6</th>
+                            <th>RSI14</th>
+                            <th>DIF</th>
+                            <th>DEA</th>
+                            <th>MACD</th>
+                            <th>ATR14</th>
+                            <th>2.5倍ATR点位</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="list-pagination" data-list-pagination="analysis_technical">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_technical">了解更多</button>
+                    <div class="list-pagination-end hidden">已经到底线了</div>
+                </div>
+            </div>
+                </div>
+
+                <!-- 4. 自选/基础档案 View -->
+                <div id="view-watchlist" class="hidden">
+            <div class="section-header section-header-with-outer-gap watchlist-header">
+                <h1 class="section-title section-title-tight">
+                    <span class="section-title-main">基础档案</span>
+                    <span class="section-desc section-desc-relaxed">查看和管理系统中的所有投资标的档案</span>
+                </h1>
+                <button class="btn btn-add watchlist-add-btn" data-action="open-modal" data-modal="assetModal">新增档案</button>
+            </div>
+
+            <div class="sub-tabs">
+                <div class="sub-tab-item active" data-action="switch-tab" data-group="asset" data-tab="others">交易品种</div>
+                <div class="sub-tab-item" data-action="switch-tab" data-group="asset" data-tab="index">指数信息</div>
+            </div>
+
+            <table class="data-table fixed-layout" id="asset-list-table">
+                <colgroup>
+                    <col class="col-w-14">
+                    <col class="col-w-22">
+                    <col class="col-w-14">
+                    <col class="col-w-16">
+                    <col class="col-w-16">
+                    <col class="col-w-18">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>代码</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>上市日期</th>
+                        <th>数据源</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JS 加载 -->
+                </tbody>
+            </table>
+            <div class="list-pagination" data-list-pagination="watchlist">
+                <div class="list-pagination-loading hidden"></div>
+                <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="watchlist">了解更多</button>
+                <div class="list-pagination-end hidden">已经到底线了</div>
+            </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Dialogs -->
+    <!-- Account Dialogs -->
+    <div id="accountModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="accountModalTitle">新增账户</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="accountModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row account-form-row">
+                    <div class="form-group">
+                        <label class="form-label">账户名称 <span class="required-mark">*</span></label>
+                        <input type="text" class="form-input" placeholder="请输入账户名称" id="form-account-name" maxlength="50">
+                        <span class="form-error hidden" id="err-account-name">请输入账户名称</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="accountModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-account" data-action="save-account">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="accountDeleteModal" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="accountDeleteModalTitle" aria-describedby="accountDeleteModalDesc">
+        <div class="modal-box modal-box-sm" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="accountDeleteModalTitle">确认删除账户</h2>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-desc" id="accountDeleteModalDesc">
+                    确定要删除账户
+                    <strong class="confirm-target" id="accountDeleteTarget">--</strong>
+                    吗？<br>
+                    <span class="confirm-warning">若账户存在任一资产相关数据，将无法删除。</span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="accountDeleteModal">取消</button>
+                <button class="modal-btn-danger" id="accountDeleteConfirmBtn" data-action="confirm-delete-account">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Dialogs -->
+    <div id="assetModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assetModalTitle">
+        <div class="modal-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="assetModalTitle">新增 / 修改档案</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="assetModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">代码 <span class="required-mark">*</span></label>
+                        <input type="text" class="form-input" placeholder="输入代码" id="form-asset-code">
+                        <span class="form-error hidden" id="err-asset-code">请输入代码</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">名称 <span class="required-mark">*</span></label>
+                        <input type="text" class="form-input" placeholder="输入名称" id="form-asset-name">
+                        <span class="form-error hidden" id="err-asset-name">请输入名称</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">数据源 <span class="required-mark">*</span></label>
+                        <select class="form-select" id="form-asset-source">
+                            <option value="lixinren">理杏仁</option>
+                            <option value="akshare">Akshare</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">上市日期</label>
+                        <input type="date" class="form-input" id="form-asset-date">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">标的类型 <span class="required-mark">*</span></label>
+                        <select class="form-select" id="form-asset-type">
+                            <option value="ETF">ETF</option>
+                            <option value="STOCK">股票</option>
+                            <option value="INDEX">指数</option>
+                            <option value="FUND">基金</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">交易所</label>
+                        <select class="form-select" id="form-asset-exchange">
+                            <option value="SH">上海 SH</option>
+                            <option value="SZ">深圳 SZ</option>
+                            <option value="HK">香港 HK</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group span-2">
+                        <label class="form-label">市场类别</label>
+                        <select class="form-select" id="form-asset-category">
+                            <option value="EXCHANGE">场内 (EXCHANGE)</option>
+                            <option value="OTC">场外 (OTC)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="assetModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-asset" data-action="save-asset">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Dialogs -->
+    <div id="confirmModal" class="modal-overlay" role="alertdialog" aria-modal="true"
+        aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc">
+        <div class="modal-box modal-box-sm" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="confirmModalTitle">确认删除</h2>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-desc" id="confirmModalDesc">
+                    确定要删除档案
+                    <strong class="confirm-target" id="confirmTarget">--</strong>
+                    吗？<br>
+                    <span class="confirm-warning">此操作不可撤销，如存在关联交易记录将无法删除。</span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" id="confirmCancelBtn">取消</button>
+                <button class="modal-btn-danger" id="confirmOkBtn">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载状态弹窗 -->
+    <div id="loadingModal" class="modal-overlay" role="status" aria-label="操作进行中，请稍候">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="loading-spinner-wrap">
+                <div class="loading-spinner"></div>
+                <p class="loading-text" id="loadingText">处理中，请稍候...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Dialogs -->
+    <div id="transactionEditModal" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="transactionEditTitle">
+        <div class="modal-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="transactionEditTitle">修改交易记录</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="transactionEditModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">代码</label>
+                        <input type="text" class="form-input" id="edit-trade-code" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">名称</label>
+                        <input type="text" class="form-input" id="edit-trade-name" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">成交日期 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="edit-trade-date">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">交易类型 <span class="required-mark">*</span></label>
+                        <select class="form-select" id="edit-trade-side">
+                            <option value="BUY">买入 (BUY)</option>
+                            <option value="SELL">卖出 (SELL)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">价格 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.001" class="form-input" id="edit-trade-price">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">数量 <span class="required-mark">*</span></label>
+                        <input type="number" class="form-input" id="edit-trade-volume">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">佣金 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" id="edit-trade-commission">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">成交额 (自动计算)</label>
+                        <input type="text" class="form-input" id="edit-trade-amount" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="transactionEditModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-transaction"
+                    data-action="save-transaction-edit">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tradeModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="tradeModalTitle">
+        <div class="modal-box trade-modal-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="tradeModalTitle">添加交易</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="tradeModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- 买入/卖出切换 -->
+                <div class="modal-block-gap">
+                    <div class="tv-side-toggle">
+                        <button class="tv-side-btn sell" data-side="sell">卖出</button>
+                        <button class="tv-side-btn buy active" data-side="buy">买入</button>
+                    </div>
+                </div>
+
+                <!-- 表单网格 -->
+                <div class="trade-form-grid">
+                    <!-- 代码 + 名称 同行 -->
+                    <div class="form-group">
+                        <label class="form-label">代码</label>
+                        <input type="text" class="form-input" id="stockCode" placeholder="输入代码">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">名称</label>
+                        <input type="text" class="form-input" id="stockName" placeholder="自动带出" disabled>
+                    </div>
+
+                    <!-- 卖出批次 -->
+                    <div class="form-group span-2 initially-hidden" id="lotSelectionGroup">
+                        <label class="form-label">卖出批次</label>
+                        <select class="form-select" id="tradeLot">
+                            <!-- JS 动态填充 -->
+                        </select>
+                    </div>
+
+                    <!-- 日期 + 价格 -->
+                    <div class="form-group">
+                        <label class="form-label">日期 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="tradeDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">价格</label>
+                        <input type="number" class="form-input" id="tradePrice" placeholder="0.000" step="0.001">
+                    </div>
+
+                    <!-- 数量 + 手续费 -->
+                    <div class="form-group">
+                        <label class="form-label">数量</label>
+                        <input type="number" class="form-input" id="tradeVolume" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">手续费</label>
+                        <input type="number" class="form-input" id="tradeCommission" placeholder="留空则自动计算" step="0.01">
+                    </div>
+
+                    <!-- 笔记 -->
+                    <div class="form-group span-2">
+                        <div class="tv-label-row">
+                            <label class="form-label form-label-no-margin">笔记</label>
+                            <span class="char-count char-count-no-margin" id="remarkCount">0/128</span>
+                        </div>
+                        <textarea class="form-textarea textarea-min-64" id="tradeRemark" placeholder="评论" maxlength="128"></textarea>
+                    </div>
+                </div>
+
+                <div class="trade-breakdown">
+                    <div class="trade-breakdown-row">
+                        <span class="trade-breakdown-label">成交额</span>
+                        <span class="trade-breakdown-value" id="tradeAmountValue">0.00</span>
+                    </div>
+                    <div class="trade-breakdown-row">
+                        <span class="trade-breakdown-label" id="tradeCommissionSummaryLabel">手续费</span>
+                        <span class="trade-breakdown-value" id="tradeCommissionValue">0.00</span>
+                    </div>
+                    <div class="trade-breakdown-row hidden" id="tradeTaxRow">
+                        <span class="trade-breakdown-label" id="tradeTaxLabel">印花税</span>
+                        <span class="trade-breakdown-value" id="tradeTaxValue">0.00</span>
+                    </div>
+                </div>
+
+                <div class="trade-total-row">
+                    <span class="trade-total-label" id="tradeTotalLabel">总计金额</span>
+                    <span class="trade-total-value" id="tradeTotal">0.00</span>
+                </div>
+            </div>
+
+            <div class="modal-footer trade-modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="tradeModal">取消</button>
+                <button class="modal-btn-confirm trade-btn-save" id="btn-submit-trade">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 入金弹窗 -->
+    <div id="depositModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="depositModalTitle">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="depositModalTitle">入金</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="depositModal" aria-label="关闭">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">入金金额 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" placeholder="输入入金金额" id="form-deposit-amount">
+                        <span class="form-error hidden" id="err-deposit-amount">金额必须大于0</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">备注</label>
+                        <input type="text" class="form-input" placeholder="选填" id="form-deposit-remark">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="depositModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-deposit" data-action="submit-deposit">确定入金</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Corporate Action Dialogs -->
+    <div id="corporateActionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="corporateActionModalTitle">
+        <div class="modal-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="corporateActionModalTitle">新增企业事件</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="corporateActionModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">事件类型</label>
+                        <select class="form-select" id="ca-action-type" disabled>
+                            <option value="SPLIT">份额调整</option>
+                            <option value="CASH_DIVIDEND">现金分红</option>
+                            <option value="DIVIDEND_REINVEST">红利再投</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">状态</label>
+                        <input type="text" class="form-input" id="ca-status" value="PENDING" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">资产代码 <span class="required-mark">*</span></label>
+                        <input type="text" class="form-input" id="ca-asset-code" placeholder="输入代码（如 159516）">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">资产名称</label>
+                        <input type="text" class="form-input" id="ca-asset-name" placeholder="自动带出" disabled>
+                    </div>
+
+                        <div class="form-group">
+                            <label class="form-label">生效日 <span class="required-mark">*</span></label>
+                            <input type="date" class="form-input" id="ca-effective-date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">登记日</label>
+                            <input type="date" class="form-input" id="ca-record-date">
+                        </div>
+
+                        <div class="form-group hidden" id="ca-ratio-from-group">
+                            <label class="form-label">拆分前 <span class="required-mark">*</span></label>
+                            <input type="number" min="1" step="1" class="form-input" id="ca-ratio-from" placeholder="如 10">
+                        </div>
+                        <div class="form-group hidden" id="ca-ratio-to-group">
+                            <label class="form-label">拆分后 <span class="required-mark">*</span></label>
+                            <input type="number" min="1" step="1" class="form-input" id="ca-ratio-to" placeholder="如 12">
+                        </div>
+
+                        <div class="form-group hidden" id="ca-cash-base-unit-group">
+                            <label class="form-label">分红口径 <span class="required-mark">*</span></label>
+                            <select class="form-select" id="ca-cash-base-unit">
+                                <option value="PER_SHARE">每份</option>
+                                <option value="PER_10_SHARES">每10份</option>
+                            </select>
+                        </div>
+                        <div class="form-group hidden" id="ca-cash-amount-group">
+                            <label class="form-label">分红金额 <span class="required-mark">*</span></label>
+                            <input type="number" min="0" step="0.0001" class="form-input" id="ca-cash-amount" placeholder="如 0.2000">
+                        </div>
+
+                        <div class="form-group hidden" id="ca-reinvest-price-group">
+                            <label class="form-label">再投价格 <span class="required-mark">*</span></label>
+                            <input type="number" min="0" step="0.0001" class="form-input" id="ca-reinvest-price" placeholder="如 1.2500">
+                        </div>
+                        <div class="form-group hidden" id="ca-rounding-policy-group">
+                            <label class="form-label">份额处理 <span class="required-mark">*</span></label>
+                            <select class="form-select" id="ca-rounding-policy">
+                                <option value="KEEP_DECIMAL">保留小数</option>
+                                <option value="ROUND_DOWN">向下取整</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-textarea textarea-min-60" id="ca-remark" placeholder="选填备注..." maxlength="128"></textarea>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <div class="preview-panel" id="ca-preview-panel">
+                                <div class="preview-panel-title">预览结果</div>
+                                <div id="ca-preview-content" class="preview-placeholder-text">填写参数后点击“预览结果”查看影响。</div>
+                            </div>
+                        </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-danger hidden" id="btn-cancel-corporate-action" data-action="cancel-ca">作废事件</button>
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="corporateActionModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-preview-corporate-action" data-action="preview-ca">预览结果</button>
+                <button class="modal-btn-confirm" id="btn-save-corporate-action" data-action="submit-ca">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 出金弹窗 -->
+    <div id="withdrawModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="withdrawModalTitle">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="withdrawModalTitle">出金</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="withdrawModal" aria-label="关闭">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">出金金额 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" placeholder="输入出金金额" id="form-withdraw-amount">
+                        <span class="form-error hidden" id="err-withdraw-amount">金额必须大于0</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">备注</label>
+                        <input type="text" class="form-input" placeholder="选填" id="form-withdraw-remark">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="withdrawModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-withdraw" data-action="submit-withdraw">确定出金</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调整可用现金弹窗 -->
+    <div id="cashAdjustModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cashAdjustModalTitle">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="cashAdjustModalTitle">修改可用现金</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="cashAdjustModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">可用现金总额 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" placeholder="输入最新的可用现金" id="form-cash-amount">
+                        <span class="form-error hidden" id="err-cash-amount">可用现金不能为负数</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="cashAdjustModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-cash" data-action="submit-cash-adjust">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Sync Drawer -->
+    <div id="dataSyncPanelOverlay" class="data-sync-overlay" hidden></div>
+    <aside id="dataSyncPanel" class="data-sync-panel" aria-labelledby="dataSyncPanelTitle" hidden>
+        <div class="data-sync-header">
+            <div class="data-sync-title-wrap">
+                <div class="data-sync-title" id="dataSyncPanelTitle">数据更新</div>
+                <div class="data-sync-subtitle">支持后台执行、步骤跟踪与日志回放</div>
+            </div>
+            <button class="data-sync-close" id="dataSyncCloseButton" type="button" aria-label="关闭">&times;</button>
+        </div>
+        <div class="data-sync-body">
+            <section class="data-sync-section data-sync-overview-card">
+                <div class="data-sync-section-title">任务状态</div>
+                <div class="data-sync-status-row">
+                    <span id="dataSyncStatusBadge" class="data-sync-status-badge">空闲</span>
+                    <span id="dataSyncStepText" class="data-sync-step-text">等待触发</span>
+                </div>
+                <div class="data-sync-meta">
+                    <div class="data-sync-meta-item">
+                        <span class="data-sync-meta-label">任务 ID</span>
+                        <span class="data-sync-meta-value" id="dataSyncTaskId">--</span>
+                    </div>
+                    <div class="data-sync-meta-item">
+                        <span class="data-sync-meta-label">耗时</span>
+                        <span class="data-sync-meta-value" id="dataSyncElapsed">--</span>
+                    </div>
+                    <div class="data-sync-meta-item">
+                        <span class="data-sync-meta-label">开始时间</span>
+                        <span class="data-sync-meta-value" id="dataSyncStartedAt">--</span>
+                    </div>
+                    <div class="data-sync-meta-item">
+                        <span class="data-sync-meta-label">完成时间</span>
+                        <span class="data-sync-meta-value" id="dataSyncFinishedAt">--</span>
+                    </div>
+                </div>
+                <div class="data-sync-progress-track" aria-hidden="true">
+                    <div class="data-sync-progress-bar" id="dataSyncProgressBar"></div>
+                </div>
+            </section>
+
+            <section class="data-sync-section">
+                <div class="data-sync-section-title">阶段进度</div>
+                <div class="data-sync-steps" id="dataSyncSteps">
+                    <div class="data-sync-step-item" data-step="1">
+                        <span class="data-sync-step-index">1</span>
+                        <div class="data-sync-step-content">
+                            <div class="data-sync-step-row">
+                                <span class="data-sync-step-name">环境检查</span>
+                                <span class="data-sync-step-status">待开始</span>
+                            </div>
+                            <div class="data-sync-step-meta">等待执行</div>
+                        </div>
+                    </div>
+                    <div class="data-sync-step-item" data-step="2">
+                        <span class="data-sync-step-index">2</span>
+                        <div class="data-sync-step-content">
+                            <div class="data-sync-step-row">
+                                <span class="data-sync-step-name">数据采集</span>
+                                <span class="data-sync-step-status">待开始</span>
+                            </div>
+                            <div class="data-sync-step-meta">等待执行</div>
+                        </div>
+                    </div>
+                    <div class="data-sync-step-item" data-step="3">
+                        <span class="data-sync-step-index">3</span>
+                        <div class="data-sync-step-content">
+                            <div class="data-sync-step-row">
+                                <span class="data-sync-step-name">指标计算</span>
+                                <span class="data-sync-step-status">待开始</span>
+                            </div>
+                            <div class="data-sync-step-meta">等待执行</div>
+                        </div>
+                    </div>
+                    <div class="data-sync-step-item" data-step="4">
+                        <span class="data-sync-step-index">4</span>
+                        <div class="data-sync-step-content">
+                            <div class="data-sync-step-row">
+                                <span class="data-sync-step-name">资产刷新</span>
+                                <span class="data-sync-step-status">待开始</span>
+                            </div>
+                            <div class="data-sync-step-meta">等待执行</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="data-sync-section">
+                <div class="data-sync-section-title">最近结果</div>
+                <div class="data-sync-summary" id="dataSyncSummary">尚未触发数据更新。</div>
+            </section>
+
+            <section class="data-sync-section data-sync-log-panel">
+                <div class="data-sync-section-head">
+                    <div class="data-sync-section-title">实时日志</div>
+                    <button id="dataSyncToggleLogsButton" class="data-sync-inline-btn" type="button" aria-expanded="false">展开日志</button>
+                </div>
+                <div class="data-sync-log-section" id="dataSyncLogSection">
+                    <div class="data-sync-log-list" id="dataSyncLogList">
+                        <div class="data-sync-empty">等待日志输出...</div>
+                    </div>
+                    <div class="data-sync-log-actions">
+                        <button id="dataSyncScrollToBottom" class="data-sync-inline-btn hidden" type="button">↓ 回到底部</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="data-sync-section data-sync-error-panel hidden" id="dataSyncErrorDetailSection">
+                <div class="data-sync-section-title">错误详情</div>
+                <div class="data-sync-error-detail" id="dataSyncErrorDetail">当前无错误详情。</div>
+            </section>
+        </div>
+        <div class="data-sync-footer">
+            <div class="data-sync-panel-actions">
+                <button id="dataSyncRetryButton" class="data-sync-action-btn warning" type="button" hidden>重新执行</button>
+                <button id="dataSyncRefreshPageButton" class="data-sync-action-btn primary" type="button" hidden>刷新页面数据</button>
+                <button id="dataSyncCloseFooterButton" class="data-sync-action-btn" type="button">关闭</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Toasts -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/utils.js?v=20260328-corpaction"></script>
+    <script src="/static/js/quote-service.js?v=20260328-corpaction"></script>
+    <script src="/static/js/app-core.js?v=20260509-trade-fix-r2"></script>
+    <script src="/static/js/app-ui.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-account.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-portfolio.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-transactions.js?v=20260509-trade-fix-r2"></script>
+    <script src="/static/js/app-analysis-assets.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-data-sync.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app.js?v=20260422-f05-app-split-r1"></script>
+</body>
+
+</html>

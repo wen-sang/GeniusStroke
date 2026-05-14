@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+
+# Local environment
+.env
+.env.local
+
+# Runtime data
+data/
+logs/
+reports/
+output/
+backups/
+release_backups/
+_release/
+
+# Databases and logs
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+
+# Import/export files
+*.xls
+*.xlsx
+*.csv
+*.zip
+*.7z
+*.backup
+Import_expert/
+Import_data/
+
+# Local tools
+.agent/
+.agents/
+.claude/
+.idea/
+.vscode/

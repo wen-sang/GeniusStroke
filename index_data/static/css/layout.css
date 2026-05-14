@@ -1,0 +1,72 @@
+/* F06 layout.css
+ * Scope: page skeleton, container, navbar, sticky/layout offsets.
+ * Allowed: page shell, navbar, offset/z-index contracts.
+ * Forbidden: modal system, table visuals, page feature styling, generic utility helpers.
+ */
+.container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 var(--space-2xl);
+}
+
+/* ==================== 导航�?==================== */
+.navbar {
+    background: var(--bg-card);
+    height: var(--navbar-height);
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.navbar-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* F06 data-sync layout contract
+ * Scope: layout-only positioning contract for navbar-coupled UI.
+ * These selectors intentionally hold only placement/layering behavior.
+ */
+.data-sync-banner {
+    position: sticky;
+    top: var(--navbar-height);
+    z-index: 99;
+}
+
+.data-sync-overlay {
+    z-index: 999;
+}
+
+.data-sync-panel {
+    position: fixed;
+    top: var(--navbar-height);
+    right: 0;
+    height: calc(100vh - var(--navbar-height));
+    z-index: 1000;
+}
+
+@media (max-width: 899px) {
+    .data-sync-panel {
+        top: 50%;
+        right: auto;
+        left: 50%;
+        height: auto;
+        max-height: 85vh;
+    }
+}

@@ -1,0 +1,10 @@
+/* F06 retired runtime shell
+ * This file is intentionally no longer loaded by index.html.
+ * Runtime CSS entry points:
+ *   - /static/css/base.css
+ *   - /static/css/layout.css
+ *   - /static/css/components.css
+ *   - /static/css/pages.css
+ *   - /static/css/utilities.css
+ * Migration task: F06 style.css module split.
+ */

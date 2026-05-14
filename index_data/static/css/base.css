@@ -1,0 +1,93 @@
+/* F06 base.css
+ * Scope: reset, root tokens, base typography, focus rules.
+ * Allowed: global base primitives only.
+ * Forbidden: navbar, data sync, modal, tables, page-specific sections, utility helpers.
+ */
+/* ==================== CSS Reset ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ==================== CSS Variables ==================== */
+:root {
+    /* ── 背景 ── */
+    --bg-page: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-hover: #F9FAFB;
+
+    /* ── 品牌主色 ── */
+    --primary: #2B7A78;
+    --primary-hover: #236561;
+    --primary-light: rgba(43, 122, 120, 0.08);
+
+    /* ── 金融语义色（红涨绿跌）── */
+    --up-red: #f23645;
+    --up-red-light: rgba(242, 54, 69, 0.1);
+    --down-green: #089981;
+    --down-green-light: rgba(8, 153, 129, 0.1);
+
+    /* ── 文字层级 ── */
+    --text-primary: #000000;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+    --text-tv: #0F0F0F;
+    --text-disabled: #D1D5DB;
+
+    /* ── 边框 ── */
+    --border: #E5E7EB;
+    --border-color: var(--border);
+    --border-focus: #2B7A78;
+    --navbar-height: 64px;
+    --tv-bg-muted: #F0F3FA;
+    --tv-text-muted: #787B86;
+    --tv-text-strong: #131722;
+
+    /* ── 功能�?── */
+    --color-danger: #DC6B6F;
+    --color-warning: #F59E0B;
+    --color-info: #3B82F6;
+
+    /* ── 间距系统 ── */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+
+    /* ── 圆角 ── */
+    --radius-sm: 8px;    /* v2.3: 6�? 对标 TV 按钮/小控�?*/
+    --radius-md: 12px;   /* v2.3: 8�?2 对标 TV 弹窗/下拉菜单 */
+    --radius-lg: 16px;   /* v2.3: 12�?6 保持层级递进 */
+    --radius-pill: 20px;
+    --radius-full: 9999px;
+    --radius-progress: 3px;
+
+    /* ── 阴影 ── */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --shadow-modal: 0 10px 20px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);  /* v2.3 弹窗/下拉专用 */
+}
+
+/* ==================== 基础样式 ==================== */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow-y: scroll; /* Force vertical scrollbar track to prevent layout jump on Windows */
+}
+
+/* 全局焦点样式 */
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
