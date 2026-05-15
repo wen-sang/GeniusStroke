@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeniusStroke - 投资组合</title>
     <!-- 引入提取的 CSS -->
-    <link rel="stylesheet" href="/static/css/base.css?v=20260420-f06-css-modules-r6">
-    <link rel="stylesheet" href="/static/css/layout.css?v=20260420-f06-css-modules-r6">
-    <link rel="stylesheet" href="/static/css/components.css?v=20260509-trade-fix-r2">
-    <link rel="stylesheet" href="/static/css/pages.css?v=20260420-f06-css-modules-r6">
-    <link rel="stylesheet" href="/static/css/utilities.css?v=20260420-f06-css-modules-r6">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260515-asset-catalog-v1">
+    <link rel="stylesheet" href="/static/css/layout.css?v=20260515-asset-catalog-v1">
+    <link rel="stylesheet" href="/static/css/components.css?v=20260515-asset-catalog-v1">
+    <link rel="stylesheet" href="/static/css/pages.css?v=20260515-asset-catalog-v1">
+    <link rel="stylesheet" href="/static/css/utilities.css?v=20260515-asset-catalog-v1">
 </head>
 
 <body>
@@ -540,6 +540,40 @@
             </div>
 
             <div class="modal-body">
+                <div id="assetCatalogSearchSection" class="catalog-search-section">
+                    <div class="catalog-search-header">
+                        <div class="catalog-search-title">从目录选择</div>
+                        <div class="catalog-sync-status" id="assetCatalogSyncStatus"></div>
+                    </div>
+                    <div class="catalog-source-toggle" id="assetCatalogSourceToggle"></div>
+                    <div class="catalog-search-input-wrap">
+                        <svg class="catalog-search-icon" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        <input type="text" class="form-input catalog-search-input"
+                               id="assetCatalogKeyword"
+                               placeholder="搜索代码或名称以快速填充..."
+                               autocomplete="off">
+                        <div class="catalog-search-results hidden" id="assetCatalogResults">
+                            <div class="catalog-search-results-list" id="assetCatalogResultsList"></div>
+                            <div class="catalog-search-results-footer hidden" id="assetCatalogResultsFooter">
+                                <span class="catalog-results-count"></span>
+                                <button type="button" class="catalog-results-more" id="assetCatalogLoadMore">显示更多</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="catalog-search-hint" id="assetCatalogHint">
+                        从外部目录搜索可快速填充标的信息
+                    </div>
+                    <div class="catalog-info-banner hidden" id="assetCatalogInfoBanner">
+                        <span>该来源当前仅用于标的目录，请选择已启用采集的数据源。</span>
+                    </div>
+                </div>
+                <div class="catalog-form-divider" id="assetCatalogFormDivider"></div>
+                <input type="hidden" id="form-asset-source-code" value="">
+
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">代码 <span class="required-mark">*</span></label>
@@ -1098,7 +1132,8 @@
     <script src="/static/js/app-account.js?v=20260422-f05-app-split-r1"></script>
     <script src="/static/js/app-portfolio.js?v=20260422-f05-app-split-r1"></script>
     <script src="/static/js/app-transactions.js?v=20260509-trade-fix-r2"></script>
-    <script src="/static/js/app-analysis-assets.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-asset-catalog.js?v=20260515-asset-catalog-v1"></script>
+    <script src="/static/js/app-analysis-assets.js?v=20260515-asset-catalog-v1"></script>
     <script src="/static/js/app-data-sync.js?v=20260422-f05-app-split-r1"></script>
     <script src="/static/js/app.js?v=20260422-f05-app-split-r1"></script>
 </body>

@@ -10,7 +10,13 @@ from utils.logger import logger
 from utils.validators import ValidationError
 
 from .dao import corporate_action_dao
-from .derived_records import clear_derived_records, insert_audit_log, run_rebuilds
+from .derived_records import (
+    account_history_rebuild_service,
+    account_rebuild_service,
+    clear_derived_records,
+    insert_audit_log,
+    run_rebuilds,
+)
 from .models import (
     CorporateAction,
     CorporateActionCreateRequest,

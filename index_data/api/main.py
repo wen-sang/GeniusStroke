@@ -15,6 +15,7 @@ from api.routers import (
     trade_orders,
     account,
     assets,
+    asset_catalog,
     corporate_action,
     account_ledger,
 )
@@ -40,6 +41,7 @@ app.include_router(trade.router)
 app.include_router(trade_orders.router)
 app.include_router(account.router)
 app.include_router(assets.router)
+app.include_router(asset_catalog.router)
 app.include_router(corporate_action.router)
 app.include_router(account_ledger.router)
 if ENABLE_DATA_SYNC_API:

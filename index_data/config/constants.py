@@ -8,6 +8,7 @@ class DataSource:
     AKSHARE = 'akshare'
     LIXINREN = 'lixinren'
     EFINANCE = 'efinance'
+    TICKFLOW = 'tickflow'
     VALID = (AKSHARE, LIXINREN, EFINANCE)
     ASSET_ROUTE_VALID = (AKSHARE, LIXINREN)
 

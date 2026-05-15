@@ -1,6 +1,13 @@
-# Changelog
+# 变更记录
+
+## v2.5.0-public.2
+
+- 新增外部标的目录能力，支持在新增档案时从 TickFlow / 理杏仁目录搜索并快速填充标的信息。
+- 增加外部标的目录缓存表与同步日志表，公开版保留对应 Alembic 迁移链。
+- 合入生产基线更新，包含前端模块化入口、数据质量能力、交易日历和手工订单幂等修复。
+- 更新公开版文档为中文说明。
 
 ## v2.5.0-public.1
 
-- Initial MIT-licensed release package for Windows local usage.
-- Includes empty database initialization, local run script, configuration sample, and user documentation.
+- 初始 MIT 许可证公开发布包，面向 Windows 本地运行。
+- 包含空数据库初始化、本地启动脚本、配置示例和基础使用文档。

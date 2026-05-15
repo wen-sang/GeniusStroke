@@ -8,10 +8,22 @@ from utils.logger import logger
 
 
 class AssetService:
+    COLLECTION_SOURCE_IDS = {DataSource.AKSHARE, DataSource.LIXINREN}
+
     @staticmethod
     def _validate_source_id(source_id: str) -> str:
         """校验资产路由数据源，避免非法来源写入路由表。"""
         return DataSource.validate_asset_route(source_id)
+
+    def _validate_collection_source(self, source_id: str) -> str:
+        if source_id == "lixingren":
+            raise ValueError("数据源标识已统一为 lixinren，请使用 lixinren (Use lixinren)")
+        if source_id == DataSource.TICKFLOW:
+            raise ValueError("该数据源暂未启用采集能力")
+        normalized_source_id = self._validate_source_id(source_id)
+        if normalized_source_id not in self.COLLECTION_SOURCE_IDS:
+            raise ValueError("资产采集数据源仅支持 akshare, lixinren")
+        return normalized_source_id
 
     @staticmethod
     def _refresh_router_cache(action: str, asset_code: str) -> None:
@@ -31,7 +43,7 @@ class AssetService:
         """
         新增档案 (带事务联动)
         """
-        source_id = self._validate_source_id(asset.source_id)
+        normalized_source_id = self._validate_collection_source(asset.source_id)
         asset_dao.create_asset(
             asset_code=asset.asset_code,
             asset_name=asset.asset_name,
@@ -39,7 +51,8 @@ class AssetService:
             exchange=asset.exchange,
             listing_date=asset.listing_date,
             market_category=asset.market_category,
-            source_id=source_id,
+            source_id=normalized_source_id,
+            source_code=asset.source_code,
         )
         self._refresh_router_cache("新增", asset.asset_code)
         return {"status": "success", "asset_code": asset.asset_code}
@@ -48,7 +61,8 @@ class AssetService:
         """
         修改档案 (主键防爆破)
         """
-        source_id = self._validate_source_id(asset.source_id)
+        normalized_source_id = self._validate_collection_source(asset.source_id)
+        update_source_code = "source_code" in asset.model_fields_set
         asset_dao.update_asset(
             asset_code=asset_code,
             asset_name=asset.asset_name,
@@ -56,7 +70,9 @@ class AssetService:
             exchange=asset.exchange,
             listing_date=asset.listing_date,
             market_category=asset.market_category,
-            source_id=source_id,
+            source_id=normalized_source_id,
+            source_code=asset.source_code,
+            update_source_code=update_source_code,
         )
         self._refresh_router_cache("更新", asset_code)
         return {"status": "success"}

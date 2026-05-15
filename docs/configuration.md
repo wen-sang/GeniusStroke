@@ -1,10 +1,14 @@
-# Configuration
+# 配置说明
 
-Copy `.env.example` to `.env` before starting the service.
+启动服务前，请先复制 `.env.example` 为 `.env`：
 
-## Safe Defaults
+```powershell
+Copy-Item .env.example .env
+```
 
-The default `.env.example` values are intended for local use:
+## 安全默认值
+
+`.env.example` 默认面向本地运行：
 
 ```env
 ENV=public
@@ -16,11 +20,11 @@ ENABLE_DATA_SYNC_API=false
 MANAGEMENT_API_TOKEN=
 ```
 
-The service listens only on `127.0.0.1` by default.
+服务默认只监听 `127.0.0.1`。
 
-## Database and Logs
+## 数据库与日志
 
-Runtime files are created locally and are ignored by Git:
+运行时文件会在本地生成，并被 Git 忽略：
 
 ```env
 DATA_DIR=../data
@@ -28,9 +32,9 @@ LOG_DIR=../logs
 DB_NAME=GeniusStroke_v2.db
 ```
 
-## External Data Source Tokens
+## 外部数据源 Token
 
-Token variables are empty by default:
+Token 相关变量默认留空：
 
 ```env
 LIXINREN_MODE=global
@@ -40,4 +44,4 @@ LIXINREN_TOKEN_FUNDAMENTAL=
 LIXINREN_TOKEN_NET_VALUE=
 ```
 
-Basic startup does not require these tokens. Fill them only when you need the related external data source features.
+基础启动不需要这些 token。只有使用对应外部数据源能力时，才需要填写相关变量。

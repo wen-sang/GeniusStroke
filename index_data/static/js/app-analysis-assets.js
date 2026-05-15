@@ -274,6 +274,8 @@ function openAssetModal(assetData = null) {
     document.getElementById('form-asset-code').value = '';
     document.getElementById('form-asset-name').value = '';
     document.getElementById('form-asset-source').value = SOURCE_LIXINREN;
+    const sourceCodeInput = document.getElementById('form-asset-source-code');
+    if (sourceCodeInput) sourceCodeInput.value = '';
     document.getElementById('form-asset-date').value = '';
     document.getElementById('form-asset-type').value = 'ETF';
     document.getElementById('form-asset-exchange').value = 'SH';
@@ -288,10 +290,14 @@ function openAssetModal(assetData = null) {
 
         document.getElementById('form-asset-name').value = assetData.asset_name;
         document.getElementById('form-asset-source').value = assetData.source_id || SOURCE_LIXINREN;
+        if (sourceCodeInput) sourceCodeInput.value = assetData.source_code || '';
         document.getElementById('form-asset-date').value = assetData.listing_date || '';
         document.getElementById('form-asset-type').value = assetData.asset_type || 'ETF';
         document.getElementById('form-asset-exchange').value = assetData.exchange || 'SH';
         document.getElementById('form-asset-category').value = assetData.market_category || 'EXCHANGE';
+        if (window.assetCatalog) {
+            window.assetCatalog.bindAssetModalCatalogSearch({ visible: false });
+        }
     } else {
         // 新增模式
         assetState.editingCode = null;
@@ -302,6 +308,9 @@ function openAssetModal(assetData = null) {
         if (assetState.currentTab === 'index') {
             document.getElementById('form-asset-type').value = 'INDEX';
         }
+        if (window.assetCatalog) {
+            window.assetCatalog.bindAssetModalCatalogSearch({ visible: true });
+        }
     }
 
     // 使用 modal-overlay .active 机制
@@ -311,6 +320,9 @@ function openAssetModal(assetData = null) {
 function closeAssetModal() {
     const modal = document.getElementById('assetModal');
     if (modal) modal.classList.remove('active');
+    if (window.assetCatalog) {
+        window.assetCatalog.resetAssetCatalogSelection();
+    }
     // 清除表单错误状态
     clearFormErrors('assetModal');
 }
@@ -323,6 +335,8 @@ async function saveAssetInfo() {
     const name = document.getElementById('form-asset-name').value.trim();
     const type = document.getElementById('form-asset-type').value;
     const source = document.getElementById('form-asset-source').value;
+    const sourceCodeInput = document.getElementById('form-asset-source-code');
+    const sourceCode = sourceCodeInput ? sourceCodeInput.value || null : null;
 
     // 2. 行内校验（取代 alert）
     let hasError = false;
@@ -336,6 +350,7 @@ async function saveAssetInfo() {
     }
     if (hasError) return;
 
+    const isEditing = !!assetState.editingCode;
     const payload = {
         asset_code: code,
         asset_name: name,
@@ -345,8 +360,10 @@ async function saveAssetInfo() {
         exchange: document.getElementById('form-asset-exchange').value,
         market_category: document.getElementById('form-asset-category').value
     };
+    if (!isEditing || sourceCode !== null) {
+        payload.source_code = sourceCode;
+    }
 
-    const isEditing = !!assetState.editingCode;
     const method = isEditing ? 'PUT' : 'POST';
     const url = isEditing ? `/v1/assets/${assetState.editingCode}` : '/v1/assets';
 

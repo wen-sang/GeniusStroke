@@ -152,7 +152,7 @@ def main() -> None:
     assert_database_ready(db_path)
     ensure_default_account(db_path)
 
-    print(f"Initialized local database: {db_path}")
+    print(f"本地数据库已初始化：{db_path}")
 
 
 if __name__ == "__main__":

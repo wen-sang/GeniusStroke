@@ -1,15 +1,15 @@
-# Python
+# Python 缓存
 __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
 .venv/
 
-# Local environment
+# 本地环境配置
 .env
 .env.local
 
-# Runtime data
+# 运行时数据
 data/
 logs/
 reports/
@@ -18,7 +18,7 @@ backups/
 release_backups/
 _release/
 
-# Databases and logs
+# 数据库与日志
 *.db
 *.db-wal
 *.db-shm
@@ -27,7 +27,7 @@ _release/
 *.sqlite3
 *.log
 
-# Import/export files
+# 导入导出文件
 *.xls
 *.xlsx
 *.csv
@@ -37,7 +37,7 @@ _release/
 Import_expert/
 Import_data/
 
-# Local tools
+# 本地工具配置
 .agent/
 .agents/
 .claude/

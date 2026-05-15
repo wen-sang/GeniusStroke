@@ -32,14 +32,16 @@ def get_data_provider(
     """
     工厂模式：根据 source_id 实例化对应的数据适配器
     """
-    source_id = DataSource.validate(source_id)
-    adapter_cls = ADAPTER_REGISTRY.get(source_id)
+    if source_id == "lixingren":
+        raise ValueError("数据源标识已统一为 lixinren，请使用 lixinren (Use lixinren)")
+    normalized_source_id = DataSource.validate(source_id)
+    adapter_cls = ADAPTER_REGISTRY.get(normalized_source_id)
     
     if not adapter_cls:
         raise ValueError(f"Unknown data source_id: {source_id}")
     
     # 2. 根据不同类，注入不同的依赖参数
-    if source_id == DataSource.LIXINREN:
+    if normalized_source_id == DataSource.LIXINREN:
         if not interface_type:
             raise ValueError("source_id=lixinren 时必须显式传入 interface_type")
         resolution = resolve_lixinren_route(
@@ -48,7 +50,7 @@ def get_data_provider(
             asset_type=asset_type,
         )
         cache_key = (
-            source_id,
+            normalized_source_id,
             resolution.interface_type,
             resolution.token_slot_name,
             tuple(resolution.endpoint_keys),

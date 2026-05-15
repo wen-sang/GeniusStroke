@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional
 
 from config import settings
 from core.calculation.engine import calc_engine
+from api.services.asset_catalog_service import asset_catalog_service
 from core.db_engine import db_engine
 from core.sync_models import (
     TOTAL_SYNC_STEPS,
@@ -138,10 +139,12 @@ class SyncRunner:
         self._start_step(step.number, callbacks)
         logger.info("[Step 2/4] 启动数据采集任务 (Task Manager)...")
         try:
+            catalog_sync_result = asset_catalog_service.sync_enabled_sources_with_timeout()
             collection_result = self._invoke_with_optional_progress(
                 self._collection_fn,
                 self._build_step_progress_callback(step.number, callbacks),
             ) or {}
+            collection_result["catalog_sync_result"] = catalog_sync_result
         except Exception as exc:
             logger.critical(f"数据采集任务异常终止: {exc}", exc_info=True)
             return self._finalize_failure(

@@ -1,55 +1,55 @@
-# Quickstart
+# 快速开始
 
-This guide targets Windows, Python 3.12, and PowerShell.
+本文面向 Windows、Python 3.12 和 PowerShell 环境。
 
-## 1. Create a Virtual Environment
+## 1. 创建虚拟环境
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python -m pip install --upgrade pip
 ```
 
-## 2. Install Dependencies
+## 2. 安装依赖
 
 ```powershell
 .\.venv\Scripts\pip install -r requirements.txt
 ```
 
-## 3. Create Local Configuration
+## 3. 创建本地配置
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-The default service address is:
+默认服务地址是：
 
 ```text
 http://127.0.0.1:8002
 ```
 
-## 4. Initialize an Empty Database
+## 4. 初始化空数据库
 
 ```powershell
 .\.venv\Scripts\python scripts\init_empty_db.py
 ```
 
-This creates local runtime folders, runs database migrations, and inserts a default zero-balance account.
+该命令会创建本地运行目录，执行数据库迁移，并写入一个默认的零余额账户。
 
-## 5. Start the Service
+## 5. 启动服务
 
 ```powershell
 .\scripts\run_local.ps1
 ```
 
-Open:
+打开：
 
 ```text
 http://127.0.0.1:8002
 ```
 
-Check service health:
+健康检查：
 
 ```text
 http://127.0.0.1:8002/health

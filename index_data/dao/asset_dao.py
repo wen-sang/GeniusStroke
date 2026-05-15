@@ -73,6 +73,7 @@ class AssetDAO(BaseDAO):
         listing_date: str | None,
         market_category: str,
         source_id: str,
+        source_code: str | None = None,
     ) -> None:
         with self.db_engine.get_connection(readonly=True) as conn:
             cursor = conn.cursor()
@@ -93,10 +94,17 @@ class AssetDAO(BaseDAO):
             cursor.execute(
                 """
                 INSERT INTO sys_data_router
-                (asset_code, asset_type, interface, source_id, priority)
-                VALUES (?, ?, ?, ?, ?)
+                (asset_code, asset_type, interface, source_id, source_code, priority)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (asset_code, asset_type, DataInterface.DAILY_BAR, source_id, self.DEFAULT_ROUTE_PRIORITY),
+                (
+                    asset_code,
+                    asset_type,
+                    DataInterface.DAILY_BAR,
+                    source_id,
+                    source_code,
+                    self.DEFAULT_ROUTE_PRIORITY,
+                ),
             )
 
     def update_asset(
@@ -108,6 +116,8 @@ class AssetDAO(BaseDAO):
         listing_date: str | None,
         market_category: str,
         source_id: str,
+        source_code: str | None = None,
+        update_source_code: bool = False,
     ) -> None:
         with self.db_engine.get_connection() as conn:
             cursor = conn.cursor()
@@ -122,20 +132,51 @@ class AssetDAO(BaseDAO):
             if cursor.rowcount == 0:
                 raise ValueError(f"资产代码 {asset_code} 不存在")
 
-            cursor.execute("SELECT id FROM sys_data_router WHERE asset_code=?", (asset_code,))
+            cursor.execute(
+                "SELECT id FROM sys_data_router WHERE asset_code=? AND interface=?",
+                (asset_code, DataInterface.DAILY_BAR),
+            )
             route_exists = cursor.fetchone()
             if route_exists:
-                cursor.execute(
-                    "UPDATE sys_data_router SET source_id=? WHERE asset_code=?",
-                    (source_id, asset_code),
-                )
+                if update_source_code:
+                    cursor.execute(
+                        """
+                        UPDATE sys_data_router
+                        SET source_id=?, source_code=?, asset_type=?
+                        WHERE asset_code=? AND interface=?
+                        """,
+                        (
+                            source_id,
+                            source_code,
+                            asset_type,
+                            asset_code,
+                            DataInterface.DAILY_BAR,
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        UPDATE sys_data_router
+                        SET source_id=?, asset_type=?
+                        WHERE asset_code=? AND interface=?
+                        """,
+                        (source_id, asset_type, asset_code, DataInterface.DAILY_BAR),
+                    )
             else:
                 cursor.execute(
                     """
-                    INSERT INTO sys_data_router (asset_code, asset_type, interface, source_id, priority)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO sys_data_router
+                    (asset_code, asset_type, interface, source_id, source_code, priority)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (asset_code, asset_type, DataInterface.DAILY_BAR, source_id, self.DEFAULT_ROUTE_PRIORITY),
+                    (
+                        asset_code,
+                        asset_type,
+                        DataInterface.DAILY_BAR,
+                        source_id,
+                        source_code if update_source_code else None,
+                        self.DEFAULT_ROUTE_PRIORITY,
+                    ),
                 )
 
     def delete_asset(self, asset_code: str) -> Dict[str, Any]:

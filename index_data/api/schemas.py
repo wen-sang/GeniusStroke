@@ -11,9 +11,11 @@ class AssetBase(BaseModel):
 class AssetCreate(AssetBase):
     asset_code: str = Field(..., description="资产代码")
     source_id: str = Field(..., description="资产路由数据源标识(lixinren/akshare)")
+    source_code: Optional[str] = Field(None, description="数据源侧标的代码")
 
 class AssetUpdate(AssetBase):
     source_id: str = Field(..., description="资产路由数据源标识(lixinren/akshare)")
+    source_code: Optional[str] = Field(None, description="数据源侧标的代码")
 
 class AssetResponse(AssetCreate):
     is_active: int = Field(default=1, description="是否在市")

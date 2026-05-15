@@ -9,6 +9,7 @@ from sqlalchemy import (
     REAL,
     Table,
     Text,
+    UniqueConstraint,
     text,
 )
 
@@ -104,6 +105,70 @@ dat_raw_api_log = Table(
 )
 Index("idx_raw_status", dat_raw_api_log.c.status)
 Index("idx_raw_code", dat_raw_api_log.c.asset_code)
+
+dat_external_asset_catalog = Table(
+    "dat_external_asset_catalog",
+    metadata,
+    Column("catalog_id", Integer, primary_key=True, autoincrement=True),
+    Column("source_id", Text, nullable=False),
+    Column("external_symbol", Text, nullable=False),
+    Column("asset_code", Text, nullable=False),
+    Column("asset_name", Text, nullable=False),
+    Column("asset_type", Text, nullable=False),
+    Column("exchange", Text),
+    Column("market_category", Text, nullable=False, server_default=text("'EXCHANGE'")),
+    Column("listing_date", Text),
+    Column("source_universe_id", Text),
+    Column("source_universe_name", Text),
+    Column("source_asset_type", Text),
+    Column("source_status", Text),
+    Column("raw_payload", Text, nullable=False),
+    Column("is_active", Integer, nullable=False, server_default=text("1")),
+    Column("first_seen_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    Column("last_synced_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    UniqueConstraint("source_id", "external_symbol", name="uq_external_catalog_source_symbol"),
+)
+Index(
+    "idx_external_catalog_source_type_exchange",
+    dat_external_asset_catalog.c.source_id,
+    dat_external_asset_catalog.c.asset_type,
+    dat_external_asset_catalog.c.exchange,
+    dat_external_asset_catalog.c.is_active,
+)
+Index(
+    "idx_external_catalog_code_exchange",
+    dat_external_asset_catalog.c.asset_code,
+    dat_external_asset_catalog.c.exchange,
+)
+Index("idx_external_catalog_name", dat_external_asset_catalog.c.asset_name)
+Index(
+    "idx_external_catalog_sync",
+    dat_external_asset_catalog.c.source_id,
+    dat_external_asset_catalog.c.is_active,
+    dat_external_asset_catalog.c.last_synced_at,
+)
+
+dat_external_asset_catalog_sync_log = Table(
+    "dat_external_asset_catalog_sync_log",
+    metadata,
+    Column("sync_id", Text, primary_key=True),
+    Column("source_id", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("started_at", Text, nullable=False),
+    Column("finished_at", Text),
+    Column("total_fetched", Integer, nullable=False, server_default=text("0")),
+    Column("total_upserted", Integer, nullable=False, server_default=text("0")),
+    Column("total_deactivated", Integer, nullable=False, server_default=text("0")),
+    Column("deactivation_skipped", Integer, nullable=False, server_default=text("0")),
+    Column("skip_reason", Text),
+    Column("error_message", Text),
+)
+Index(
+    "idx_external_catalog_sync_log_source_started",
+    dat_external_asset_catalog_sync_log.c.source_id,
+    dat_external_asset_catalog_sync_log.c.started_at,
+)
 
 dat_market_daily = Table(
     "dat_market_daily",
