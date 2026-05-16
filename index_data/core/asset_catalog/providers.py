@@ -11,6 +11,9 @@ from config.constants import DataSource
 from config.settings import (
     ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS,
     LIXINREN_TOKEN,
+    TICKFLOW_API_KEY,
+    TICKFLOW_MAX_RETRIES,
+    TICKFLOW_TIMEOUT_SECONDS,
 )
 
 
@@ -30,16 +33,52 @@ class BaseCatalogProvider(ABC):
 class TickFlowCatalogProvider(BaseCatalogProvider):
     SUPPORTED_ASSET_TYPES = {"INDEX", "ETF", "STOCK"}
 
+    def __init__(self, client: Any | None = None):
+        self._client = client
+
     def fetch_catalog_items(self) -> list[dict]:
-        tickflow = importlib.import_module("tickflow")
         items = []
-        for exchange in ("SH", "SZ", "HK"):
-            raw_items = tickflow.exchanges.get_instruments(exchange)
-            for raw in _iter_records(raw_items):
-                mapped = self._map_record(raw, exchange)
-                if mapped and mapped["asset_type"] in self.SUPPORTED_ASSET_TYPES:
-                    items.append(mapped)
+        try:
+            for exchange in ("SH", "SZ", "BJ", "HK"):
+                raw_items = self._get_client().exchanges.get_instruments(exchange)
+                for raw in _iter_records(raw_items):
+                    mapped = self._map_record(raw, exchange)
+                    if mapped and mapped["asset_type"] in self.SUPPORTED_ASSET_TYPES:
+                        items.append(mapped)
+        finally:
+            self.close()
         return items
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            tickflow = importlib.import_module("tickflow")
+            tickflow_cls = getattr(tickflow, "TickFlow")
+            client_kwargs = {
+                "timeout": TICKFLOW_TIMEOUT_SECONDS,
+                "max_retries": TICKFLOW_MAX_RETRIES,
+            }
+            if TICKFLOW_API_KEY:
+                self._client = tickflow_cls(
+                    api_key=TICKFLOW_API_KEY,
+                    **client_kwargs,
+                )
+            else:
+                try:
+                    self._client = tickflow_cls.free(**client_kwargs)
+                except TypeError:
+                    self._client = tickflow_cls.free()
+        return self._client
+
+    def close(self) -> None:
+        if self._client is not None and hasattr(self._client, "close"):
+            self._client.close()
+        self._client = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def _map_record(self, raw: dict, fallback_exchange: str) -> dict | None:
         external_symbol = _first_value(
@@ -180,8 +219,26 @@ def _iter_records(raw_items: Any) -> Iterable[dict]:
                 return [x for x in value if isinstance(x, dict)]
         return [raw_items]
     if isinstance(raw_items, list):
-        return [x for x in raw_items if isinstance(x, dict)]
+        records = []
+        for item in raw_items:
+            record = _to_record(item)
+            if record:
+                records.append(record)
+        return records
+    record = _to_record(raw_items)
+    if record:
+        return [record]
     return []
+
+
+def _to_record(value: Any) -> dict | None:
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if hasattr(value, "dict"):
+        return value.dict()
+    return None
 
 
 def _first_value(raw: dict, *keys: str) -> Any:
