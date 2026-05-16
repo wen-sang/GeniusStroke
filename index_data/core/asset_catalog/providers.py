@@ -18,9 +18,27 @@ from config.settings import (
 
 
 LIXINREN_CATALOG_ENDPOINTS = (
-    ("cn_index", "大陆指数", "INDEX", "https://open.lixinger.com/api/cn/index"),
-    ("cn_fund", "大陆基金", "FUND", "https://open.lixinger.com/api/cn/fund"),
-    ("hk_index", "港股指数", "INDEX", "https://open.lixinger.com/api/hk/index"),
+    (
+        "cn_index",
+        "大陆指数",
+        "INDEX",
+        "https://open.lixinger.com/api/cn/index",
+        False,
+    ),
+    (
+        "cn_fund",
+        "大陆基金",
+        "FUND",
+        "https://open.lixinger.com/api/cn/fund",
+        True,
+    ),
+    (
+        "hk_index",
+        "港股指数",
+        "INDEX",
+        "https://open.lixinger.com/api/hk/index",
+        False,
+    ),
 )
 
 
@@ -95,7 +113,13 @@ class TickFlowCatalogProvider(BaseCatalogProvider):
             _first_value(raw, "exchange", "market", "exchange_id") or fallback_exchange
         )
         asset_code = _strip_exchange_suffix(external_symbol)
-        asset_name = _first_value(raw, "name", "display_name", "cn_name", "security_name")
+        asset_name = _first_value(
+            raw,
+            "name",
+            "display_name",
+            "cn_name",
+            "security_name",
+        )
         asset_type = _normalize_asset_type(
             _first_value(raw, "asset_type", "type", "instrument_type", "category")
         )
@@ -108,7 +132,15 @@ class TickFlowCatalogProvider(BaseCatalogProvider):
             "asset_type": asset_type,
             "exchange": exchange,
             "market_category": "EXCHANGE",
-            "listing_date": _normalize_date(_first_value(raw, "listing_date", "list_date")),
+            "listing_date": _normalize_date(
+                _first_value(
+                    raw,
+                    "listing_date",
+                    "list_date",
+                    "ext.listing_date",
+                    "ext.list_date",
+                )
+            ),
             "source_universe_id": fallback_exchange,
             "source_universe_name": f"TickFlow {fallback_exchange}",
             "source_asset_type": str(_first_value(raw, "asset_type", "type") or ""),
@@ -125,9 +157,14 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
 
     def fetch_catalog_items(self) -> list[dict]:
         items = []
-        for universe_id, universe_name, default_asset_type, url in LIXINREN_CATALOG_ENDPOINTS:
-            data = self._request(url)
-            for raw in _iter_records(data):
+        for (
+            universe_id,
+            universe_name,
+            default_asset_type,
+            url,
+            paginated,
+        ) in LIXINREN_CATALOG_ENDPOINTS:
+            for raw in self._fetch_records(url, paginated):
                 mapped = self._map_record(
                     raw=raw,
                     universe_id=universe_id,
@@ -138,10 +175,27 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
                     items.append(mapped)
         return items
 
-    def _request(self, url: str) -> Any:
+    def _fetch_records(self, url: str, paginated: bool) -> Iterable[dict]:
+        if not paginated:
+            return _iter_records(self._request(url))
+
+        records = []
+        for page_index in range(1, 1001):
+            page_records = list(_iter_records(
+                self._request(url, {"pageIndex": page_index})
+            ))
+            if not page_records:
+                break
+            records.extend(page_records)
+        return records
+
+    def _request(self, url: str, extra_payload: dict | None = None) -> Any:
+        payload = {"token": self.token}
+        if extra_payload:
+            payload.update(extra_payload)
         response = requests.post(
             url,
-            json={"token": self.token},
+            json=payload,
             timeout=ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
@@ -162,10 +216,15 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
         if not code:
             return None
         code = str(code).strip()
-        name = _first_value(raw, "name", "stockName", "fundName", "indexName") or code
+        name = self._resolve_name(raw, universe_id) or code
         source_exchange = _first_value(raw, "exchange", "market")
         asset_type = self._resolve_asset_type(raw, default_asset_type)
-        exchange, market_category = self._resolve_exchange(code, source_exchange, asset_type)
+        exchange, market_category = self._resolve_exchange(
+            code,
+            source_exchange,
+            asset_type,
+            universe_id,
+        )
         return {
             "external_symbol": code,
             "asset_code": code,
@@ -173,23 +232,54 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
             "asset_type": asset_type,
             "exchange": exchange,
             "market_category": market_category,
-            "listing_date": _normalize_date(_first_value(raw, "ipoDate", "listDate", "listingDate")),
+            "listing_date": self._resolve_listing_date(raw, universe_id),
             "source_universe_id": universe_id,
             "source_universe_name": universe_name,
-            "source_asset_type": str(_first_value(raw, "type", "fundType", "category") or default_asset_type),
+            "source_asset_type": str(_first_value(
+                raw,
+                "fundSecondLevel",
+                "type",
+                "fundType",
+                "category",
+            ) or default_asset_type),
             "source_status": str(_first_value(raw, "status") or "active"),
             "raw_payload": raw,
         }
 
     @staticmethod
+    def _resolve_name(raw: dict, universe_id: str) -> Any:
+        if universe_id == "cn_fund":
+            return _first_value(raw, "shortName", "name")
+        return _first_value(raw, "name", "stockName", "fundName", "indexName")
+
+    @staticmethod
+    def _resolve_listing_date(raw: dict, universe_id: str) -> str | None:
+        if universe_id == "cn_fund":
+            return _normalize_date(_first_value(raw, "inceptionDate"))
+        return _normalize_date(_first_value(raw, "launchDate"))
+
+    @staticmethod
     def _resolve_asset_type(raw: dict, default_asset_type: str) -> str:
-        raw_type = str(_first_value(raw, "type", "fundType", "category") or "").upper()
+        raw_type = str(_first_value(
+            raw,
+            "fundSecondLevel",
+            "type",
+            "fundType",
+            "category",
+        ) or "").upper()
         if "ETF" in raw_type:
             return "ETF"
         return default_asset_type
 
     @staticmethod
-    def _resolve_exchange(code: str, source_exchange: Any, asset_type: str) -> tuple[str | None, str]:
+    def _resolve_exchange(
+        code: str,
+        source_exchange: Any,
+        asset_type: str,
+        universe_id: str,
+    ) -> tuple[str | None, str]:
+        if universe_id == "hk_index":
+            return "HK", "EXCHANGE"
         exchange = _normalize_exchange(source_exchange)
         if exchange in {"SH", "SZ", "HK"}:
             return exchange, "EXCHANGE"
@@ -243,10 +333,19 @@ def _to_record(value: Any) -> dict | None:
 
 def _first_value(raw: dict, *keys: str) -> Any:
     for key in keys:
-        value = raw.get(key)
+        value = _get_nested_value(raw, key)
         if value is not None and str(value).strip() != "":
             return value
     return None
+
+
+def _get_nested_value(raw: dict, key: str) -> Any:
+    value = raw
+    for part in key.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
 
 
 def _strip_exchange_suffix(symbol: str) -> str:
