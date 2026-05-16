@@ -18,7 +18,7 @@ CATALOG_SOURCES: Dict[str, Dict[str, Any]] = {
     DataSource.TICKFLOW: {
         "display_name": "TickFlow",
         "catalog_enabled": True,
-        "collection_enabled": False,
+        "collection_enabled": True,
     },
     DataSource.LIXINREN: {
         "display_name": "理杏仁",

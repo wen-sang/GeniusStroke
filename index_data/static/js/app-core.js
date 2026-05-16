@@ -4,6 +4,7 @@ const API_BASE = '/api';
 const API_TIMEOUT_MS = 12000;
 const SOURCE_AKSHARE = 'akshare';
 const SOURCE_LIXINREN = 'lixinren';
+const SOURCE_TICKFLOW = 'tickflow';
 const DEFAULT_PAGE_SIZE = 60;
 
 function isLixinrenSource(sourceId) {

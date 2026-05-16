@@ -193,3 +193,13 @@ EFINANCE_MAX_RETRY = 2
 
 # 单次请求最大代码数
 EFINANCE_MAX_CODES_PER_REQUEST = 50
+
+# ==============================================================================
+# 7. TickFlow 日线采集配置
+# ==============================================================================
+TICKFLOW_API_KEY = _get_stripped_env("TICKFLOW_API_KEY")
+TICKFLOW_ADJUST = _get_stripped_env("TICKFLOW_ADJUST", "none") or "none"
+TICKFLOW_TIMEOUT_SECONDS = float(os.getenv("TICKFLOW_TIMEOUT_SECONDS", "60"))
+TICKFLOW_MAX_RETRIES = int(os.getenv("TICKFLOW_MAX_RETRIES", "3"))
+TICKFLOW_REQUEST_SLEEP_SECONDS = float(os.getenv("TICKFLOW_REQUEST_SLEEP_SECONDS", "0.2"))
+TICKFLOW_KLINE_COUNT_LIMIT = int(os.getenv("TICKFLOW_KLINE_COUNT_LIMIT", "10000"))

@@ -240,6 +240,7 @@ async function loadWatchlist(loadContext = null, append = false) {
     const rowsHtml = items.map(item => {
         const sourceName = isLixinrenSource(item.source_id) ? '理杏仁' :
             item.source_id === SOURCE_AKSHARE ? 'Akshare' :
+                item.source_id === SOURCE_TICKFLOW ? 'TickFlow' :
                 (item.source_id || '--');
         return `
         <tr>
@@ -360,7 +361,7 @@ async function saveAssetInfo() {
         exchange: document.getElementById('form-asset-exchange').value,
         market_category: document.getElementById('form-asset-category').value
     };
-    if (!isEditing || sourceCode !== null) {
+    if (!isEditing) {
         payload.source_code = sourceCode;
     }
 

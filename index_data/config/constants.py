@@ -9,8 +9,8 @@ class DataSource:
     LIXINREN = 'lixinren'
     EFINANCE = 'efinance'
     TICKFLOW = 'tickflow'
-    VALID = (AKSHARE, LIXINREN, EFINANCE)
-    ASSET_ROUTE_VALID = (AKSHARE, LIXINREN)
+    VALID = (AKSHARE, LIXINREN, EFINANCE, TICKFLOW)
+    ASSET_ROUTE_VALID = (AKSHARE, LIXINREN, TICKFLOW)
 
     @classmethod
     def validate(cls, source_id: str) -> str:

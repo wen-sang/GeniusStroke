@@ -8,7 +8,11 @@ from utils.logger import logger
 
 
 class AssetService:
-    COLLECTION_SOURCE_IDS = {DataSource.AKSHARE, DataSource.LIXINREN}
+    COLLECTION_SOURCE_IDS = {
+        DataSource.AKSHARE,
+        DataSource.LIXINREN,
+        DataSource.TICKFLOW,
+    }
 
     @staticmethod
     def _validate_source_id(source_id: str) -> str:
@@ -18,11 +22,9 @@ class AssetService:
     def _validate_collection_source(self, source_id: str) -> str:
         if source_id == "lixingren":
             raise ValueError("数据源标识已统一为 lixinren，请使用 lixinren (Use lixinren)")
-        if source_id == DataSource.TICKFLOW:
-            raise ValueError("该数据源暂未启用采集能力")
         normalized_source_id = self._validate_source_id(source_id)
         if normalized_source_id not in self.COLLECTION_SOURCE_IDS:
-            raise ValueError("资产采集数据源仅支持 akshare, lixinren")
+            raise ValueError("资产采集数据源仅支持 akshare, lixinren, tickflow")
         return normalized_source_id
 
     @staticmethod

@@ -41,7 +41,7 @@ http://127.0.0.1:8002/health
 Copy-Item .env.example .env
 ```
 
-外部数据源 token 默认留空。基础启动不需要 token；需要调用理杏仁等外部数据源能力时，再填写对应变量，例如 `LIXINREN_TOKEN`。
+外部数据源 token 默认留空。基础启动不需要 token；需要调用理杏仁、TickFlow 等外部数据源能力时，再填写对应变量，例如 `LIXINREN_TOKEN`、`TICKFLOW_API_KEY`。
 
 ## 本地检查
 

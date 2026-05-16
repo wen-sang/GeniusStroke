@@ -5,12 +5,14 @@ from .akshare_adapter import AkShareAdapter
 from .lixinren_adapter import LixinrenAdapter
 from .lixinren_resolver import resolve_lixinren_route
 from .efinance_adapter import EfinanceAdapter, efinance_adapter
+from .tickflow_adapter import TickFlowAdapter
 
 # 1. 注册适配器类
 # 注意：lixinren_hk 及其逻辑已合并入 lixinren，通过 exchange 参数区分
 ADAPTER_REGISTRY = {
     DataSource.AKSHARE: AkShareAdapter,
     DataSource.LIXINREN: LixinrenAdapter,
+    DataSource.TICKFLOW: TickFlowAdapter,
     DataSource.EFINANCE: EfinanceAdapter,  # v2.4.5 新增
 }
 
@@ -71,7 +73,7 @@ def get_data_provider(
 
 # 导出 efinance 单例以便直接使用
 __all__ = [
-    'AkShareAdapter', 'LixinrenAdapter', 'EfinanceAdapter',
+    'AkShareAdapter', 'LixinrenAdapter', 'TickFlowAdapter', 'EfinanceAdapter',
     'efinance_adapter', 'get_data_provider', 'clear_data_provider_cache',
     'ADAPTER_REGISTRY'
 ]

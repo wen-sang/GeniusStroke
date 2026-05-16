@@ -22,6 +22,7 @@ from config.settings import (
     MARKET_UPDATE_NON_AKSHARE_SLEEP_SECONDS,
     SLEEP_MAX,
     SLEEP_MIN,
+    TICKFLOW_REQUEST_SLEEP_SECONDS,
 )
 from config.constants import DataInterface, DataSource
 from utils.date_utils import is_market_closed
@@ -262,10 +263,14 @@ class TaskManager:
         return "failed"
 
     def _sleep_after_market_update(self, source_id: str) -> None:
-        if DataSource.validate_asset_route(source_id) == DataSource.AKSHARE:
+        normalized_source_id = DataSource.validate_asset_route(source_id)
+        if normalized_source_id == DataSource.AKSHARE:
             sleep_time = random.randint(SLEEP_MIN, SLEEP_MAX)
             logger.info(f"      休眠 {sleep_time}s (AkShare限流)...")
             time.sleep(sleep_time)
+            return
+        if normalized_source_id == DataSource.TICKFLOW:
+            time.sleep(TICKFLOW_REQUEST_SLEEP_SECONDS)
             return
         time.sleep(MARKET_UPDATE_NON_AKSHARE_SLEEP_SECONDS)
 
