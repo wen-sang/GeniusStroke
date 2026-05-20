@@ -314,22 +314,36 @@
 
                 <!-- 3. 行情 View -->
                 <div id="view-analysis" class="hidden">
-            <div class="market-view-header">
-                <div class="sub-tabs market-brand-tabs" id="marketBrandTabs">
-                    <div class="sub-tab-item active" data-action="switch-market-brand" data-brand="trading">交易品种</div>
-                    <div class="sub-tab-item" data-action="switch-market-brand" data-brand="index">指数</div>
+            <div class="market-panoramic-control-bar">
+                <!-- 左轨胶囊：标的品种/指数切换 -->
+                <div class="sub-tabs market-brand-switcher" id="marketBrandTabs">
+                    <button class="sub-tab-item gs-capsule-item active" data-action="switch-market-brand" data-brand="trading" type="button">交易品种</button>
+                    <button class="sub-tab-item gs-capsule-item" data-action="switch-market-brand" data-brand="index" type="button">指数</button>
                 </div>
-                <button class="market-manage-link" type="button" id="openAssetManagerBtn">管理档案 →</button>
-            </div>
+                
+                <!-- 弹性占位，将右侧推过去 -->
+                <div class="flex-spacer"></div>
 
-            <div class="market-table-wrapper">
-                <div class="market-table-toolbar" id="marketTableToolbar">
-                    <div class="market-view-switcher" id="marketViewSwitcher">
-                        <button class="mvs-btn active" data-view="market" type="button">行情</button>
-                        <button class="mvs-btn" data-view="technical" type="button">技术</button>
-                        <button class="mvs-btn hidden" data-view="fundamental" id="mvsButtonFundamental" type="button">基本面</button>
+                <!-- 右侧组合：指标视图切换 + 管理档案齿轮按钮 -->
+                <div class="market-control-right-group">
+                    <div class="sub-tabs market-view-switcher" id="marketViewSwitcher">
+                        <button class="sub-tab-item gs-capsule-item active" data-view="market" type="button">行情</button>
+                        <button class="sub-tab-item gs-capsule-item" data-view="technical" type="button">技术</button>
+                        <button class="sub-tab-item gs-capsule-item hidden" data-view="fundamental" id="mvsButtonFundamental" type="button">基本面</button>
                     </div>
+                    
+                    <!-- 齿轮图标现代管理按钮 -->
+                    <button class="market-manage-link" type="button" id="openAssetManagerBtn" title="基础档案">
+                        <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        <span>基础档案</span>
+                    </button>
                 </div>
+            </div>
+            
+            <div class="market-table-wrapper">
 
                 <div id="market-panel-market">
                     <table class="data-table fixed-layout" id="market-table-market">
@@ -364,8 +378,8 @@
                     <table class="data-table fixed-layout technical-table" id="market-table-technical">
                         <colgroup>
                             <col class="col-w-10">
-                            <col class="col-w-6">
                             <col class="col-w-8">
+                            <col class="col-w-14">
                             <col class="col-w-7">
                             <col class="col-w-65">
                             <col class="col-w-65">
@@ -496,8 +510,13 @@
         <div class="modal-box am-modal-box" data-prevent-close="true">
             <div class="modal-header">
                 <div class="am-header-left">
-                    <button class="am-back-btn hidden" type="button" id="assetFormBackBtn">← 返回列表</button>
-                    <h2 class="modal-title" id="assetManagerTitle">基础档案管理</h2>
+                    <button class="am-back-btn hidden" type="button" id="assetFormBackBtn">
+                        <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        <span>返回列表</span>
+                    </button>
+                    <h2 class="modal-title" id="assetManagerTitle">基础档案</h2>
                 </div>
                 <button class="modal-close" id="assetManagerCloseX" type="button" aria-label="关闭">&times;</button>
             </div>
@@ -508,6 +527,16 @@
                     <div class="sub-tab-item" data-action="switch-asset-manager-tab" data-tab="index">指数信息</div>
                 </div>
                 <div class="am-table-scroll">
+                    <!-- 高保真毛玻璃微光加载遮罩层 (Frosted glass loading overlay) -->
+                    <div class="am-loading-overlay hidden" id="amTableLoadingOverlay">
+                        <div class="am-loading-spinner-wrap">
+                            <svg class="am-loading-spinner" viewBox="0 0 50 50">
+                                <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+                            </svg>
+                            <span class="am-loading-text">加载中...</span>
+                        </div>
+                    </div>
+
                     <table class="data-table fixed-layout" id="assetManagerTable">
                         <colgroup>
                             <col class="am-col-16">
@@ -527,18 +556,19 @@
                         </thead>
                         <tbody></tbody>
                     </table>
-                </div>
-                <div class="list-pagination" data-list-pagination="asset_manager">
-                    <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="asset_manager">加载更多</button>
-                    <div class="list-pagination-end hidden">已加载全部</div>
+
+                    <div class="list-pagination" data-list-pagination="asset_manager">
+                        <div class="list-pagination-loading hidden"></div>
+                        <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="asset_manager">加载更多</button>
+                        <div class="list-pagination-end hidden">已加载全部</div>
+                    </div>
                 </div>
             </div>
 
             <div id="assetManagerFormView" class="modal-body hidden">
                 <input type="hidden" id="am-form-source-raw" value="">
                 <div class="form-row">
-                    <div class="form-group am-code-group" id="amCodeGroup">
+                    <div class="form-group am-code-group span-2" id="amCodeGroup">
                         <label class="form-label">代码 <span class="required-mark">*</span></label>
                         <div class="am-lookup-wrap" id="amLookupWrap">
                             <svg class="am-lookup-search-icon" id="amLookupSearchIcon" viewBox="0 0 24 24" fill="none"
@@ -559,11 +589,10 @@
                             <button class="am-lookup-clear hidden" id="amLookupClear" type="button" aria-label="清除代码">&times;</button>
                             <div class="am-lookup-popover hidden" id="amLookupPopover" role="listbox"></div>
                         </div>
-                        <span class="form-hint" id="amCodeHint">点击代码输入框搜索并选择标的</span>
                         <span class="form-error hidden" id="am-err-code">请输入代码</span>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group span-2">
                         <label class="form-label">名称 <span class="required-mark">*</span></label>
                         <input type="text" class="form-input" id="am-form-name" placeholder="输入名称">
                         <span class="form-error hidden" id="am-err-name">请输入名称</span>

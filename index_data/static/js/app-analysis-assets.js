@@ -1,5 +1,84 @@
 // app-analysis-assets.js
 
+// 全局弹窗滚动锁定器
+const ModalScrollController = {
+    lock() {
+        document.body.classList.add('modal-open');
+    },
+    unlock() {
+        document.body.classList.remove('modal-open');
+    }
+};
+
+// 物理漂移胶囊滑块同步工具
+function syncCapsuleSlider(switcherEl) {
+    if (!switcherEl) return;
+    let slider = switcherEl.querySelector('.gs-capsule-slider');
+    if (!slider) {
+        slider = document.createElement('div');
+        slider.className = 'gs-capsule-slider';
+        switcherEl.prepend(slider);
+    }
+    
+    // 支持全站一致性 components.css .sub-tabs 或 pages.css .gs-capsule-switcher
+    const activeItem = switcherEl.querySelector('.gs-capsule-item.active, .sub-tab-item.active');
+    if (!activeItem) {
+        slider.style.width = '0px';
+        return;
+    }
+    
+    const isSubTab = switcherEl.classList.contains('sub-tabs');
+    const x = isSubTab ? activeItem.offsetLeft : (activeItem.offsetLeft - 4); // 二级 Tab 呼吸下划线不偏置 4px
+    const w = activeItem.offsetWidth;
+    
+    slider.style.transform = `translate3d(${x}px, 0, 0)`;
+    slider.style.width = `${w}px`;
+}
+
+// 窗口尺寸变化自适应
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.gs-capsule-switcher, .sub-tabs').forEach(syncCapsuleSlider);
+});
+
+// 管理档案弹窗 Focus Trap 与 Escape 关闭
+function handleAssetManagerModalKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        if (assetManagerState.mode === 'form') {
+            requestLeaveForm('close', document.getElementById('assetManagerCloseX'));
+        } else {
+            closeAssetManagerModal();
+        }
+        return;
+    }
+    
+    if (event.key === 'Tab') {
+        const modal = document.getElementById('assetManagerModal');
+        if (!modal) return;
+        
+        const focusableElements = Array.from(modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )).filter(el => {
+            if (el.disabled || el.tabIndex === -1) return false;
+            return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+        });
+        
+        if (!focusableElements.length) return;
+        
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+}
+
+
 const marketState = {
     currentBrand: 'trading',
     currentView: 'market'
@@ -41,6 +120,16 @@ function getCurrentMarketGroup() {
     return marketState.currentBrand === 'index' ? 'index' : 'non_index';
 }
 
+function clearTableLoadingState() {
+    const wrapper = document.querySelector('.market-table-wrapper');
+    if (wrapper) {
+        wrapper.style.minHeight = '';
+    }
+    document.querySelectorAll('.data-table').forEach(table => {
+        table.classList.remove('table-fade-loading');
+    });
+}
+
 function switchMarketBrand(brand) {
     if (!['trading', 'index'].includes(brand)) return;
     if (brand === marketState.currentBrand) return;
@@ -50,6 +139,9 @@ function switchMarketBrand(brand) {
     document.querySelectorAll('#marketBrandTabs [data-brand]').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.brand === brand);
     });
+    
+    // 同步左轨胶囊滑块
+    syncCapsuleSlider(document.getElementById('marketBrandTabs'));
 
     const fundamentalButton = document.getElementById('mvsButtonFundamental');
     if (fundamentalButton) {
@@ -60,6 +152,11 @@ function switchMarketBrand(brand) {
         marketState.currentView = 'market';
     }
 
+    // 基本面按钮隐藏状态变化会导致右轨宽度变化，因此在此也同步一次右轨胶囊
+    setTimeout(() => {
+        syncCapsuleSlider(document.getElementById('marketViewSwitcher'));
+    }, 50);
+
     switchMarketView(marketState.currentView, createCurrentContentLoadContext('analysis'), false);
 }
 
@@ -68,11 +165,24 @@ function switchMarketView(view, loadContext = null, append = false) {
     if (view === 'fundamental' && marketState.currentBrand !== 'index') {
         view = 'market';
     }
+    
+    // 锁定高度防抖动 (CLS Control)
+    let previousHeight = 0;
+    if (!append) {
+        const currentPanel = document.getElementById(`market-panel-${marketState.currentView}`);
+        if (currentPanel && !currentPanel.classList.contains('hidden')) {
+            previousHeight = currentPanel.offsetHeight;
+        }
+    }
+
     marketState.currentView = view;
 
-    document.querySelectorAll('#marketViewSwitcher .mvs-btn').forEach(btn => {
+    document.querySelectorAll('#marketViewSwitcher .gs-capsule-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === view);
     });
+    
+    // 同步右轨胶囊滑块
+    syncCapsuleSlider(document.getElementById('marketViewSwitcher'));
 
     const panels = {
         market: document.getElementById('market-panel-market'),
@@ -82,6 +192,17 @@ function switchMarketView(view, loadContext = null, append = false) {
     Object.entries(panels).forEach(([key, panel]) => {
         if (panel) panel.classList.toggle('hidden', key !== view);
     });
+
+    const wrapper = document.querySelector('.market-table-wrapper');
+    if (wrapper && previousHeight > 0) {
+        wrapper.style.minHeight = `${previousHeight}px`;
+    }
+
+    // 给表格添加 Loading 磨砂过渡
+    const activeTable = document.getElementById(`market-table-${view}`);
+    if (activeTable) {
+        activeTable.classList.add('table-fade-loading');
+    }
 
     const context = loadContext || createCurrentContentLoadContext('analysis');
     if (view === 'market') return loadMarketRows(context, append);
@@ -109,12 +230,14 @@ async function loadMarketRows(loadContext = null, append = false) {
     if (!res) {
         listPaginationState[key].loading = false;
         updatePaginationUI(key);
+        clearTableLoadingState();
         return;
     }
 
     const items = applyPaginatedResult(key, res, append);
     if (!append && items.length === 0) {
         renderTableStatusRow(tbody, 6, '暂无数据');
+        clearTableLoadingState();
         return;
     }
 
@@ -129,6 +252,7 @@ async function loadMarketRows(loadContext = null, append = false) {
         </tr>
     `).join('');
     renderTableRows(tbody, rowsHtml, append);
+    clearTableLoadingState();
 }
 
 async function loadTechnicalRows(loadContext = null, append = false) {
@@ -151,12 +275,14 @@ async function loadTechnicalRows(loadContext = null, append = false) {
     if (!res) {
         listPaginationState[key].loading = false;
         updatePaginationUI(key);
+        clearTableLoadingState();
         return;
     }
 
     const items = applyPaginatedResult(key, res, append);
     if (!append && items.length === 0) {
         renderTableStatusRow(tbody, 14, '暂无数据');
+        clearTableLoadingState();
         return;
     }
 
@@ -179,6 +305,7 @@ async function loadTechnicalRows(loadContext = null, append = false) {
         </tr>
     `).join('');
     renderTableRows(tbody, rowsHtml, append);
+    clearTableLoadingState();
 }
 
 async function loadFundamentalRows(loadContext = null, append = false) {
@@ -200,12 +327,14 @@ async function loadFundamentalRows(loadContext = null, append = false) {
     if (!res) {
         listPaginationState[key].loading = false;
         updatePaginationUI(key);
+        clearTableLoadingState();
         return;
     }
 
     const items = applyPaginatedResult(key, res, append);
     if (!append && items.length === 0) {
         renderTableStatusRow(tbody, 9, '暂无数据');
+        clearTableLoadingState();
         return;
     }
 
@@ -237,6 +366,7 @@ async function loadFundamentalRows(loadContext = null, append = false) {
         </tr>
     `}).join('');
     renderTableRows(tbody, rowsHtml, append);
+    clearTableLoadingState();
 }
 
 function initAssetManagerEvents() {
@@ -251,7 +381,7 @@ function initAssetManagerEvents() {
     });
 
     document.getElementById('marketViewSwitcher')?.addEventListener('click', event => {
-        const btn = event.target.closest('.mvs-btn');
+        const btn = event.target.closest('.gs-capsule-item');
         if (!btn || btn.classList.contains('active')) return;
         switchMarketView(btn.dataset.view);
     });
@@ -301,7 +431,11 @@ function initAssetManagerEvents() {
     codeInput?.addEventListener('click', () => {
         if (assetManagerState.lookupSelectedItem) return;
         if (assetManagerState.formMode === 'edit') return;
-        if (!lookupState.isOpen) openLookupPopover();
+        // 点击输入框时不应该立即弹出卡片，而是仅仅开启输入状态，让用户能够键入
+        if (codeInput.readOnly) {
+            codeInput.readOnly = false;
+            codeInput.focus();
+        }
     });
     codeInput?.addEventListener('input', onLookupInput);
     codeInput?.addEventListener('keydown', onLookupKeydown);
@@ -325,15 +459,45 @@ function initAssetManagerEvents() {
         el.addEventListener('input', markAssetFormDirty);
         el.addEventListener('change', markAssetFormDirty);
     });
+
+    const scrollContainer = document.querySelector('#assetManagerModal .am-table-scroll');
+    scrollContainer?.addEventListener('scroll', () => {
+        const key = 'asset_manager';
+        const pagination = listPaginationState[key];
+        if (!pagination) return;
+        if (pagination.loading) return;
+        if (pagination.items.length >= pagination.total) return;
+        if (assetManagerState.mode !== 'list') return;
+
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        if (scrollHeight - scrollTop - clientHeight <= 15) {
+            loadMoreList(key);
+        }
+    });
 }
 
 function openAssetManagerModal() {
     assetManagerReturnFocusEl = document.activeElement || document.getElementById('openAssetManagerBtn');
     assetManagerState.currentTab = marketState.currentBrand === 'index' ? 'index' : 'others';
-    document.getElementById('assetManagerModal')?.classList.add('active');
+    
+    // 优雅锁定 body 背景滚动
+    ModalScrollController.lock();
+    
+    const modal = document.getElementById('assetManagerModal');
+    modal?.classList.add('active');
+    
+    // 注册 keydown 监听器
+    modal?.addEventListener('keydown', handleAssetManagerModalKeydown);
+    
     document.addEventListener('click', onDocumentClickForLookup);
     switchToListView();
     updateAssetManagerTabs();
+    
+    // 让弹窗内 Tab 立刻拥有漂移滑块
+    setTimeout(() => {
+        syncCapsuleSlider(document.getElementById('assetManagerSubTabs'));
+    }, 0);
+    
     loadAssetManagerList();
     setTimeout(() => document.getElementById('assetManagerCloseX')?.focus(), 0);
 }
@@ -341,7 +505,17 @@ function openAssetManagerModal() {
 function closeAssetManagerModal() {
     closeLookupPopover();
     document.removeEventListener('click', onDocumentClickForLookup);
-    document.getElementById('assetManagerModal')?.classList.remove('active');
+    
+    const modal = document.getElementById('assetManagerModal');
+    if (modal) {
+        // 显式注销键盘监听器，以防内存泄漏
+        modal.removeEventListener('keydown', handleAssetManagerModalKeydown);
+        modal.classList.remove('active');
+    }
+    
+    // 恢复背景滚动
+    ModalScrollController.unlock();
+    
     assetManagerState.pendingLeaveAction = null;
     assetManagerState.pendingLeaveTriggerEl = null;
     assetManagerState.lookupSelectedItem = null;
@@ -357,6 +531,16 @@ function switchAssetManagerTab(tab) {
     if (tab === assetManagerState.currentTab) return;
     assetManagerState.currentTab = tab;
     updateAssetManagerTabs();
+    
+    // 切换 Tab 时强制重置表格滚动高度，瞬间回到最顶部，提供完美的视觉重置体验
+    const scrollContainer = document.querySelector('#assetManagerModal .am-table-scroll');
+    if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+    }
+
+    // 同步弹窗内单轨滑块
+    syncCapsuleSlider(document.getElementById('assetManagerSubTabs'));
+    
     loadAssetManagerList();
 }
 
@@ -372,30 +556,45 @@ async function loadAssetManagerList(loadContext = null, append = false) {
     const key = 'asset_manager';
     const category = assetManagerState.currentTab;
     const page = append ? (listPaginationState[key].page + 1) : 1;
+    
+    const overlay = document.getElementById('amTableLoadingOverlay');
+
     if (!append) {
         resetPaginationState(key);
-        renderTableStatusRow(tbody, 5, '数据加载中...', { padded: true });
+        // Tab切换或首次加载，开启毛玻璃遮罩层，且不清空已有数据，防止闪烁抖动
+        overlay?.classList.add('active');
     } else {
         setPaginationLoading(key, true);
     }
 
-    const res = await fetchApi(`/v1/assets/list?category=${category}&page=${page}&page_size=${DEFAULT_PAGE_SIZE}`);
-    if (category !== assetManagerState.currentTab) return;
-    if (!document.getElementById('assetManagerModal')?.classList.contains('active')) return;
-    if (!res) {
+    try {
+        const res = await fetchApi(`/v1/assets/list?category=${category}&page=${page}&page_size=${DEFAULT_PAGE_SIZE}`);
+        
+        // API 返回后立即关闭遮罩层
+        overlay?.classList.remove('active');
+
+        if (category !== assetManagerState.currentTab) return;
+        if (!document.getElementById('assetManagerModal')?.classList.contains('active')) return;
+        if (!res) {
+            listPaginationState[key].loading = false;
+            updatePaginationUI(key);
+            return;
+        }
+
+        const items = applyPaginatedResult(key, res, append);
+        if (!append && items.length === 0) {
+            renderTableStatusRow(tbody, 5, '暂无档案记录', { padded: true });
+            return;
+        }
+
+        renderAssetManagerRows(items, append);
+        window._assetManagerCachedAssets = listPaginationState[key].items.slice();
+    } catch (err) {
+        overlay?.classList.remove('active');
         listPaginationState[key].loading = false;
         updatePaginationUI(key);
-        return;
+        console.error('loadAssetManagerList error:', err);
     }
-
-    const items = applyPaginatedResult(key, res, append);
-    if (!append && items.length === 0) {
-        renderTableStatusRow(tbody, 5, '暂无档案记录', { padded: true });
-        return;
-    }
-
-    renderAssetManagerRows(items, append);
-    window._assetManagerCachedAssets = listPaginationState[key].items.slice();
 }
 
 function renderAssetManagerRows(items, append = false) {
@@ -483,11 +682,17 @@ function switchToListView() {
     closeLookupPopover();
 
     document.getElementById('assetFormBackBtn')?.classList.add('hidden');
-    document.getElementById('assetManagerTitle').textContent = '基础档案管理';
+    document.getElementById('assetManagerTitle').textContent = '基础档案';
     document.getElementById('assetManagerFormView')?.classList.add('hidden');
     document.getElementById('assetManagerListView')?.classList.remove('hidden');
     document.getElementById('assetManagerFooterForm')?.classList.add('hidden');
     document.getElementById('assetManagerFooterList')?.classList.remove('hidden');
+
+    // 每次切换回列表视图时，也自动回到最顶部，保持清爽重置状态
+    const scrollContainer = document.querySelector('#assetManagerModal .am-table-scroll');
+    if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+    }
 }
 
 function resetAssetForm() {
@@ -530,7 +735,6 @@ function setCodeFieldEditMode(code) {
     document.getElementById('amLookupWrap')?.classList.remove('is-open', 'is-selected');
     document.getElementById('amLookupLock')?.classList.add('hidden');
     document.getElementById('amLookupClear')?.classList.add('hidden');
-    document.getElementById('amCodeHint')?.classList.add('hidden');
     document.getElementById('amLookupPopover')?.classList.add('hidden');
 }
 
@@ -657,7 +861,6 @@ function initLookupField() {
     document.getElementById('amLookupWrap')?.classList.remove('is-open', 'is-selected');
     document.getElementById('amLookupLock')?.classList.add('hidden');
     document.getElementById('amLookupClear')?.classList.add('hidden');
-    document.getElementById('amCodeHint')?.classList.remove('hidden');
     const popover = document.getElementById('amLookupPopover');
     if (popover) {
         popover.classList.add('hidden');
@@ -675,9 +878,6 @@ function openLookupPopover() {
     popover?.classList.remove('hidden');
     lookupState.isOpen = true;
     lookupState.focusedIndex = -1;
-    if (!lookupState.keyword && popover) {
-        popover.innerHTML = '<div class="am-lookup-status">输入代码或名称开始搜索</div>';
-    }
 }
 
 function closeLookupPopover() {
@@ -703,8 +903,14 @@ function onLookupInput(event) {
 
     const popover = document.getElementById('amLookupPopover');
     if (!keyword) {
-        if (popover) popover.innerHTML = '<div class="am-lookup-status">输入代码或名称开始搜索</div>';
+        // 如果输入为空，立即彻底隐藏并关闭推荐卡片
+        closeLookupPopover();
         return;
+    }
+
+    // 只有在输入非空内容时，才显示 Popover 并初始化检索
+    if (!lookupState.isOpen) {
+        openLookupPopover();
     }
 
     clearTimeout(lookupState.debounceTimer);
@@ -727,7 +933,11 @@ function onLookupKeydown(event) {
     if (!lookupState.isOpen) {
         if (event.key === 'Enter' || event.key === 'ArrowDown') {
             event.preventDefault();
-            openLookupPopover();
+            const keyword = event.target.value.trim();
+            // 只有当输入非空内容时，回车或者按向下键才允许展开卡片并检索
+            if (keyword) {
+                openLookupPopover();
+            }
         }
         return;
     }
@@ -856,7 +1066,6 @@ function selectLookupItem(item) {
     document.getElementById('amLookupWrap')?.classList.add('is-selected');
     document.getElementById('amLookupLock')?.classList.remove('hidden');
     document.getElementById('amLookupClear')?.classList.remove('hidden');
-    document.getElementById('amCodeHint')?.classList.add('hidden');
     document.getElementById('amLookupPopover')?.classList.add('hidden');
 
     lookupState.isOpen = false;
@@ -891,7 +1100,6 @@ function clearLookupSelection() {
     document.getElementById('amLookupWrap')?.classList.remove('is-open', 'is-selected');
     document.getElementById('amLookupLock')?.classList.add('hidden');
     document.getElementById('amLookupClear')?.classList.add('hidden');
-    document.getElementById('amCodeHint')?.classList.remove('hidden');
     const popover = document.getElementById('amLookupPopover');
     if (popover) {
         popover.classList.add('hidden');

@@ -23,10 +23,10 @@
     --primary-light: rgba(43, 122, 120, 0.08);
 
     /* ── 金融语义色（红涨绿跌）── */
-    --up-red: #f23645;
-    --up-red-light: rgba(242, 54, 69, 0.1);
-    --down-green: #089981;
-    --down-green-light: rgba(8, 153, 129, 0.1);
+    --up-red: HSL(354, 72%, 52%);
+    --up-red-light: rgba(224, 60, 72, 0.08);
+    --down-green: HSL(156, 75%, 36%);
+    --down-green-light: rgba(23, 160, 110, 0.08);
 
     /* ── 文字层级 ── */
     --text-primary: #000000;
@@ -91,3 +91,10 @@ body {
 :focus:not(:focus-visible) {
     outline: none;
 }
+
+/* 防穿透底座 */
+body.modal-open {
+    overflow: hidden !important;
+    padding-right: 0px; 
+}
+

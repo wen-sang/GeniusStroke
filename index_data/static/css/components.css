@@ -268,7 +268,6 @@
 .main-tab-item.active {
     color: #0F0F0F;
     /* TV Black */
-    /* Remove font-weight: 600 to prevent text-width expansion & layout jitter */
 }
 
 /* Custom slider using ::after */
@@ -286,45 +285,89 @@
     z-index: 10;
 }
 
-/* ==================== 二级Tab (Pill Style) ==================== */
+/* ==================== 二级Tab (TradingView Round Pill Style) ==================== */
 .sub-tabs {
-    display: flex;
-    gap: 8px;
-    /* Slightly wider gap */
+    height: 28px;
+    border-radius: 0;
+    background: transparent !important;
+    padding: 0;
+    display: flex !important;
+    align-items: center;
+    position: relative;
+    border: none !important;
+    user-select: none;
     margin-top: 20px;
     margin-bottom: 24px;
-    align-items: center;
-    border-bottom: none;
+    gap: 4px !important; /* 100% 物理间距 */
+    width: auto;
 }
 
 .sub-tab-item {
-    padding: 6px 20px;
-    /* Larger padding for pill shape */
-    height: auto;
-    line-height: normal;
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 14px;
-    white-space: nowrap;
+    height: 28px !important;
+    padding: 0 11px !important; /* 100% 物理内边距 */
+    font-size: 14px !important; /* 100% 物理字号 */
+    font-weight: 400 !important; /* 100% 物理字重，极致纤细 */
+    font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif !important;
+    color: #0f0f0f !important; /* 100% 物理文字色 */
+    background-color: #f2f2f2 !important; /* 100% 物理背景色 */
+    border: 0.8px solid #f2f2f2 !important; /* 100% 物理同色微型抗锯齿边框 */
+    border-radius: 14px !important; /* 100% 完美椭圆药丸 */
     cursor: pointer;
-    transition: all 0.2s ease;
     position: relative;
-    border-bottom: none;
+    z-index: 2;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 150ms cubic-bezier(0.25, 1, 0.5, 1), 
+                border-color 150ms cubic-bezier(0.25, 1, 0.5, 1),
+                color 150ms cubic-bezier(0.25, 1, 0.5, 1);
+    outline: none;
+    white-space: nowrap;
     margin-bottom: 0;
-    border-radius: 20px;
-    /* Pill shape */
-    background-color: #F3F4F6;
-    /* Light gray default background */
+    box-shadow: none !important;
 }
 
 .sub-tab-item:hover {
-    background-color: #E5E7EB;
+    background-color: #e5e5e5 !important;
+    border-color: #e5e5e5 !important;
+    color: #0f0f0f !important;
 }
 
 .sub-tab-item.active {
-    color: #FFFFFF;
-    background-color: #000000;
-    font-weight: 500;
+    background-color: #2e2e2e !important;
+    border-color: #2e2e2e !important;
+    color: #ffffff !important;
+    font-weight: 400 !important;
+}
+
+[data-theme="dark"] .sub-tab-item {
+    background-color: #2a2e39 !important;
+    border-color: #2a2e39 !important;
+    color: #d1d4dc !important;
+}
+
+[data-theme="dark"] .sub-tab-item:hover {
+    background-color: #363a45 !important;
+    border-color: #363a45 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .sub-tab-item.active {
+    background-color: #f0f3fa !important;
+    border-color: #f0f3fa !important;
+    color: #131722 !important;
+    font-weight: 400 !important;
+}
+
+/* 特异性重塑：二级Tab底部的活动滑块 - 物理隐藏以实现视觉药丸分离与零逻辑侵入 */
+.sub-tabs .gs-capsule-slider {
+    display: none !important;
+}
+
+/* 键盘焦点样式 */
+.sub-tab-item:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 /* ==================== 表格 ==================== */
@@ -346,17 +389,17 @@
 
     height: 44px;
     white-space: nowrap;
-    /* v2.5: 粘性表头吸�?(导航�?64px 之下) */
+    /* v2.5: 粘性表头吸顶(导航栏 64px 之下) */
     position: sticky;
     top: var(--navbar-height);
     z-index: 10;
     background-color: var(--bg-page);
 }
 
-/* v2.7: 首尾列留白对�?TradingView 20px */
 .data-table thead th:first-child {
     padding-left: 20px;
 }
+
 .data-table thead th:last-child {
     padding-right: 20px;
 }
@@ -473,7 +516,7 @@
 .list-pagination-loading.hidden,
 .list-pagination-button.hidden,
 .list-pagination-end.hidden {
-    display: none;
+    display: none !important;
 }
 
 .list-pagination-loading::before {

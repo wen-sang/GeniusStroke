@@ -897,9 +897,20 @@
 
 .market-table-wrapper {
     margin-top: 20px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.market-table-wrapper,
+#market-panel-market,
+#market-panel-technical,
+#market-panel-fundamental,
+#market-table-market,
+#market-table-technical,
+#market-table-fundamental {
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .market-table-toolbar {
@@ -1021,10 +1032,24 @@
     font-weight: 500;
     cursor: pointer;
     padding: 4px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease;
 }
 
 .am-back-btn:hover {
     color: var(--text-primary);
+}
+
+.back-icon {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.am-back-btn:hover .back-icon {
+    transform: translateX(-2px);
 }
 
 .am-list-body {
@@ -1543,6 +1568,201 @@
     color: var(--text-secondary);
 }
 
+    font-size: 14px;
+    color: var(--text-primary);
+    min-height: 60px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(43, 122, 120, 0.1);
+}
+
+.char-count {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: var(--space-xs);
+}
+
+/* ── 侧边栏底部确认按?── */
+/* 买入状态（默认）：红色背景 */
+/* 卖出状态：JS 切换 .is-sell ?*/
+/* 加载?禁用 */
+/* ==================== 估值颜?==================== */
+.val-low {
+    color: var(--down-green);
+    font-weight: 600;
+}
+
+.val-high {
+    color: var(--up-red);
+    font-weight: 600;
+}
+
+.badge-success {
+    color: var(--down-green);
+    font-weight: 600;
+}
+
+.badge-error {
+    color: var(--up-red);
+    font-weight: 600;
+}
+
+
+/* TV Modal Refinements (v2.2) */
+.modal-box .form-input,
+.modal-box .form-select,
+.modal-box .form-textarea {
+    border-radius: 4px;
+}
+.modal-box .btn {
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 14px;
+    border-radius: 6px;
+    line-height: normal;
+}
+
+/* ==================== TradingView 风格交易弹窗 ==================== */
+
+/* 交易弹窗 - 固定宽度 480px */
+.trade-modal-box {
+    width: 480px;
+    border-radius: 12px;
+}
+
+/* 一边切换按钮组 */
+.tv-side-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.tv-side-btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* 卖出按钮 - 红色?*/
+.tv-side-btn.sell {
+    color: #f23645;
+}
+
+.tv-side-btn.sell.active {
+    background: #ffebec;
+    color: #f23645;
+}
+
+/* 买入按钮 - 蓝色?*/
+.tv-side-btn.buy {
+    color: #2962ff;
+}
+
+.tv-side-btn.buy.active {
+    background: #e3effd;
+    color: #2962ff;
+}
+
+.tv-side-btn:hover:not(.active) {
+    background: var(--bg-hover);
+}
+
+/* 标签与字符计数同?*/
+.tv-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+
+/* 交易弹窗底部按钮 - 右对?*/
+.trade-modal-footer {
+    justify-content: flex-end;
+}
+
+.trade-modal-footer .modal-btn-cancel {
+    flex: none;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+}
+
+.trade-modal-footer .modal-btn-cancel:hover {
+    color: var(--text-primary);
+    background: transparent;
+}
+
+/* 保存按钮 - TradingView 黑色风格 */
+.trade-btn-save {
+    flex: none !important;
+    padding: 8px 24px;
+    background: var(--tv-text-strong);
+    border-color: var(--tv-text-strong);
+    color: #ffffff;
+    border-radius: 6px;
+}
+
+.trade-btn-save:hover {
+    background: #2a2e39;
+    border-color: #2a2e39;
+}
+
+.trade-btn-save:disabled {
+    background: #d1d4dc;
+    border-color: #d1d4dc;
+    color: #ffffff;
+    cursor: not-allowed;
+}
+
+/* ==================== /TradingView 风格交易弹窗 ==================== */
+.preview-panel {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--surface-soft, #f8fafc);
+    padding: 16px;
+}
+
+.preview-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+}
+
+.preview-kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.preview-kv-label {
+    color: var(--text-secondary);
+}
+
 .preview-kv-value {
     font-weight: 600;
     color: var(--text-primary);
@@ -1571,7 +1791,7 @@
 }
 
 .status-chip-pending {
-    color: #92400e;
+    color: #b45309;
     background: #fef3c7;
 }
 
@@ -1579,3 +1799,376 @@
     color: #991b1b;
     background: #fee2e2;
 }
+
+/* 表格 Loading 磨砂过渡 */
+.table-fade-loading {
+    opacity: 0.4;
+    filter: blur(2px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+/* ==================== 全景行情控制中心 & 二级扁平药丸 ==================== */
+.market-panoramic-control-bar {
+    height: 44px !important;
+    padding: 8px 16px !important;
+    background: transparent !important; /* 彻底打通无界一体化体验 */
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px !important;
+    gap: 16px;
+    position: relative;
+    z-index: 10;
+}
+
+/* 适配暗黑模式 */
+[data-theme="dark"] .market-panoramic-control-bar {
+    background: transparent !important;
+    border: none !important;
+}
+
+.flex-spacer {
+    flex: 1;
+}
+
+.market-control-right-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 消除全景行情控制栏内二级药丸选项卡的 margin 偏置，确保垂直完美居中 */
+.market-panoramic-control-bar .sub-tabs {
+    margin: 0 !important;
+}
+
+/* 管理档案按钮现代升级 - 与 sub-tab-item 药丸高度、字号、边框完全平齐对齐 */
+.market-manage-link {
+    height: 28px !important;
+    border-radius: 14px !important;
+    padding: 0 11px !important;
+    background: transparent !important;
+    border: 0.8px solid #f2f2f2 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: #0f0f0f !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px !important;
+    cursor: pointer;
+    flex-shrink: 0 !important; /* 黄金三板斧：坚决防止被挤扁 */
+    white-space: nowrap !important; /* 坚决防止在极窄屏幕下折行 */
+    user-select: none;
+    transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1),
+                border-color 150ms cubic-bezier(0.25, 1, 0.5, 1),
+                color 150ms cubic-bezier(0.25, 1, 0.5, 1),
+                transform 0.1s ease !important;
+}
+
+.market-manage-link:hover {
+    background: #e5e5e5 !important;
+    border-color: #e5e5e5 !important;
+    color: #0f0f0f !important;
+}
+
+[data-theme="dark"] .market-manage-link {
+    background: transparent !important;
+    border-color: #2a2e39 !important;
+    color: #d1d4dc !important;
+}
+
+[data-theme="dark"] .market-manage-link:hover {
+    background: #363a45 !important;
+    border-color: #363a45 !important;
+    color: #ffffff !important;
+}
+
+.market-manage-link:hover .gear-icon {
+    transform: rotate(90deg);
+}
+
+.market-manage-link:active {
+    transform: scale(0.96);
+}
+
+/* 齿轮图标尺寸限制与背景去污 */
+.gear-icon {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+    background: transparent !important; /* 彻底清除小背景块污渍 */
+    transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* 长文字强截断 */
+.data-table td.cell-name {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 新增档案弹窗防滚动穿透和表单黄金高度 */
+.am-modal-box {
+    max-height: calc(100vh - 64px) !important;
+    overflow: hidden !important; /* 彻底清除大弹窗容器本身可能产生的任何滚动条 */
+}
+
+.am-modal-box .form-row {
+    gap: 12px 16px !important;
+}
+
+.am-modal-box .modal-header {
+    margin-bottom: 12px !important;
+}
+
+.am-modal-box .modal-body {
+    margin-bottom: 10px !important;
+}
+
+.am-modal-box .modal-footer {
+    padding-top: 12px !important;
+}
+
+/* ==================== 基础档案管理弹窗体验优化 (v2.2) ==================== */
+
+/* 1. 关闭弹窗内部视图的所有溢出滚动条，消除双滚动条与侧边滚动条，打通完美无界 */
+.am-modal-box .modal-body {
+    overflow: hidden !important;
+    padding: 12px 24px !important; /* 深度瘦身，挤出多余空白 */
+}
+
+/* 2. 恒定滚动层高度，消除 Tab 切换时的高度抖动与闪烁 */
+.am-table-scroll {
+    min-height: 380px !important;
+    max-height: 380px !important;
+    overflow-y: auto !important;
+}
+
+/* 3. 强制表格使用 fixed layout，确保各列在滚动时完美对齐不发生变形 */
+#assetManagerTable {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+/* 4. 修复表头粘性吸顶及文字透底重合、变形 */
+#assetManagerTable thead th {
+    position: sticky !important;
+    top: 0 !important;              /* 在弹窗溢出容器内吸顶，top 必须设为 0 */
+    background-color: var(--bg-card) !important; /* 实体不透明背景色，防止滚上来的数据透底重合 */
+    z-index: 10 !important;         /* 确保悬浮在数据行之上 */
+    border-bottom: 1.5px solid var(--border) !important; /* 精致表头分割线 */
+}
+
+/* 5. 提升优先级，防止 padding-left 被常规表单样式覆盖，解决放大镜与 Placeholder 重叠 */
+.am-lookup-wrap .am-lookup-input {
+    padding-left: 36px !important;
+    padding-right: 64px !important;
+}
+
+.am-lookup-wrap .am-lookup-search-icon {
+    left: 12px !important;
+    z-index: 5 !important;
+}
+
+/* 6. 表单精细化控件尺寸与间距瘦身，确保表单完美收束于弹窗，绝不溢出 */
+.am-modal-box .form-row {
+    gap: 8px 16px !important;
+}
+
+.am-modal-box .form-label {
+    margin-bottom: 4px !important;
+}
+
+/* 7. 表格滚动定位与毛玻璃加载遮罩层 (Premium Shimmer) */
+.am-table-scroll {
+    position: relative !important; /* 必须作为加载遮罩层的绝对定位锚点 */
+}
+
+.am-loading-overlay {
+    position: absolute !important;
+    inset: 0 !important;
+    background: rgba(255, 255, 255, 0.72) !important; /* 毛玻璃半透明底色 */
+    backdrop-filter: blur(2.5px) !important;
+    -webkit-backdrop-filter: blur(2.5px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 100 !important; /* 盖在吸顶表头与表格行之上 */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important; /* 丝滑渐变 */
+}
+
+/* 黑色/夜间模式下的自适应毛玻璃背景 */
+body.dark-mode .am-loading-overlay {
+    background: rgba(30, 41, 59, 0.75) !important;
+}
+
+.am-loading-overlay.active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.am-loading-spinner-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+/* 旋转加载动画 */
+.am-loading-spinner {
+    animation: rotate 1.8s linear infinite !important;
+    width: 32px !important;
+    height: 32px !important;
+}
+
+.am-loading-spinner .path {
+    stroke: var(--primary) !important; /* 主题色 */
+    stroke-linecap: round !important;
+    animation: dash 1.5s ease-in-out infinite !important;
+}
+
+.am-loading-text {
+    font-size: 13px !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* 8. 列表加载行淡入动画，消除内容生硬跳变 */
+#assetManagerTable tbody tr {
+    animation: amRowFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+/* 9. 无限滚动接管，隐藏手动的“加载更多”按钮 */
+#assetManagerModal .list-pagination-button {
+    display: none !important;
+}
+
+/* 10. 无限滚动加载分页时的专属高保真加载动效与磨砂脉动胶囊 (Scroll Loading Premium Indicator) */
+#assetManagerModal .list-pagination {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin-top: 16px !important;
+    margin-bottom: 20px !important;
+    min-height: 32px !important;
+    width: 100% !important;
+    clear: both !important;
+    box-sizing: border-box !important;
+}
+
+#assetManagerModal .list-pagination-loading:not(.hidden) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    padding: 6px 16px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    color: var(--text-secondary) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    margin: 0 !important; /* 配合父级Flex完美水平居中 */
+    animation: amPulse 1.8s ease-in-out infinite !important; /* 整体带有精细的呼吸脉动 */
+}
+
+#assetManagerModal .list-pagination-loading.hidden {
+    display: none !important; /* 强力隐藏，避免数据加载到底部时转圈动效依然显示的 Bug */
+}
+
+body.dark-mode #assetManagerModal .list-pagination-loading:not(.hidden) {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+#assetManagerModal .list-pagination-loading::before {
+    content: '' !important;
+    width: 14px !important;
+    height: 14px !important;
+    border: 2px solid rgba(43, 122, 120, 0.15) !important;
+    border-top-color: var(--primary) !important;
+    border-radius: 50% !important;
+    animation: spin 0.8s linear infinite !important; /* 精致的小圈快速旋转 */
+}
+
+/* 11. “已加载全部”精简小胶囊，优雅置底 */
+#assetManagerModal .list-pagination-end:not(.hidden) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(107, 114, 128, 0.06) !important;
+    color: var(--text-tertiary) !important;
+    padding: 4px 12px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 !important; /* 配合父级Flex完美水平居中 */
+}
+
+#assetManagerModal .list-pagination-end.hidden {
+    display: none !important; /* 强力隐藏 */
+}
+
+@keyframes rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+
+@keyframes amRowFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes amPulse {
+    0% {
+        opacity: 0.85;
+        transform: scale(0.98);
+        box-shadow: 0 4px 10px rgba(43, 122, 120, 0.02);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.01);
+        box-shadow: 0 4px 14px rgba(43, 122, 120, 0.08);
+    }
+    100% {
+        opacity: 0.85;
+        transform: scale(0.98);
+        box-shadow: 0 4px 10px rgba(43, 122, 120, 0.02);
+    }
+}
+
