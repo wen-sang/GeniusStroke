@@ -221,6 +221,22 @@ class MarketDAO(BaseDAO):
             row = cursor.fetchone()
             return int(row[0]) if row else 0
 
+    def get_market_count_by_date(self, trade_date: str, group: str = "index") -> int:
+        """获取指定交易日、指定资产分组的行情总数。"""
+        asset_type_filter = self._asset_type_filter(group)
+        sql = """
+        SELECT COUNT(*)
+        FROM dat_market_daily m
+        JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
+        WHERE m.trade_date = ?
+          AND {asset_type_filter}
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql.format(asset_type_filter=asset_type_filter), (trade_date,))
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
+
     def get_index_market_page_by_date(self, trade_date: str, limit: int, offset: int) -> List[dict]:
         """获取指定交易日的 INDEX 行情分页数据"""
         sql = """
@@ -243,6 +259,47 @@ class MarketDAO(BaseDAO):
             cursor.execute(sql, (trade_date, limit, offset))
             rows = cursor.fetchall()
             return self._rows_to_dicts(cursor, rows)
+
+    def get_market_page_by_date(
+        self,
+        trade_date: str,
+        group: str = "index",
+        limit: int = 60,
+        offset: int = 0,
+    ) -> List[dict]:
+        """获取指定交易日、指定资产分组的行情分页数据。"""
+        asset_type_filter = self._asset_type_filter(group)
+        sql = """
+        SELECT
+            m.trade_date AS trade_date,
+            m.asset_code AS code,
+            meta.asset_name AS name,
+            m.close AS close,
+            m.volume AS volume,
+            m.amount AS amount
+        FROM dat_market_daily m
+        JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
+        WHERE m.trade_date = ?
+          AND {asset_type_filter}
+        ORDER BY m.amount DESC
+        LIMIT ? OFFSET ?
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                sql.format(asset_type_filter=asset_type_filter),
+                (trade_date, limit, offset),
+            )
+            rows = cursor.fetchall()
+            return self._rows_to_dicts(cursor, rows)
+
+    @staticmethod
+    def _asset_type_filter(group: str) -> str:
+        if group == "non_index":
+            return "meta.asset_type != 'INDEX'"
+        if group == "index":
+            return "meta.asset_type = 'INDEX'"
+        raise ValueError(f"Unsupported market group: {group}")
 
     def get_latest_price(self, asset_code: str) -> Optional[dict]:
         """

@@ -35,7 +35,6 @@ function setupGlobalActionBindings() {
                 if (modalId === 'depositModal' && typeof openDepositModal === 'function') openDepositModal();
                 if (modalId === 'withdrawModal' && typeof openWithdrawModal === 'function') openWithdrawModal();
                 if (modalId === 'cashAdjustModal' && typeof openCashAdjustModal === 'function') openCashAdjustModal();
-                if (modalId === 'assetModal' && typeof openAssetModal === 'function') openAssetModal();
                 break;
             case 'open-create-account-modal':
                 e.preventDefault();
@@ -54,8 +53,6 @@ function setupGlobalActionBindings() {
                 const group = actionEl.getAttribute('data-group');
                 const tabName = actionEl.getAttribute('data-tab');
                 if (group === 'transaction' && typeof switchTransactionTab === 'function') switchTransactionTab(tabName);
-                if (group === 'analysis' && typeof switchAnalysisTab === 'function') switchAnalysisTab(tabName);
-                if (group === 'asset' && typeof switchAssetTab === 'function') switchAssetTab(tabName);
                 break;
             case 'close-modal':
                 e.preventDefault();
@@ -63,7 +60,6 @@ function setupGlobalActionBindings() {
                 if (mClose === 'transactionEditModal' && typeof closeTransactionEditModal === 'function') closeTransactionEditModal();
                 if (mClose === 'accountModal' && typeof closeAccountModal === 'function') closeAccountModal();
                 if (mClose === 'accountDeleteModal' && typeof closeAccountDeleteModal === 'function') closeAccountDeleteModal();
-                if (mClose === 'assetModal' && typeof closeAssetModal === 'function') closeAssetModal();
                 if (mClose === 'tradeModal' && typeof closeTradeModal === 'function') closeTradeModal();
                 if (mClose === 'depositModal' && typeof closeDepositModal === 'function') closeDepositModal();
                 if (mClose === 'withdrawModal' && typeof closeWithdrawModal === 'function') closeWithdrawModal();
@@ -81,10 +77,6 @@ function setupGlobalActionBindings() {
             case 'confirm-delete-account':
                 e.preventDefault();
                 if (typeof confirmDeleteAccount === 'function') confirmDeleteAccount();
-                break;
-            case 'save-asset':
-                e.preventDefault();
-                if (typeof saveAssetInfo === 'function') saveAssetInfo();
                 break;
             case 'submit-deposit':
                 e.preventDefault();
@@ -123,14 +115,6 @@ function setupGlobalActionBindings() {
                 e.preventDefault();
                 if (typeof submitCorporateAction === 'function') submitCorporateAction();
                 break;
-            case 'edit-asset':
-                e.preventDefault();
-                if (typeof window.openAssetModalByCode === 'function') window.openAssetModalByCode(actionEl.getAttribute('data-code'));
-                break;
-            case 'delete-asset':
-                e.preventDefault();
-                if (typeof deleteAsset === 'function') deleteAsset(actionEl.getAttribute('data-code'));
-                break;
         }
     });
 }
@@ -141,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTabs();
     initTradeModal();
     initCorporateActionModal();
+    if (typeof initAssetManagerEvents === 'function') initAssetManagerEvents();
     await initDataSyncUI();
     Object.keys(listPaginationState).forEach((key) => updatePaginationUI(key));
 

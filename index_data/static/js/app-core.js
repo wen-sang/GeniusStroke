@@ -27,7 +27,7 @@ function initializeTradeDateDefault() {
 
 // 状态管理
 const state = {
-    currentTab: 'positions', // positions, transactions, analysis, watchlist
+    currentTab: 'positions', // positions, transactions, analysis
     currentAccount: null,
     currentAccountName: '',
     currentAccountSummary: null,
@@ -72,10 +72,10 @@ const listPaginationState = {
     positions: createPaginationState(),
     transaction_orders: createPaginationState(),
     transaction_actions: createPaginationState(),
-    analysis_market: createPaginationState(),
-    analysis_fundamental: createPaginationState(),
-    analysis_technical: createPaginationState(),
-    watchlist: createPaginationState()
+    market_trading: createPaginationState(),
+    market_technical: createPaginationState(),
+    market_fundamental: createPaginationState(),
+    asset_manager: createPaginationState()
 };
 
 function loadPageData({ summary = true, content = true } = {}) {
@@ -105,7 +105,6 @@ function loadCurrentTabData() {
     if (tab === 'positions') loadPositions(loadContext);
     if (tab === 'transactions') loadTransactions(loadContext);
     if (tab === 'analysis') loadAnalysis(loadContext);
-    if (tab === 'watchlist') loadWatchlist(loadContext);
 }
 
 function isStaleSummaryLoad(loadContext) {
@@ -192,14 +191,14 @@ function setPaginationLoading(key, loading) {
 }
 
 async function loadMoreList(key) {
-    const loadContext = createCurrentContentLoadContext(key.startsWith('analysis_') ? 'analysis' : state.currentTab);
+    const loadContext = createCurrentContentLoadContext(key.startsWith('market_') ? 'analysis' : state.currentTab);
     if (key === 'positions') return loadPositions(loadContext, true);
     if (key === 'transaction_orders') return loadTradeOrders(loadContext, true);
     if (key === 'transaction_actions') return loadCorporateActionRows(loadContext, true);
-    if (key === 'analysis_market') return loadAnalysisMarket(loadContext, true);
-    if (key === 'analysis_fundamental') return loadAnalysisFundamental(loadContext, true);
-    if (key === 'analysis_technical') return loadAnalysisTechnical(loadContext, true);
-    if (key === 'watchlist') return loadWatchlist(loadContext, true);
+    if (key === 'market_trading') return loadMarketRows(loadContext, true);
+    if (key === 'market_technical') return loadTechnicalRows(loadContext, true);
+    if (key === 'market_fundamental') return loadFundamentalRows(loadContext, true);
+    if (key === 'asset_manager') return loadAssetManagerList(null, true);
 }
 
 window.loadMoreList = loadMoreList;

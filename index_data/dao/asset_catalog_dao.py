@@ -149,6 +149,65 @@ class AssetCatalogDAO(BaseDAO):
             "total_pages": total_pages,
         }
 
+    def search_unified_catalog(
+        self,
+        keyword: str,
+        page: int,
+        page_size: int,
+    ) -> dict:
+        page = max(page, 1)
+        page_size = min(max(page_size, 1), 50)
+        offset = (page - 1) * page_size
+        pattern = f"%{keyword.strip()}%"
+        params: list[Any] = [pattern, pattern, pattern]
+        where_sql = """
+            c.source_id IN ('lixinren', 'tickflow')
+            AND c.is_active = 1
+            AND (
+                c.asset_code LIKE ?
+                OR c.external_symbol LIKE ?
+                OR c.asset_name LIKE ?
+            )
+        """
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM dat_external_asset_catalog c
+            WHERE {where_sql}
+        """
+        query_sql = f"""
+            SELECT
+                c.asset_code AS code,
+                c.asset_name AS name,
+                c.asset_type AS type,
+                c.exchange AS exchange,
+                c.source_id AS source,
+                c.listing_date AS list_date,
+                c.external_symbol AS source_code
+            FROM dat_external_asset_catalog c
+            WHERE {where_sql}
+            ORDER BY
+                c.asset_code ASC,
+                CASE c.source_id
+                    WHEN 'lixinren' THEN 0
+                    WHEN 'tickflow' THEN 1
+                    ELSE 9
+                END,
+                c.external_symbol ASC
+            LIMIT ? OFFSET ?
+        """
+
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(count_sql, tuple(params))
+            total = cursor.fetchone()[0]
+            cursor.execute(query_sql, tuple(params + [page_size, offset]))
+            items = self._rows_to_dicts(cursor, cursor.fetchall())
+
+        return {
+            "items": items,
+            "has_more": total > page * page_size,
+        }
+
     def create_sync_log(self, sync_id: str, source_id: str, started_at: str) -> None:
         with self.db_engine.get_connection() as conn:
             conn.execute(

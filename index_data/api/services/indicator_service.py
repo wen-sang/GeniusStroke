@@ -6,13 +6,19 @@ from dao.indicator_dao import indicator_dao
 class IndicatorService:
     """技术指标数据服务层"""
     
-    def get_indicator_data(self, page: int = 1, page_size: int = 60):
+    def get_indicator_data(
+        self,
+        page: int = 1,
+        page_size: int = 60,
+        group: str = "index",
+    ):
         """
         获取技术指标数据
         
         Args:
             page: 页码（从1开始）
             page_size: 每页数量
+            group: 资产分组，index 或 non_index
             
         Returns:
             dict: 包含分页信息和数据的字典
@@ -28,7 +34,10 @@ class IndicatorService:
                 'items': []
             }
 
-        total = indicator_dao.count_index_assets_by_date(latest_date)
+        if group == "index":
+            total = indicator_dao.count_index_assets_by_date(latest_date)
+        else:
+            total = indicator_dao.count_assets_by_date(latest_date, group)
         if total <= 0:
             return {
                 'page': page,
@@ -40,11 +49,19 @@ class IndicatorService:
 
         total_pages = (total + page_size - 1) // page_size
         start_idx = (page - 1) * page_size
-        asset_codes_page = indicator_dao.get_index_asset_codes_page_by_date(
-            trade_date=latest_date,
-            limit=page_size,
-            offset=start_idx
-        )
+        if group == "index":
+            asset_codes_page = indicator_dao.get_index_asset_codes_page_by_date(
+                trade_date=latest_date,
+                limit=page_size,
+                offset=start_idx
+            )
+        else:
+            asset_codes_page = indicator_dao.get_asset_codes_page_by_date(
+                trade_date=latest_date,
+                group=group,
+                limit=page_size,
+                offset=start_idx
+            )
 
         if not asset_codes_page:
             return {
@@ -55,10 +72,17 @@ class IndicatorService:
                 'items': []
             }
 
-        rows = indicator_dao.get_index_indicator_rows_by_date_and_codes(
-            trade_date=latest_date,
-            asset_codes=asset_codes_page
-        )
+        if group == "index":
+            rows = indicator_dao.get_index_indicator_rows_by_date_and_codes(
+                trade_date=latest_date,
+                asset_codes=asset_codes_page
+            )
+        else:
+            rows = indicator_dao.get_indicator_rows_by_date_and_codes(
+                trade_date=latest_date,
+                group=group,
+                asset_codes=asset_codes_page
+            )
 
         # 合并同一代码多 config 的 JSON 数据
         merged_data = {}

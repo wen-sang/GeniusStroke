@@ -353,16 +353,6 @@
     background-color: var(--bg-page);
 }
 
-#analysis-market thead th,
-#analysis-technical thead th {
-    text-align: center;
-}
-
-#analysis-market thead th:first-child,
-#analysis-technical thead th:first-child {
-    text-align: left;
-}
-
 /* v2.7: 首尾列留白对�?TradingView 20px */
 .data-table thead th:first-child {
     padding-left: 20px;

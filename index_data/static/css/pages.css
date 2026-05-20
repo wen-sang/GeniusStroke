@@ -864,27 +864,399 @@
     letter-spacing: -0.5px;
 }
 
-#analysis-fundamental thead th,
-#analysis-fundamental tbody td {
+/* ==================== 行情 Tab v1.3 ==================== */
+.market-view-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.market-brand-tabs {
+    margin: 0;
+}
+
+.market-manage-link {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 0;
+}
+
+.market-manage-link:hover {
+    color: var(--text-primary);
+}
+
+.market-manage-link:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.market-table-wrapper {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.market-table-toolbar {
+    min-height: 44px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.market-view-switcher {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-page);
+}
+
+.mvs-btn {
+    height: 30px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.mvs-btn + .mvs-btn {
+    border-left: 1px solid var(--border);
+}
+
+.mvs-btn.hidden {
+    display: none;
+}
+
+.mvs-btn:hover:not(.active) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.mvs-btn.active {
+    background: #0F0F0F;
+    color: #FFFFFF;
+    font-weight: 600;
+    cursor: default;
+    pointer-events: none;
+}
+
+.mvs-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+#market-panel-market .data-table th,
+#market-panel-market .data-table td,
+#market-panel-technical .data-table th,
+#market-panel-technical .data-table td,
+#market-panel-fundamental .data-table th,
+#market-panel-fundamental .data-table td {
     text-align: center;
 }
 
-#analysis-fundamental th:first-child {
+#market-panel-market .data-table th:first-child,
+#market-panel-market .data-table td:first-child,
+#market-panel-technical .data-table th:first-child,
+#market-panel-technical .data-table td:first-child,
+#market-panel-fundamental .data-table th:first-child,
+#market-panel-fundamental .data-table td:first-child {
     text-align: left;
 }
 
-#analysis-fundamental thead th:first-child,
-#analysis-fundamental tbody td:first-child {
+.required-mark {
+    color: var(--color-danger);
+}
+
+.form-error {
+    display: block;
+    margin-top: 6px;
+    color: var(--color-danger);
+    font-size: 12px;
+}
+
+.form-error.hidden {
+    display: none;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+.am-modal-box {
+    width: 560px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 64px);
+}
+
+.am-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.am-back-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.am-back-btn:hover {
+    color: var(--text-primary);
+}
+
+.am-list-body {
+    padding: 16px 24px 0;
+}
+
+.am-sub-tabs {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.am-table-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#assetManagerTable th,
+#assetManagerTable td {
     text-align: left;
 }
 
-#view-watchlist .section-title-main {
-    display: block;
+#assetManagerTable .am-action-cell {
+    text-align: center;
 }
 
-#view-watchlist .section-desc {
-    display: block;
-    white-space: normal;
+.am-action-cell {
+    text-align: center;
+}
+
+.am-action-btn {
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.am-action-edit {
+    color: var(--primary);
+}
+
+.am-action-delete {
+    color: var(--up-red);
+}
+
+.am-footer-list {
+    justify-content: flex-end;
+}
+
+.am-code-group {
+    position: relative;
+}
+
+.am-lookup-wrap {
+    position: relative;
+}
+
+.am-lookup-input {
+    padding-left: 36px;
+    padding-right: 64px;
+}
+
+.am-lookup-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.am-lookup-wrap.is-selected .am-lookup-search-icon {
+    display: none;
+}
+
+.am-lookup-wrap.is-selected .am-lookup-input {
+    padding-left: 12px;
+}
+
+.am-lookup-lock,
+.am-lookup-clear {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.am-lookup-lock {
+    right: 36px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    display: inline-flex;
+}
+
+.am-lookup-lock svg {
+    width: 16px;
+    height: 16px;
+}
+
+.am-lookup-clear {
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.am-lookup-clear:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.am-lookup-popover {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    z-index: 1010;
+}
+
+.am-lookup-item {
+    display: grid;
+    grid-template-columns: minmax(70px, 0.8fr) minmax(0, 1.4fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+.am-lookup-item:hover,
+.am-lookup-item.is-focused {
+    background: var(--bg-hover);
+}
+
+.am-lookup-item__code {
+    font-family: "SF Mono", Consolas, monospace;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.am-lookup-item__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.am-lookup-item__type,
+.am-lookup-item__source {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.am-lookup-separator {
+    height: 1px;
+    background: var(--border);
+}
+
+.am-lookup-more {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+.am-lookup-more:hover,
+.am-lookup-more.is-focused {
+    background: var(--bg-hover);
+}
+
+.am-lookup-status {
+    padding: 18px 12px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    text-align: center;
+}
+
+.am-lookup-status.is-error {
+    color: var(--color-danger);
+}
+
+.leave-confirm-overlay {
+    z-index: 1002;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.leave-confirm-box {
+    width: 360px;
+}
+
+.am-col-14 {
+    width: 14%;
+}
+
+.am-col-16 {
+    width: 16%;
+}
+
+.am-col-26 {
+    width: 26%;
+}
+
+.am-col-30 {
+    width: 30%;
 }
 
 /* v2.8: 已移除重复定义，统一使用上方 line 681-687 的定�?*/

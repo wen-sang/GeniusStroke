@@ -90,7 +90,7 @@ function showToast(type, message) {
 }
 
 // 确认弹窗
-function openConfirmModal(targetText, onConfirm) {
+function openConfirmModal(targetText, onConfirm, successMessage = '已删除') {
     const modal = document.getElementById('confirmModal');
     const target = document.getElementById('confirmTarget');
 
@@ -107,7 +107,7 @@ function openConfirmModal(targetText, onConfirm) {
         try {
             await onConfirm();
             closeConfirmModal();
-            showToast('success', `已删除`);
+            showToast('success', successMessage);
         } catch (err) {
             okBtn.classList.remove('is-loading');
             okBtn.disabled = false;
@@ -194,9 +194,18 @@ document.addEventListener('keydown', e => {
             closeConfirmModal();
             return;
         }
-        const assetModal = document.getElementById('assetModal');
-        if (assetModal && assetModal.classList.contains('active')) {
-            closeAssetModal();
+        const leaveConfirmModal = document.getElementById('leaveConfirmModal');
+        if (leaveConfirmModal && leaveConfirmModal.classList.contains('active')) {
+            closeLeaveConfirmModal();
+            return;
+        }
+        const assetManagerModal = document.getElementById('assetManagerModal');
+        if (assetManagerModal && assetManagerModal.classList.contains('active')) {
+            if (typeof assetManagerState !== 'undefined' && assetManagerState.mode === 'form') {
+                requestLeaveForm('close', document.getElementById('assetManagerCloseX'));
+            } else {
+                closeAssetManagerModal();
+            }
             return;
         }
         const corporateActionModal = document.getElementById('corporateActionModal');

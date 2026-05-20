@@ -143,8 +143,7 @@
             <div class="main-tab-nav">
                 <div class="main-tab-item active" data-tab="positions">持仓</div>
                 <div class="main-tab-item" data-tab="transactions">交易</div>
-                <div class="main-tab-item" data-tab="analysis">指数分析</div>
-                <div class="main-tab-item" data-tab="watchlist">自选</div>
+                <div class="main-tab-item" data-tab="analysis">行情</div>
             </div>
         </div>
 
@@ -313,172 +312,133 @@
             </div>
                 </div>
 
-                <!-- 3. 指数分析 View -->
+                <!-- 3. 行情 View -->
                 <div id="view-analysis" class="hidden">
-            <h1 class="section-title">指数行情</h1>
-            <div class="sub-tabs">
-                <div class="sub-tab-item active" data-action="switch-tab" data-group="analysis" data-tab="market">行情概览</div>
-                <div class="sub-tab-item" data-action="switch-tab" data-group="analysis" data-tab="fundamental">基本面分析</div>
-                <div class="sub-tab-item" data-action="switch-tab" data-group="analysis" data-tab="technical">技术分析</div>
+            <div class="market-view-header">
+                <div class="sub-tabs market-brand-tabs" id="marketBrandTabs">
+                    <div class="sub-tab-item active" data-action="switch-market-brand" data-brand="trading">交易品种</div>
+                    <div class="sub-tab-item" data-action="switch-market-brand" data-brand="index">指数</div>
+                </div>
+                <button class="market-manage-link" type="button" id="openAssetManagerBtn">管理档案 →</button>
             </div>
 
-            <!-- TODO: 迁移原 report.js 的逻辑到这里 -->
-            <!-- 1. 行情概览表格 -->
-            <div id="analysis-market">
-                <table class="data-table fixed-layout">
-                    <colgroup>
-                        <col class="col-w-15"> <!-- 交易日期 -->
-                        <col class="col-w-10"> <!-- 代码 -->
-                        <col class="col-w-20"> <!-- 名称 -->
-                        <col class="col-w-15"> <!-- 收盘价 -->
-                        <col class="col-w-20"> <!-- 成交量 -->
-                        <col class="col-w-20"> <!-- 成交额 -->
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>交易日期</th>
-                            <th>代码</th>
-                            <th>名称</th>
-                            <th>收盘价</th>
-                            <th>成交量</th>
-                            <th>成交额</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div class="list-pagination" data-list-pagination="analysis_market">
-                    <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_market">了解更多</button>
-                    <div class="list-pagination-end hidden">已经到底线了</div>
-                </div>
-            </div>
-
-            <!-- 2. 基本面分析表格 -->
-            <div id="analysis-fundamental" class="hidden">
-                <table class="data-table fixed-layout fundamental-table">
-                    <colgroup>
-                        <col class="col-w-12"> <!-- 交易日期 -->
-                        <col class="col-w-8"> <!-- 代码 -->
-                        <col class="col-w-12"> <!-- 名称 -->
-                        <col class="col-w-10"> <!-- PE-TTM -->
-                        <col class="col-w-8"> <!-- PB -->
-                        <col class="col-w-12"> <!-- PE 5年分位 -->
-                        <col class="col-w-12"> <!-- PE低估(20%) -->
-                        <col class="col-w-12"> <!-- PE中位(50%) -->
-                        <col class="col-w-12"> <!-- PE高估(80%) -->
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>交易日期</th>
-                            <th>代码</th>
-                            <th>名称</th>
-                            <th>PE-TTM</th>
-                            <th>PB</th>
-                            <th>PE 5年分位</th>
-                            <th>PE低估(20%)</th>
-                            <th>PE中位(50%)</th>
-                            <th>PE高估(80%)</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div class="list-pagination" data-list-pagination="analysis_fundamental">
-                    <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_fundamental">了解更多</button>
-                    <div class="list-pagination-end hidden">已经到底线了</div>
-                </div>
-            </div>
-            <tbody></tbody>
-            </table>
-            <!-- 3. 技术分析表格 -->
-            <div id="analysis-technical" class="hidden">
-                <table class="data-table fixed-layout technical-table">
-                    <colgroup>
-                        <col class="col-w-10"> <!-- 交易日期 -->
-                        <col class="col-w-6"> <!-- 代码 -->
-                        <col class="col-w-8"> <!-- 名称 -->
-                        <col class="col-w-7"> <!-- 收盘价 -->
-                        <col class="col-w-65"> <!-- MA5 -->
-                        <col class="col-w-65"> <!-- MA10 -->
-                        <col class="col-w-65"> <!-- MA20 -->
-                        <col class="col-w-55"> <!-- RSI6 -->
-                        <col class="col-w-55"> <!-- RSI14 -->
-                        <col class="col-w-65"> <!-- DIF -->
-                        <col class="col-w-65"> <!-- DEA -->
-                        <col class="col-w-65"> <!-- MACD -->
-                        <col class="col-w-65"> <!-- ATR14 -->
-                        <col class="col-w-12"> <!-- 2.5倍ATR点位 -->
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>交易日期</th>
-                            <th>代码</th>
-                            <th>名称</th>
-                            <th>收盘价</th>
-                            <th>MA5</th>
-                            <th>MA10</th>
-                            <th>MA20</th>
-                            <th>RSI6</th>
-                            <th>RSI14</th>
-                            <th>DIF</th>
-                            <th>DEA</th>
-                            <th>MACD</th>
-                            <th>ATR14</th>
-                            <th>2.5倍ATR点位</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div class="list-pagination" data-list-pagination="analysis_technical">
-                    <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="analysis_technical">了解更多</button>
-                    <div class="list-pagination-end hidden">已经到底线了</div>
-                </div>
-            </div>
+            <div class="market-table-wrapper">
+                <div class="market-table-toolbar" id="marketTableToolbar">
+                    <div class="market-view-switcher" id="marketViewSwitcher">
+                        <button class="mvs-btn active" data-view="market" type="button">行情</button>
+                        <button class="mvs-btn" data-view="technical" type="button">技术</button>
+                        <button class="mvs-btn hidden" data-view="fundamental" id="mvsButtonFundamental" type="button">基本面</button>
+                    </div>
                 </div>
 
-                <!-- 4. 自选/基础档案 View -->
-                <div id="view-watchlist" class="hidden">
-            <div class="section-header section-header-with-outer-gap watchlist-header">
-                <h1 class="section-title section-title-tight">
-                    <span class="section-title-main">基础档案</span>
-                    <span class="section-desc section-desc-relaxed">查看和管理系统中的所有投资标的档案</span>
-                </h1>
-                <button class="btn btn-add watchlist-add-btn" data-action="open-modal" data-modal="assetModal">新增档案</button>
-            </div>
+                <div id="market-panel-market">
+                    <table class="data-table fixed-layout" id="market-table-market">
+                        <colgroup>
+                            <col class="col-w-15">
+                            <col class="col-w-10">
+                            <col class="col-w-20">
+                            <col class="col-w-15">
+                            <col class="col-w-20">
+                            <col class="col-w-20">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>交易日期</th>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>收盘价</th>
+                                <th>成交量</th>
+                                <th>成交额</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="list-pagination" data-list-pagination="market_trading">
+                        <div class="list-pagination-loading hidden"></div>
+                        <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="market_trading">加载更多</button>
+                        <div class="list-pagination-end hidden">已加载全部</div>
+                    </div>
+                </div>
 
-            <div class="sub-tabs">
-                <div class="sub-tab-item active" data-action="switch-tab" data-group="asset" data-tab="others">交易品种</div>
-                <div class="sub-tab-item" data-action="switch-tab" data-group="asset" data-tab="index">指数信息</div>
-            </div>
+                <div id="market-panel-technical" class="hidden">
+                    <table class="data-table fixed-layout technical-table" id="market-table-technical">
+                        <colgroup>
+                            <col class="col-w-10">
+                            <col class="col-w-6">
+                            <col class="col-w-8">
+                            <col class="col-w-7">
+                            <col class="col-w-65">
+                            <col class="col-w-65">
+                            <col class="col-w-65">
+                            <col class="col-w-55">
+                            <col class="col-w-55">
+                            <col class="col-w-65">
+                            <col class="col-w-65">
+                            <col class="col-w-65">
+                            <col class="col-w-65">
+                            <col class="col-w-12">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>交易日期</th>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>收盘价</th>
+                                <th>MA5</th>
+                                <th>MA10</th>
+                                <th>MA20</th>
+                                <th>RSI6</th>
+                                <th>RSI14</th>
+                                <th>DIF</th>
+                                <th>DEA</th>
+                                <th>MACD</th>
+                                <th>ATR14</th>
+                                <th>2.5倍ATR点位</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="list-pagination" data-list-pagination="market_technical">
+                        <div class="list-pagination-loading hidden"></div>
+                        <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="market_technical">加载更多</button>
+                        <div class="list-pagination-end hidden">已加载全部</div>
+                    </div>
+                </div>
 
-            <table class="data-table fixed-layout" id="asset-list-table">
-                <colgroup>
-                    <col class="col-w-14">
-                    <col class="col-w-22">
-                    <col class="col-w-14">
-                    <col class="col-w-16">
-                    <col class="col-w-16">
-                    <col class="col-w-18">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>代码</th>
-                        <th>名称</th>
-                        <th>类型</th>
-                        <th>上市日期</th>
-                        <th>数据源</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- JS 加载 -->
-                </tbody>
-            </table>
-            <div class="list-pagination" data-list-pagination="watchlist">
-                <div class="list-pagination-loading hidden"></div>
-                <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="watchlist">了解更多</button>
-                <div class="list-pagination-end hidden">已经到底线了</div>
+                <div id="market-panel-fundamental" class="hidden">
+                    <table class="data-table fixed-layout fundamental-table" id="market-table-fundamental">
+                        <colgroup>
+                            <col class="col-w-12">
+                            <col class="col-w-8">
+                            <col class="col-w-12">
+                            <col class="col-w-10">
+                            <col class="col-w-8">
+                            <col class="col-w-12">
+                            <col class="col-w-12">
+                            <col class="col-w-12">
+                            <col class="col-w-12">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>交易日期</th>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>PE-TTM</th>
+                                <th>PB</th>
+                                <th>PE 5年分位</th>
+                                <th>PE低估(20%)</th>
+                                <th>PE中位(50%)</th>
+                                <th>PE高估(80%)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="list-pagination" data-list-pagination="market_fundamental">
+                        <div class="list-pagination-loading hidden"></div>
+                        <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="market_fundamental">加载更多</button>
+                        <div class="list-pagination-end hidden">已加载全部</div>
+                    </div>
+                </div>
             </div>
                 </div>
             </section>
@@ -531,64 +491,87 @@
         </div>
     </div>
 
-    <!-- Asset Dialogs -->
-    <div id="assetModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assetModalTitle">
-        <div class="modal-box" data-prevent-close="true">
+    <!-- Asset Manager Dialogs -->
+    <div id="assetManagerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assetManagerTitle">
+        <div class="modal-box am-modal-box" data-prevent-close="true">
             <div class="modal-header">
-                <h2 class="modal-title" id="assetModalTitle">新增 / 修改档案</h2>
-                <button class="modal-close" data-action="close-modal" data-modal="assetModal" aria-label="关闭">&times;</button>
+                <div class="am-header-left">
+                    <button class="am-back-btn hidden" type="button" id="assetFormBackBtn">← 返回列表</button>
+                    <h2 class="modal-title" id="assetManagerTitle">基础档案管理</h2>
+                </div>
+                <button class="modal-close" id="assetManagerCloseX" type="button" aria-label="关闭">&times;</button>
             </div>
 
-            <div class="modal-body">
-                <div id="assetCatalogSearchSection" class="catalog-search-section">
-                    <div class="catalog-search-header">
-                        <div class="catalog-search-title">从目录选择</div>
-                        <div class="catalog-sync-status" id="assetCatalogSyncStatus"></div>
-                    </div>
-                    <div class="catalog-source-toggle" id="assetCatalogSourceToggle"></div>
-                    <div class="catalog-search-input-wrap">
-                        <svg class="catalog-search-icon" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.3-4.3"></path>
-                        </svg>
-                        <input type="text" class="form-input catalog-search-input"
-                               id="assetCatalogKeyword"
-                               placeholder="搜索代码或名称以快速填充..."
-                               autocomplete="off">
-                        <div class="catalog-search-results hidden" id="assetCatalogResults">
-                            <div class="catalog-search-results-list" id="assetCatalogResultsList"></div>
-                            <div class="catalog-search-results-footer hidden" id="assetCatalogResultsFooter">
-                                <span class="catalog-results-count"></span>
-                                <button type="button" class="catalog-results-more" id="assetCatalogLoadMore">显示更多</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="catalog-search-hint" id="assetCatalogHint">
-                        从外部目录搜索可快速填充标的信息
-                    </div>
-                    <div class="catalog-info-banner hidden" id="assetCatalogInfoBanner">
-                        <span>该来源当前仅用于标的目录，请选择已启用采集的数据源。</span>
-                    </div>
+            <div id="assetManagerListView" class="modal-body am-list-body">
+                <div class="sub-tabs am-sub-tabs" id="assetManagerSubTabs">
+                    <div class="sub-tab-item active" data-action="switch-asset-manager-tab" data-tab="others">交易品种</div>
+                    <div class="sub-tab-item" data-action="switch-asset-manager-tab" data-tab="index">指数信息</div>
                 </div>
-                <div class="catalog-form-divider" id="assetCatalogFormDivider"></div>
-                <input type="hidden" id="form-asset-source-code" value="">
+                <div class="am-table-scroll">
+                    <table class="data-table fixed-layout" id="assetManagerTable">
+                        <colgroup>
+                            <col class="am-col-16">
+                            <col class="am-col-30">
+                            <col class="am-col-14">
+                            <col class="am-col-16">
+                            <col class="am-col-26">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>数据源</th>
+                                <th class="am-action-cell">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="list-pagination" data-list-pagination="asset_manager">
+                    <div class="list-pagination-loading hidden"></div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="asset_manager">加载更多</button>
+                    <div class="list-pagination-end hidden">已加载全部</div>
+                </div>
+            </div>
 
+            <div id="assetManagerFormView" class="modal-body hidden">
+                <input type="hidden" id="am-form-source-raw" value="">
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group am-code-group" id="amCodeGroup">
                         <label class="form-label">代码 <span class="required-mark">*</span></label>
-                        <input type="text" class="form-input" placeholder="输入代码" id="form-asset-code">
-                        <span class="form-error hidden" id="err-asset-code">请输入代码</span>
+                        <div class="am-lookup-wrap" id="amLookupWrap">
+                            <svg class="am-lookup-search-icon" id="amLookupSearchIcon" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.3-4.3"></path>
+                            </svg>
+                            <input type="text" class="form-input am-lookup-input" id="am-form-code"
+                                   placeholder="点击搜索标的代码或名称..." autocomplete="off"
+                                   aria-haspopup="listbox" aria-expanded="false" readonly>
+                            <span class="am-lookup-lock hidden" id="amLookupLock" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="4" y="11" width="16" height="9" rx="2"></rect>
+                                    <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                                </svg>
+                            </span>
+                            <button class="am-lookup-clear hidden" id="amLookupClear" type="button" aria-label="清除代码">&times;</button>
+                            <div class="am-lookup-popover hidden" id="amLookupPopover" role="listbox"></div>
+                        </div>
+                        <span class="form-hint" id="amCodeHint">点击代码输入框搜索并选择标的</span>
+                        <span class="form-error hidden" id="am-err-code">请输入代码</span>
                     </div>
+
                     <div class="form-group">
                         <label class="form-label">名称 <span class="required-mark">*</span></label>
-                        <input type="text" class="form-input" placeholder="输入名称" id="form-asset-name">
-                        <span class="form-error hidden" id="err-asset-name">请输入名称</span>
+                        <input type="text" class="form-input" id="am-form-name" placeholder="输入名称">
+                        <span class="form-error hidden" id="am-err-name">请输入名称</span>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">数据源 <span class="required-mark">*</span></label>
-                        <select class="form-select" id="form-asset-source">
+                        <select class="form-select" id="am-form-source">
                             <option value="lixinren">理杏仁</option>
                             <option value="akshare">Akshare</option>
                             <option value="tickflow">TickFlow</option>
@@ -597,12 +580,12 @@
 
                     <div class="form-group">
                         <label class="form-label">上市日期</label>
-                        <input type="date" class="form-input" id="form-asset-date">
+                        <input type="date" class="form-input" id="am-form-date">
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">标的类型 <span class="required-mark">*</span></label>
-                        <select class="form-select" id="form-asset-type">
+                        <select class="form-select" id="am-form-type">
                             <option value="ETF">ETF</option>
                             <option value="STOCK">股票</option>
                             <option value="INDEX">指数</option>
@@ -612,7 +595,7 @@
 
                     <div class="form-group">
                         <label class="form-label">交易所</label>
-                        <select class="form-select" id="form-asset-exchange">
+                        <select class="form-select" id="am-form-exchange">
                             <option value="SH">上海 SH</option>
                             <option value="SZ">深圳 SZ</option>
                             <option value="HK">香港 HK</option>
@@ -621,7 +604,7 @@
 
                     <div class="form-group span-2">
                         <label class="form-label">市场类别</label>
-                        <select class="form-select" id="form-asset-category">
+                        <select class="form-select" id="am-form-category">
                             <option value="EXCHANGE">场内 (EXCHANGE)</option>
                             <option value="OTC">场外 (OTC)</option>
                         </select>
@@ -629,9 +612,29 @@
                 </div>
             </div>
 
+            <div class="modal-footer am-footer-list" id="assetManagerFooterList">
+                <button class="modal-btn-cancel" id="assetManagerCloseBtn" type="button">关闭</button>
+                <button class="modal-btn-confirm" id="assetManagerAddBtn" type="button">新增档案</button>
+            </div>
+            <div class="modal-footer hidden" id="assetManagerFooterForm">
+                <button class="modal-btn-cancel" id="assetFormCancelBtn" type="button">取消</button>
+                <button class="modal-btn-confirm" id="assetFormSaveBtn" type="button">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="leaveConfirmModal" class="modal-overlay leave-confirm-overlay" role="alertdialog" aria-modal="true"
+        aria-labelledby="leaveConfirmTitle" aria-describedby="leaveConfirmDesc">
+        <div class="modal-box leave-confirm-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="leaveConfirmTitle">放弃未保存修改？</h2>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-desc" id="leaveConfirmDesc">当前档案表单有未保存修改，离开后这些修改将丢失。</p>
+            </div>
             <div class="modal-footer">
-                <button class="modal-btn-cancel" data-action="close-modal" data-modal="assetModal">取消</button>
-                <button class="modal-btn-confirm" id="btn-save-asset" data-action="save-asset">确定保存</button>
+                <button class="modal-btn-cancel" id="leaveConfirmStayBtn" type="button">留在此处</button>
+                <button class="modal-btn-danger" id="leaveConfirmLeaveBtn" type="button">确认离开</button>
             </div>
         </div>
     </div>

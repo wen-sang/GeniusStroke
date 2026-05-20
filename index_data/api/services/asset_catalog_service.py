@@ -67,6 +67,21 @@ class AssetCatalogService:
             item["collection_supported"] = collection_supported
         return result
 
+    def search_unified_catalog(
+        self,
+        keyword: str,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> dict:
+        normalized_keyword = (keyword or "").strip()
+        if not normalized_keyword:
+            raise ValueError("keyword 不能为空")
+        return asset_catalog_dao.search_unified_catalog(
+            keyword=normalized_keyword,
+            page=page,
+            page_size=page_size,
+        )
+
     def sync_source(self, source_id: str, force: bool = False) -> dict:
         self._ensure_catalog_source(source_id)
         if not force and self._is_recently_synced(source_id):
