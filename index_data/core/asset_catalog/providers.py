@@ -41,6 +41,8 @@ LIXINREN_CATALOG_ENDPOINTS = (
     ),
 )
 
+LIXINREN_CATALOG_REQUEST_MAX_ATTEMPTS = 3
+
 
 class BaseCatalogProvider(ABC):
     @abstractmethod
@@ -193,11 +195,17 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
         payload = {"token": self.token}
         if extra_payload:
             payload.update(extra_payload)
-        response = requests.post(
-            url,
-            json=payload,
-            timeout=ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS,
-        )
+        for attempt in range(1, LIXINREN_CATALOG_REQUEST_MAX_ATTEMPTS + 1):
+            try:
+                response = requests.post(
+                    url,
+                    json=payload,
+                    timeout=ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS,
+                )
+                break
+            except (requests.Timeout, requests.ConnectionError):
+                if attempt == LIXINREN_CATALOG_REQUEST_MAX_ATTEMPTS:
+                    raise
         response.raise_for_status()
         payload = response.json()
         code = str(payload.get("code"))
