@@ -902,6 +902,56 @@
     overflow: visible;
 }
 
+.market-view-switcher .gs-capsule-item.hidden {
+    display: none !important;
+}
+
+.table-sort-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.sort-arrows {
+    position: relative;
+    display: inline-flex;
+    width: 8px;
+    height: 12px;
+    flex: 0 0 auto;
+}
+
+.sort-arrows::before,
+.sort-arrows::after {
+    position: absolute;
+    left: 0;
+    color: var(--text-tertiary);
+    font-size: 9px;
+    line-height: 1;
+}
+
+.sort-arrows::before {
+    content: "▲";
+    top: -1px;
+}
+
+.sort-arrows::after {
+    content: "▼";
+    bottom: -1px;
+}
+
+.table-sort-button.is-active[data-sort-order="asc"] .sort-arrows::before,
+.table-sort-button.is-active[data-sort-order="desc"] .sort-arrows::after {
+    color: var(--text-primary);
+}
+
 .market-table-wrapper,
 #market-panel-market,
 #market-panel-technical,

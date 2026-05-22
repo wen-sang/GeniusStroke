@@ -185,6 +185,49 @@ dat_market_daily = Table(
     Column("updated_at", Text),
 )
 Index("idx_market_date_code", dat_market_daily.c.trade_date, dat_market_daily.c.asset_code)
+Index(
+    "idx_market_date_amount_code",
+    dat_market_daily.c.trade_date,
+    dat_market_daily.c.amount,
+    dat_market_daily.c.asset_code,
+)
+
+dat_market_return_snapshot = Table(
+    "dat_market_return_snapshot",
+    metadata,
+    Column("asset_code", Text, primary_key=True),
+    Column("trade_date", Text, primary_key=True),
+    Column("return_22d", REAL),
+    Column("return_60d", REAL),
+    Column("return_6m", REAL),
+    Column("return_1y", REAL),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+)
+Index(
+    "idx_market_return_snapshot_date_code",
+    dat_market_return_snapshot.c.trade_date,
+    dat_market_return_snapshot.c.asset_code,
+)
+Index(
+    "idx_market_return_snapshot_date_22d",
+    dat_market_return_snapshot.c.trade_date,
+    dat_market_return_snapshot.c.return_22d,
+)
+Index(
+    "idx_market_return_snapshot_date_60d",
+    dat_market_return_snapshot.c.trade_date,
+    dat_market_return_snapshot.c.return_60d,
+)
+Index(
+    "idx_market_return_snapshot_date_6m",
+    dat_market_return_snapshot.c.trade_date,
+    dat_market_return_snapshot.c.return_6m,
+)
+Index(
+    "idx_market_return_snapshot_date_1y",
+    dat_market_return_snapshot.c.trade_date,
+    dat_market_return_snapshot.c.return_1y,
+)
 
 dat_data_quality_scan_batch = Table(
     "dat_data_quality_scan_batch",

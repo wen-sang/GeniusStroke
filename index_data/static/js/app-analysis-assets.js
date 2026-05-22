@@ -81,7 +81,9 @@ function handleAssetManagerModalKeydown(event) {
 
 const marketState = {
     currentBrand: 'trading',
-    currentView: 'market'
+    currentView: 'market',
+    marketSortBy: 'amount',
+    marketSortOrder: 'desc'
 };
 
 const assetManagerState = {
@@ -216,15 +218,23 @@ async function loadMarketRows(loadContext = null, append = false) {
     const key = 'market_trading';
     const brand = marketState.currentBrand;
     const page = append ? (listPaginationState[key].page + 1) : 1;
+    updateMarketSortHeaders();
     if (!append) {
         resetPaginationState(key);
-        renderTableStatusRow(tbody, 6, '数据加载中...');
+        renderTableStatusRow(tbody, 10, '数据加载中...');
     } else {
         setPaginationLoading(key, true);
     }
 
     const group = getCurrentMarketGroup();
-    const res = await fetchApi(`/market?page=${page}&page_size=${DEFAULT_PAGE_SIZE}&group=${group}`);
+    const params = new URLSearchParams({
+        page,
+        page_size: DEFAULT_PAGE_SIZE,
+        group,
+        sort_by: marketState.marketSortBy,
+        sort_order: marketState.marketSortOrder
+    });
+    const res = await fetchApi(`/market?${params.toString()}`);
     if (isStaleContentLoad(loadContext, 'analysis')) return;
     if (brand !== marketState.currentBrand || marketState.currentView !== 'market') return;
     if (!res) {
@@ -236,7 +246,7 @@ async function loadMarketRows(loadContext = null, append = false) {
 
     const items = applyPaginatedResult(key, res, append);
     if (!append && items.length === 0) {
-        renderTableStatusRow(tbody, 6, '暂无数据');
+        renderTableStatusRow(tbody, 10, '暂无数据');
         clearTableLoadingState();
         return;
     }
@@ -247,12 +257,39 @@ async function loadMarketRows(loadContext = null, append = false) {
             <td class="stock-code center">${escapeHtml(item.code)}</td>
             <td class="stock-name center">${escapeHtml(item.name)}</td>
             <td class="number center">${formatNumber(item.close)}</td>
+            <td class="number center ${getColorClass(item.return_22d)}">${formatPercent(item.return_22d)}</td>
+            <td class="number center ${getColorClass(item.return_60d)}">${formatPercent(item.return_60d)}</td>
+            <td class="number center ${getColorClass(item.return_6m)}">${formatPercent(item.return_6m)}</td>
+            <td class="number center ${getColorClass(item.return_1y)}">${formatPercent(item.return_1y)}</td>
             <td class="number center">${formatVolume(item.volume)}</td>
             <td class="number center">${formatAmount(item.amount)}</td>
         </tr>
     `).join('');
     renderTableRows(tbody, rowsHtml, append);
     clearTableLoadingState();
+}
+
+function sortMarketBy(sortBy) {
+    if (marketState.marketSortBy === sortBy) {
+        marketState.marketSortOrder = marketState.marketSortOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+        marketState.marketSortBy = sortBy;
+        marketState.marketSortOrder = 'desc';
+    }
+    updateMarketSortHeaders();
+    loadMarketRows(createCurrentContentLoadContext('analysis'), false);
+}
+
+function updateMarketSortHeaders() {
+    document.querySelectorAll('[data-action="sort-market"]').forEach(btn => {
+        const active = btn.dataset.sortBy === marketState.marketSortBy;
+        btn.classList.toggle('is-active', active);
+        btn.dataset.sortOrder = active ? marketState.marketSortOrder : '';
+        btn.setAttribute(
+            'aria-sort',
+            active ? (marketState.marketSortOrder === 'desc' ? 'descending' : 'ascending') : 'none'
+        );
+    });
 }
 
 async function loadTechnicalRows(loadContext = null, append = false) {
@@ -384,6 +421,11 @@ function initAssetManagerEvents() {
         const btn = event.target.closest('.gs-capsule-item');
         if (!btn || btn.classList.contains('active')) return;
         switchMarketView(btn.dataset.view);
+    });
+
+    document.getElementById('market-table-market')?.addEventListener('click', event => {
+        const btn = event.target.closest('[data-action="sort-market"]');
+        if (btn) sortMarketBy(btn.dataset.sortBy);
     });
 
     document.getElementById('assetManagerAddBtn')?.addEventListener('click', () => {

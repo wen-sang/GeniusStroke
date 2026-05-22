@@ -5,6 +5,15 @@ from dao.base_dao import BaseDAO
 from utils.validators import ValidationError
 
 
+MARKET_SORT_FIELDS = {
+    "amount",
+    "return_22d",
+    "return_60d",
+    "return_6m",
+    "return_1y",
+}
+
+
 class MarketDAO(BaseDAO):
     """市场行情数据 DAO"""
     
@@ -132,6 +141,72 @@ class MarketDAO(BaseDAO):
             row = cursor.fetchone()
             return row[0] if row and row[0] else None
 
+    def get_market_page_result(
+        self,
+        group: str = "index",
+        limit: int = 60,
+        offset: int = 0,
+        sort_by: str = "amount",
+        sort_order: str = "desc",
+    ) -> dict:
+        """获取最新交易日行情分页结果，单连接内完成日期、总数和分页查询。"""
+        asset_type_filter = self._asset_type_filter(group)
+        order_clause = self._market_order_clause(sort_by, sort_order)
+        count_sql = """
+        SELECT COUNT(*)
+        FROM dat_market_daily m
+        JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
+        WHERE m.trade_date = ?
+          AND {asset_type_filter}
+        """
+        page_sql = """
+        SELECT
+            m.trade_date AS trade_date,
+            m.asset_code AS code,
+            meta.asset_name AS name,
+            m.close AS close,
+            r.return_22d AS return_22d,
+            r.return_60d AS return_60d,
+            r.return_6m AS return_6m,
+            r.return_1y AS return_1y,
+            m.volume AS volume,
+            m.amount AS amount
+        FROM dat_market_daily m
+        JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
+        LEFT JOIN dat_market_return_snapshot r
+          ON r.asset_code = m.asset_code
+         AND r.trade_date = m.trade_date
+        WHERE m.trade_date = ?
+          AND {asset_type_filter}
+        ORDER BY {order_clause}
+        LIMIT ? OFFSET ?
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            latest_date = self.get_latest_trade_date_global(conn=conn)
+            if not latest_date:
+                return {"trade_date": None, "total": 0, "items": []}
+
+            cursor = conn.cursor()
+            cursor.execute(
+                count_sql.format(asset_type_filter=asset_type_filter),
+                (latest_date,),
+            )
+            total_row = cursor.fetchone()
+            total = int(total_row[0]) if total_row else 0
+
+            cursor.execute(
+                page_sql.format(
+                    asset_type_filter=asset_type_filter,
+                    order_clause=order_clause,
+                ),
+                (latest_date, limit, offset),
+            )
+            return {
+                "trade_date": latest_date,
+                "total": total,
+                "items": self._rows_to_dicts(cursor, cursor.fetchall()),
+            }
+
     def get_close_price_map(
         self,
         asset_codes: List[str],
@@ -237,28 +312,23 @@ class MarketDAO(BaseDAO):
             row = cursor.fetchone()
             return int(row[0]) if row else 0
 
-    def get_index_market_page_by_date(self, trade_date: str, limit: int, offset: int) -> List[dict]:
+    def get_index_market_page_by_date(
+        self,
+        trade_date: str,
+        limit: int,
+        offset: int,
+        sort_by: str = "amount",
+        sort_order: str = "desc",
+    ) -> List[dict]:
         """获取指定交易日的 INDEX 行情分页数据"""
-        sql = """
-        SELECT
-            m.trade_date AS trade_date,
-            m.asset_code AS code,
-            meta.asset_name AS name,
-            m.close AS close,
-            m.volume AS volume,
-            m.amount AS amount
-        FROM dat_market_daily m
-        JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
-        WHERE m.trade_date = ?
-          AND meta.asset_type = 'INDEX'
-        ORDER BY m.amount DESC
-        LIMIT ? OFFSET ?
-        """
-        with self.db_engine.get_connection(readonly=True) as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, (trade_date, limit, offset))
-            rows = cursor.fetchall()
-            return self._rows_to_dicts(cursor, rows)
+        return self.get_market_page_by_date(
+            trade_date=trade_date,
+            group="index",
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
 
     def get_market_page_by_date(
         self,
@@ -266,32 +336,70 @@ class MarketDAO(BaseDAO):
         group: str = "index",
         limit: int = 60,
         offset: int = 0,
+        sort_by: str = "amount",
+        sort_order: str = "desc",
     ) -> List[dict]:
         """获取指定交易日、指定资产分组的行情分页数据。"""
         asset_type_filter = self._asset_type_filter(group)
+        order_clause = self._market_order_clause(sort_by, sort_order)
         sql = """
         SELECT
             m.trade_date AS trade_date,
             m.asset_code AS code,
             meta.asset_name AS name,
             m.close AS close,
+            r.return_22d AS return_22d,
+            r.return_60d AS return_60d,
+            r.return_6m AS return_6m,
+            r.return_1y AS return_1y,
             m.volume AS volume,
             m.amount AS amount
         FROM dat_market_daily m
         JOIN sys_asset_meta meta ON m.asset_code = meta.asset_code
+        LEFT JOIN dat_market_return_snapshot r
+          ON r.asset_code = m.asset_code
+         AND r.trade_date = m.trade_date
         WHERE m.trade_date = ?
           AND {asset_type_filter}
-        ORDER BY m.amount DESC
+        ORDER BY {order_clause}
         LIMIT ? OFFSET ?
         """
         with self.db_engine.get_connection(readonly=True) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                sql.format(asset_type_filter=asset_type_filter),
+                sql.format(
+                    asset_type_filter=asset_type_filter,
+                    order_clause=order_clause,
+                ),
                 (trade_date, limit, offset),
             )
             rows = cursor.fetchall()
             return self._rows_to_dicts(cursor, rows)
+
+    @staticmethod
+    def _market_order_clause(sort_by: str, sort_order: str) -> str:
+        if sort_by not in MARKET_SORT_FIELDS:
+            raise ValueError(f"Unsupported market sort field: {sort_by}")
+        if sort_order not in {"asc", "desc"}:
+            raise ValueError(f"Unsupported market sort order: {sort_order}")
+
+        column_map = {
+            "amount": "m.amount",
+            "return_22d": "r.return_22d",
+            "return_60d": "r.return_60d",
+            "return_6m": "r.return_6m",
+            "return_1y": "r.return_1y",
+        }
+        primary_column = column_map[sort_by]
+        direction = sort_order.upper()
+        if sort_by == "amount" and sort_order == "desc":
+            return "m.amount DESC, m.asset_code ASC"
+        return (
+            f"{primary_column} IS NULL ASC, "
+            f"{primary_column} {direction}, "
+            "m.amount DESC, "
+            "m.asset_code ASC"
+        )
 
     @staticmethod
     def _asset_type_filter(group: str) -> str:

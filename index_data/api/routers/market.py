@@ -5,8 +5,7 @@ from typing import Dict, Any
 import time
 from threading import Lock
 from api.error_helpers import raise_internal_http_error
-from api.models import PaginatedResponse
-from api.services.market_service import MarketService
+from api.services.market_service import MARKET_SORT_FIELDS, MarketService
 from core.market import quote_refresh_service
 from utils.logger import logger
 
@@ -59,11 +58,13 @@ def _record_realtime_fallback_stats(total_codes: int, missing_count: int, db_fil
     )
 
 
-@router.get("/market", response_model=PaginatedResponse)
+@router.get("/market")
 async def get_market_data(
     page: int = Query(1, ge=1, description="页码，从1开始"),
     page_size: int = Query(60, ge=1, le=100, description="每页数量"),
     group: str = "index",
+    sort_by: str = Query("amount", description="排序字段"),
+    sort_order: str = Query("desc", description="排序方向：desc 或 asc"),
 ):
     """
     获取市场行情数据
@@ -71,20 +72,37 @@ async def get_market_data(
     - **page**: 页码（默认1）
     - **page_size**: 每页数量（默认60，最大100）
     - **group**: 资产分组（默认 index，保持旧接口行为）
+    - **sort_by**: 排序字段
+    - **sort_order**: 排序方向
     """
     if group not in {"index", "non_index"}:
         raise HTTPException(status_code=422, detail="group must be index or non_index")
+    if sort_by not in MARKET_SORT_FIELDS:
+        raise HTTPException(
+            status_code=422,
+            detail="sort_by must be one of amount, return_22d, return_60d, return_6m, return_1y",
+        )
+    if sort_order not in {"asc", "desc"}:
+        raise HTTPException(status_code=422, detail="sort_order must be desc or asc")
 
     service = MarketService()
     try:
-        return service.get_market_data(page=page, page_size=page_size, group=group)
+        return service.get_market_data(
+            page=page,
+            page_size=page_size,
+            group=group,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
     except Exception:
         raise_internal_http_error(
-            "市场数据查询失败 page=%s page_size=%s group=%s",
+            "市场数据查询失败 page=%s page_size=%s group=%s sort_by=%s sort_order=%s",
             "市场数据查询失败",
             page,
             page_size,
             group,
+            sort_by,
+            sort_order,
         )
 
 

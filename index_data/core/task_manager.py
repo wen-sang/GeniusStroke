@@ -13,6 +13,7 @@ from core.router import router
 from core.pipeline import DataPipeline
 from core.fundamental.manager import fundamental_manager
 from core.fund_daily_manager import fund_daily_manager
+from core.market_return_snapshot_service import market_return_snapshot_service
 from utils.date_utils import get_current_date
 from utils.logger import logger
 from config.settings import (
@@ -50,6 +51,11 @@ class TaskManager:
         market_result = self._run_market_collection_phase(
             assets,
             target_date,
+            progress_callback,
+        )
+        self._run_market_return_snapshot_phase(
+            target_date,
+            market_result,
             progress_callback,
         )
         self._run_fundamental_phase(target_date, progress_callback)
@@ -273,6 +279,23 @@ class TaskManager:
             time.sleep(TICKFLOW_REQUEST_SLEEP_SECONDS)
             return
         time.sleep(MARKET_UPDATE_NON_AKSHARE_SLEEP_SECONDS)
+
+    def _run_market_return_snapshot_phase(
+        self,
+        target_date: str,
+        market_result: Dict[str, object],
+        progress_callback: Optional[Callable[[Optional[int], Optional[str], Optional[str]], None]] = None,
+    ) -> None:
+        logger.info("   >>> [Phase 1.5] 行情区间涨幅快照计算...")
+        self._report_progress(progress_callback, 72, None, "行情区间涨幅快照计算")
+        summary = market_return_snapshot_service.rebuild_for_trade_date(target_date)
+        logger.info(
+            "   -> Phase 1.5 完成: trade_date=%s total=%s upserted=%s null_counts=%s",
+            summary["trade_date"],
+            summary["total"],
+            summary["upserted"],
+            summary["null_counts"],
+        )
 
     def _run_fundamental_phase(
         self,

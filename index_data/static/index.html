@@ -348,12 +348,16 @@
                 <div id="market-panel-market">
                     <table class="data-table fixed-layout" id="market-table-market">
                         <colgroup>
-                            <col class="col-w-15">
                             <col class="col-w-10">
-                            <col class="col-w-20">
-                            <col class="col-w-15">
-                            <col class="col-w-20">
-                            <col class="col-w-20">
+                            <col class="col-w-10">
+                            <col class="col-w-16">
+                            <col class="col-w-10">
+                            <col class="col-w-11">
+                            <col class="col-w-11">
+                            <col class="col-w-11">
+                            <col class="col-w-11">
+                            <col class="col-w-10">
+                            <col class="col-w-10">
                         </colgroup>
                         <thead>
                             <tr>
@@ -361,6 +365,26 @@
                                 <th>代码</th>
                                 <th>名称</th>
                                 <th>收盘价</th>
+                                <th>
+                                    <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_22d">
+                                        <span>近22日涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_60d">
+                                        <span>近60日涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_6m">
+                                        <span>近6个月涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_1y">
+                                        <span>近一年涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
+                                    </button>
+                                </th>
                                 <th>成交量</th>
                                 <th>成交额</th>
                             </tr>
