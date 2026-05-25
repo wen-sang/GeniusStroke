@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Query
+from typing import Optional
+
+from fastapi import APIRouter, Body, Query
 from fastapi.responses import StreamingResponse
 
 from api.error_helpers import raise_client_http_error, raise_internal_http_error
@@ -11,7 +13,8 @@ router = APIRouter(
 
 
 @router.post("/trigger")
-async def trigger_data_sync():
+async def trigger_data_sync(payload: Optional[dict] = Body(default=None)):
+    # Accept an optional body for the frontend retry contract; sync flow stays unchanged.
     try:
         return data_sync_service.trigger_sync()
     except DataSyncAlreadyRunningError as exc:

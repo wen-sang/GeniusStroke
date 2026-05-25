@@ -19,23 +19,75 @@
         <div class="container navbar-content">
             <a href="#" class="logo">GeniusStroke</a>
             <div class="navbar-actions">
-                <button id="navSyncButton" class="nav-sync-btn" type="button" aria-label="数据更新" hidden>
-                    <span class="icon" id="navSyncButtonIcon">⟳</span>
-                    <span id="navSyncButtonLabel">数据更新</span>
+                <button id="navSyncButton" class="sync-btn" type="button" aria-label="数据更新" aria-expanded="false" aria-controls="syncCard" hidden>
+                    <span class="sync-btn-icon" id="navSyncBtnIcon" aria-hidden="true">⟳</span>
+                    <span class="sync-btn-label" id="navSyncBtnLabel">数据更新</span>
+                    <span class="sync-btn-bar" id="navSyncBtnBar" aria-hidden="true">
+                        <span class="sync-btn-bar-fill" id="navSyncBtnBarFill"></span>
+                    </span>
                 </button>
             </div>
         </div>
     </nav>
 
-    <!-- 数据更新进度横幅 -->
-    <div id="dataSyncBanner" class="data-sync-banner" role="status" aria-live="polite">
-        <div class="data-sync-banner-info">
-            <span class="data-sync-banner-pulse" id="dataSyncBannerPulse"></span>
-            <span class="data-sync-banner-text" id="dataSyncBannerText">数据更新中...</span>
-            <span class="data-sync-banner-sub" id="dataSyncBannerSub"></span>
+    <!-- 数据更新状态卡片 -->
+    <div id="syncCard" class="sync-card" role="status" aria-live="polite" aria-label="数据更新状态" hidden>
+        <div class="sync-card-running" id="syncCardRunning" hidden>
+            <div class="sync-card-header">
+                <div class="sync-card-title-row">
+                    <span class="sync-dot" aria-hidden="true"></span>
+                    <span class="sync-card-title">正在更新</span>
+                </div>
+                <span class="sync-card-elapsed" id="syncCardElapsed">0s</span>
+            </div>
+            <div class="sync-progress-track" aria-hidden="true">
+                <div class="sync-progress-fill" id="syncCardProgressFill"></div>
+            </div>
+            <p class="sync-card-desc" id="syncCardDesc">处理中，请稍候</p>
         </div>
-        <div class="data-sync-banner-actions" id="dataSyncBannerActions">
-            <button class="data-sync-banner-btn" id="dataSyncBannerDetailBtn" type="button">查看详情 ▼</button>
+
+        <div class="sync-card-success" id="syncCardSuccess" hidden>
+            <div class="sync-card-header">
+                <div class="sync-card-title-row">
+                    <span class="sync-icon-success" aria-hidden="true">✓</span>
+                    <span class="sync-card-title">更新完成</span>
+                </div>
+                <span class="sync-card-elapsed" id="syncCardSuccessElapsed">--</span>
+            </div>
+            <p class="sync-card-desc" id="syncCardSuccessDesc">-- 个标的已更新</p>
+        </div>
+
+        <div class="sync-card-partial" id="syncCardPartial" hidden>
+            <div class="sync-card-header-warning">
+                <span class="sync-icon-warning" aria-hidden="true">⚠</span>
+                <span class="sync-card-title" id="syncCardPartialTitle">标的未更新</span>
+            </div>
+            <div class="sync-card-divider"></div>
+            <ul class="sync-asset-list" id="syncCardPartialList" aria-label="未更新标的列表"></ul>
+            <div class="sync-card-divider"></div>
+            <p class="sync-card-sub" id="syncCardPartialSub"></p>
+            <div class="sync-card-divider"></div>
+            <button class="sync-action-btn" id="syncRetryBtnPartial" type="button">重新执行</button>
+        </div>
+
+        <div class="sync-card-failed" id="syncCardFailed" hidden>
+            <div class="sync-card-header-danger">
+                <span class="sync-icon-danger" aria-hidden="true">⊗</span>
+                <span class="sync-card-title">更新失败</span>
+            </div>
+            <p class="sync-card-interrupt" id="syncCardInterrupt"></p>
+            <div class="sync-card-divider"></div>
+            <p class="sync-card-list-label">获取失败的标的</p>
+            <ul class="sync-asset-list" id="syncCardFailedList" aria-label="失败标的列表"></ul>
+            <div class="sync-card-divider"></div>
+            <div class="sync-card-actions">
+                <button class="sync-action-btn" id="syncRetryBtnFailed" type="button">重新执行</button>
+                <button class="sync-action-btn sync-action-btn-ghost" id="syncErrorToggleBtn" type="button" aria-expanded="false">查看错误详情 ▾</button>
+            </div>
+            <div class="sync-error-detail" id="syncErrorDetail" hidden>
+                <div class="sync-card-divider-dashed"></div>
+                <div class="sync-error-list" id="syncErrorList" aria-label="错误详情"></div>
+            </div>
         </div>
     </div>
 
@@ -1057,126 +1109,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Data Sync Drawer -->
-    <div id="dataSyncPanelOverlay" class="data-sync-overlay" hidden></div>
-    <aside id="dataSyncPanel" class="data-sync-panel" aria-labelledby="dataSyncPanelTitle" hidden>
-        <div class="data-sync-header">
-            <div class="data-sync-title-wrap">
-                <div class="data-sync-title" id="dataSyncPanelTitle">数据更新</div>
-                <div class="data-sync-subtitle">支持后台执行、步骤跟踪与日志回放</div>
-            </div>
-            <button class="data-sync-close" id="dataSyncCloseButton" type="button" aria-label="关闭">&times;</button>
-        </div>
-        <div class="data-sync-body">
-            <section class="data-sync-section data-sync-overview-card">
-                <div class="data-sync-section-title">任务状态</div>
-                <div class="data-sync-status-row">
-                    <span id="dataSyncStatusBadge" class="data-sync-status-badge">空闲</span>
-                    <span id="dataSyncStepText" class="data-sync-step-text">等待触发</span>
-                </div>
-                <div class="data-sync-meta">
-                    <div class="data-sync-meta-item">
-                        <span class="data-sync-meta-label">任务 ID</span>
-                        <span class="data-sync-meta-value" id="dataSyncTaskId">--</span>
-                    </div>
-                    <div class="data-sync-meta-item">
-                        <span class="data-sync-meta-label">耗时</span>
-                        <span class="data-sync-meta-value" id="dataSyncElapsed">--</span>
-                    </div>
-                    <div class="data-sync-meta-item">
-                        <span class="data-sync-meta-label">开始时间</span>
-                        <span class="data-sync-meta-value" id="dataSyncStartedAt">--</span>
-                    </div>
-                    <div class="data-sync-meta-item">
-                        <span class="data-sync-meta-label">完成时间</span>
-                        <span class="data-sync-meta-value" id="dataSyncFinishedAt">--</span>
-                    </div>
-                </div>
-                <div class="data-sync-progress-track" aria-hidden="true">
-                    <div class="data-sync-progress-bar" id="dataSyncProgressBar"></div>
-                </div>
-            </section>
-
-            <section class="data-sync-section">
-                <div class="data-sync-section-title">阶段进度</div>
-                <div class="data-sync-steps" id="dataSyncSteps">
-                    <div class="data-sync-step-item" data-step="1">
-                        <span class="data-sync-step-index">1</span>
-                        <div class="data-sync-step-content">
-                            <div class="data-sync-step-row">
-                                <span class="data-sync-step-name">环境检查</span>
-                                <span class="data-sync-step-status">待开始</span>
-                            </div>
-                            <div class="data-sync-step-meta">等待执行</div>
-                        </div>
-                    </div>
-                    <div class="data-sync-step-item" data-step="2">
-                        <span class="data-sync-step-index">2</span>
-                        <div class="data-sync-step-content">
-                            <div class="data-sync-step-row">
-                                <span class="data-sync-step-name">数据采集</span>
-                                <span class="data-sync-step-status">待开始</span>
-                            </div>
-                            <div class="data-sync-step-meta">等待执行</div>
-                        </div>
-                    </div>
-                    <div class="data-sync-step-item" data-step="3">
-                        <span class="data-sync-step-index">3</span>
-                        <div class="data-sync-step-content">
-                            <div class="data-sync-step-row">
-                                <span class="data-sync-step-name">指标计算</span>
-                                <span class="data-sync-step-status">待开始</span>
-                            </div>
-                            <div class="data-sync-step-meta">等待执行</div>
-                        </div>
-                    </div>
-                    <div class="data-sync-step-item" data-step="4">
-                        <span class="data-sync-step-index">4</span>
-                        <div class="data-sync-step-content">
-                            <div class="data-sync-step-row">
-                                <span class="data-sync-step-name">资产刷新</span>
-                                <span class="data-sync-step-status">待开始</span>
-                            </div>
-                            <div class="data-sync-step-meta">等待执行</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="data-sync-section">
-                <div class="data-sync-section-title">最近结果</div>
-                <div class="data-sync-summary" id="dataSyncSummary">尚未触发数据更新。</div>
-            </section>
-
-            <section class="data-sync-section data-sync-log-panel">
-                <div class="data-sync-section-head">
-                    <div class="data-sync-section-title">实时日志</div>
-                    <button id="dataSyncToggleLogsButton" class="data-sync-inline-btn" type="button" aria-expanded="false">展开日志</button>
-                </div>
-                <div class="data-sync-log-section" id="dataSyncLogSection">
-                    <div class="data-sync-log-list" id="dataSyncLogList">
-                        <div class="data-sync-empty">等待日志输出...</div>
-                    </div>
-                    <div class="data-sync-log-actions">
-                        <button id="dataSyncScrollToBottom" class="data-sync-inline-btn hidden" type="button">↓ 回到底部</button>
-                    </div>
-                </div>
-            </section>
-
-            <section class="data-sync-section data-sync-error-panel hidden" id="dataSyncErrorDetailSection">
-                <div class="data-sync-section-title">错误详情</div>
-                <div class="data-sync-error-detail" id="dataSyncErrorDetail">当前无错误详情。</div>
-            </section>
-        </div>
-        <div class="data-sync-footer">
-            <div class="data-sync-panel-actions">
-                <button id="dataSyncRetryButton" class="data-sync-action-btn warning" type="button" hidden>重新执行</button>
-                <button id="dataSyncRefreshPageButton" class="data-sync-action-btn primary" type="button" hidden>刷新页面数据</button>
-                <button id="dataSyncCloseFooterButton" class="data-sync-action-btn" type="button">关闭</button>
-            </div>
-        </div>
-    </aside>
 
     <!-- Toasts -->
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>

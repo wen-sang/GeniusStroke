@@ -38,35 +38,3 @@
     align-items: center;
     gap: 12px;
 }
-
-/* F06 data-sync layout contract
- * Scope: layout-only positioning contract for navbar-coupled UI.
- * These selectors intentionally hold only placement/layering behavior.
- */
-.data-sync-banner {
-    position: sticky;
-    top: var(--navbar-height);
-    z-index: 99;
-}
-
-.data-sync-overlay {
-    z-index: 999;
-}
-
-.data-sync-panel {
-    position: fixed;
-    top: var(--navbar-height);
-    right: 0;
-    height: calc(100vh - var(--navbar-height));
-    z-index: 1000;
-}
-
-@media (max-width: 899px) {
-    .data-sync-panel {
-        top: 50%;
-        right: auto;
-        left: 50%;
-        height: auto;
-        max-height: 85vh;
-    }
-}
