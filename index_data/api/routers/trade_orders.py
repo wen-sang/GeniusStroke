@@ -34,6 +34,7 @@ async def get_trade_orders(
     items = []
     for item in result.get("items", []):
         normalized_status = _normalize_status(item.get("status"))
+        realized_return_rate = item.get("realized_return_rate")
         items.append(
             {
                 "row_kind": "trade_order",
@@ -52,6 +53,11 @@ async def get_trade_orders(
                 "commission": float(item.get("commission") or 0.0),
                 "tax": float(item.get("tax") or 0.0),
                 "realized_pnl": float(item.get("realized_pnl") or 0.0),
+                "realized_return_rate": (
+                    float(realized_return_rate)
+                    if realized_return_rate is not None
+                    else None
+                ),
                 "status": normalized_status,
                 "remark": item.get("remark") or "",
                 "source_type": item.get("source_type") or "MANUAL",

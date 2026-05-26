@@ -593,6 +593,22 @@ class TradeQueryOperations:
         for order_data in orders_data:
             Order.from_dict(order_data)
             order_dict = order_data.copy()
+            realized_pnl_raw = order_dict.get("realized_pnl")
+            realized_return_rate = None
+            if (
+                order_dict.get("side") == "SELL"
+                and int(order_dict.get("status") or 0) == 1
+                and order_dict.get("link_order_id")
+                and realized_pnl_raw is not None
+            ):
+                realized_pnl = float(realized_pnl_raw)
+                amount = float(order_dict.get("amount") or 0.0)
+                commission = float(order_dict.get("commission") or 0.0)
+                tax = float(order_dict.get("tax") or 0.0)
+                realized_cost_basis = amount - commission - tax - realized_pnl
+                if realized_cost_basis > 0:
+                    realized_return_rate = realized_pnl / realized_cost_basis
+            order_dict["realized_return_rate"] = realized_return_rate
             order_dict["realized_pnl"] = order_dict.get("realized_pnl") or 0.0
             order_dict["commission"] = order_dict.get("commission") or 0.0
             order_dict["tax"] = order_dict.get("tax") or 0.0

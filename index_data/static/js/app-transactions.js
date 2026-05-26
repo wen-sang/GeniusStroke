@@ -903,6 +903,24 @@ function getTradeOrderAmountText(item) {
     return formatCurrency(item.amount);
 }
 
+function hasTradeOrderRealizedResult(item) {
+    return item.side === 'SELL'
+        && item.status === 'ACTIVE'
+        && item.realized_return_rate !== null
+        && item.realized_return_rate !== undefined
+        && Number.isFinite(Number(item.realized_return_rate));
+}
+
+function getTradeOrderRealizedPnlText(item) {
+    if (!hasTradeOrderRealizedResult(item)) return '--';
+    return formatCurrency(item.realized_pnl);
+}
+
+function getTradeOrderRealizedReturnRateText(item) {
+    if (!hasTradeOrderRealizedResult(item)) return '--';
+    return formatPercent(item.realized_return_rate);
+}
+
 function getTradeOrderActionHtml(item) {
     if (item.editable_via === 'trade') {
         return `<a href="javascript:void(0)" data-action="edit-transaction" data-id="${item.row_id}" style="color: var(--primary); text-decoration: none; font-size: 13px;">修改</a>`;
@@ -979,7 +997,7 @@ async function loadTradeOrders(loadContext = null, append = false) {
     if (!append) {
         resetPaginationState('transaction_orders');
         state.tradeOrders = [];
-        renderTableStatusRow(tbody, 10, '加载中...');
+        renderTableStatusRow(tbody, 12, '加载中...');
     } else {
         setPaginationLoading('transaction_orders', true);
     }
@@ -990,14 +1008,14 @@ async function loadTradeOrders(loadContext = null, append = false) {
         listPaginationState.transaction_orders.loading = false;
         updatePaginationUI('transaction_orders');
         if (!append) {
-            renderTableStatusRow(tbody, 10, '暂无记录', { padded: true });
+            renderTableStatusRow(tbody, 12, '暂无记录', { padded: true });
         }
         return;
     }
 
     const items = applyPaginatedResult('transaction_orders', result, append);
     if (!append && items.length === 0) {
-        renderTableStatusRow(tbody, 10, '暂无记录', { padded: true });
+        renderTableStatusRow(tbody, 12, '暂无记录', { padded: true });
         return;
     }
 
@@ -1010,6 +1028,8 @@ async function loadTradeOrders(loadContext = null, append = false) {
             <td class="number">${escapeHtml(String(getTradeOrderPriceText(item)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderQuantityText(item)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderAmountText(item)))}</td>
+            <td class="number">${escapeHtml(String(getTradeOrderRealizedPnlText(item)))}</td>
+            <td class="number">${escapeHtml(String(getTradeOrderRealizedReturnRateText(item)))}</td>
             <td class="center">${getCorporateActionStatusChip(item.status || 'ACTIVE')}</td>
             <td class="transaction-remark-cell" title="${escapeHtmlAttr(item.remark || '')}">${item.remark ? escapeHtml(item.remark) : '--'}</td>
             <td class="center">${getTradeOrderActionHtml(item)}</td>
