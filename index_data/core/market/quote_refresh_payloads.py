@@ -23,10 +23,7 @@ QUOTE_NUMERIC_FIELDS = (
     "low",
     "volume",
     "amount",
-    "amplitude",
     "change_pct",
-    "change_amt",
-    "turnover",
 )
 
 
@@ -127,10 +124,7 @@ def build_response(item: dict, source: str) -> dict:
         "low": to_native_number(sanitized_item.get("low")),
         "volume": to_native_number(sanitized_item.get("volume")),
         "amount": to_native_number(sanitized_item.get("amount")),
-        "amplitude": to_native_number(sanitized_item.get("amplitude")),
         "change_pct": to_native_number(sanitized_item.get("change_pct")),
-        "change_amt": to_native_number(sanitized_item.get("change_amt")),
-        "turnover": to_native_number(sanitized_item.get("turnover")),
         "is_realtime": bool(sanitized_item.get("is_realtime")),
         "date": to_native_text(sanitized_item.get("quote_date")),
         "refreshed_at": to_native_text(sanitized_item.get("refreshed_at")),

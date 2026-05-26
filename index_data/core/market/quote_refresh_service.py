@@ -112,10 +112,7 @@ class QuoteRefreshService:
                     "low": getattr(quote, "low", None),
                     "volume": getattr(quote, "volume", None),
                     "amount": getattr(quote, "amount", None),
-                    "amplitude": getattr(quote, "amplitude", None),
                     "change_pct": getattr(quote, "change_pct", None),
-                    "change_amt": getattr(quote, "change_amt", None),
-                    "turnover": getattr(quote, "turnover", None),
                 },
             )
         return result
@@ -150,10 +147,7 @@ class QuoteRefreshService:
                         "low": self._row_value(last_row, "low"),
                         "volume": self._row_value(last_row, "volume"),
                         "amount": self._row_value(last_row, "amount"),
-                        "amplitude": self._row_value(last_row, "amplitude"),
                         "change_pct": self._row_value(last_row, "change_pct"),
-                        "change_amt": self._row_value(last_row, "change_amt"),
-                        "turnover": self._row_value(last_row, "turnover"),
                     },
                 )
             except Exception:

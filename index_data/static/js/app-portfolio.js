@@ -11,7 +11,7 @@ async function loadPositions(loadContext = null, append = false) {
         resetPaginationState('positions');
         state.currentPositionCodes = [];
         setPositionsRefreshButtonState({ disabled: true, loading: false });
-        renderTableStatusRow(tbody, 16, '加载中...');
+        renderTableStatusRow(tbody, 13, '加载中...');
     } else {
         setPaginationLoading('positions', true);
     }
@@ -23,7 +23,7 @@ async function loadPositions(loadContext = null, append = false) {
         listPaginationState.positions.loading = false;
         updatePaginationUI('positions');
         if (!append) {
-            renderTableStatusRow(tbody, 16, '加载失败，请稍后重试', { padded: true });
+            renderTableStatusRow(tbody, 13, '加载失败，请稍后重试', { padded: true });
         }
         return;
     }
@@ -31,7 +31,7 @@ async function loadPositions(loadContext = null, append = false) {
     const positions = applyPaginatedResult('positions', result, append);
 
     if (!append && positions.length === 0) {
-        renderTableStatusRow(tbody, 16, '暂无持仓', { padded: true });
+        renderTableStatusRow(tbody, 13, '暂无持仓', { padded: true });
         return;
     }
 
@@ -51,9 +51,6 @@ async function loadPositions(loadContext = null, append = false) {
             <td class="history-total-pnl number center">${formatCurrency(p.history_total_pnl)}</td>
             <td class="volume number center">--</td>
             <td class="amount number center">--</td>
-            <td class="amplitude number center">--</td>
-            <td class="change-amt number center">--</td>
-            <td class="turnover number center">--</td>
             <td class="quote-date center">${formatTimestampCell(p.updated_at)}</td>
             <td class="center row-action-cell">
                 <button
@@ -218,23 +215,6 @@ async function updateRealTimePrices(codes, loadContext = null, prefetchedResult 
             const amountEl = row.querySelector('.amount');
             if (amountEl && hasQuoteValue(quote.amount)) amountEl.textContent = formatAmount(quote.amount);
 
-            const amplitudeEl = row.querySelector('.amplitude');
-            if (amplitudeEl && hasQuoteValue(quote.amplitude)) {
-                amplitudeEl.textContent = formatQuotePercent(quote.amplitude);
-                amplitudeEl.style.color = getColor(quote.amplitude);
-            }
-
-            const changeAmtEl = row.querySelector('.change-amt');
-            if (changeAmtEl && hasQuoteValue(quote.change_amt)) {
-                changeAmtEl.textContent = formatSignedNumber(quote.change_amt);
-                changeAmtEl.style.color = getColor(quote.change_amt);
-            }
-
-            const turnoverEl = row.querySelector('.turnover');
-            if (turnoverEl && hasQuoteValue(quote.turnover)) {
-                turnoverEl.textContent = formatQuotePercent(quote.turnover);
-            }
-
             const dateEl = row.querySelector('.quote-date');
             if (dateEl && (quote.refreshed_at || quote.date)) {
                 dateEl.innerHTML = formatTimestampCell(quote.refreshed_at || quote.date);
@@ -333,13 +313,6 @@ function formatQuotePercent(value) {
     if (value === null || value === undefined || isNaN(value)) return '--';
     const sign = value > 0 ? '+' : '';
     return `${sign}${Number(value).toFixed(2)}%`;
-}
-
-function formatSignedNumber(value, decimals = 2) {
-    if (value === null || value === undefined || isNaN(value)) return '--';
-    const num = Number(value);
-    const sign = num > 0 ? '+' : '';
-    return `${sign}${formatNumber(num, decimals)}`;
 }
 
 function getColor(val) {

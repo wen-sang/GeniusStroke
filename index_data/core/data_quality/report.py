@@ -74,6 +74,7 @@ RULE_CODE_LABELS = {
     "CALENDAR_COVERAGE_INSUFFICIENT": "交易日历覆盖不足",
     "CALENDAR_INVALID_IS_OPEN": "日历开市标记非法",
     "NON_TRADING_DAY_BAR": "非交易日存在行情",
+    "MISSING_TRADING_DAY_BAR": "交易日无行情数据",
     "KEY_FIELD_MISSING": "关键字段缺失",
     "DATE_FORMAT_INVALID": "日期格式无效",
     "PRICE_NON_POSITIVE": "价格非正",

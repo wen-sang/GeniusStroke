@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
+from datetime import timedelta
 
 from core.data_quality.models import EntityType
 from core.data_quality.models import IssueGroup
@@ -10,6 +12,7 @@ from core.data_quality.rules.common import is_valid_date
 from core.data_quality.rules.common import issue
 from core.data_quality.rules.common import market_entity_id
 from core.data_quality.rules.common import resolve_source_id
+from core.data_quality.rules.common import source_distribution
 from core.data_quality.rules.common import valid_exchange
 
 
@@ -29,6 +32,14 @@ def scan(
     )
     issues.extend(
         _scan_invalid_is_open(rows, calendar_rows, scan_batch_id, detected_at)
+    )
+    issues.extend(
+        _scan_missing_trading_day_bar(
+            rows,
+            calendar_by_key,
+            scan_batch_id,
+            detected_at,
+        )
     )
 
     for row in rows:
@@ -109,11 +120,25 @@ def _scan_coverage(
         market_max = max(market_dates)
         calendar_min = min(calendar_dates) if calendar_dates else None
         calendar_max = max(calendar_dates) if calendar_dates else None
+        range_covered = (
+            calendar_min is not None
+            and calendar_max is not None
+            and market_min >= calendar_min
+            and market_max <= calendar_max
+        )
+        missing_calendar_dates = []
+        if range_covered:
+            missing_calendar_dates = _missing_natural_dates(
+                calendar_dates,
+                market_min,
+                market_max,
+            )
         if (
             calendar_min is None
             or calendar_max is None
             or market_min < calendar_min
             or market_max > calendar_max
+            or missing_calendar_dates
         ):
             detail = {
                 "exchange": exchange,
@@ -125,6 +150,15 @@ def _scan_coverage(
                     exchange_rows
                 )["source_distribution"],
             }
+            if missing_calendar_dates:
+                detail.update(
+                    {
+                        "coverage_violation": "internal_calendar_gap",
+                        "missing_date_count": len(missing_calendar_dates),
+                        "missing_calendar_dates": missing_calendar_dates,
+                        "missing_calendar_dates_truncated": False,
+                    }
+                )
             issues.append(
                 issue(
                     scan_batch_id,
@@ -139,6 +173,83 @@ def _scan_coverage(
                     f"{calendar_min}..{calendar_max}",
                     detail,
                     source_id=resolve_source_id(exchange_rows),
+                )
+            )
+    return issues
+
+
+def _scan_missing_trading_day_bar(
+    rows: list[dict],
+    calendar_by_key: dict[tuple, dict],
+    scan_batch_id: str,
+    detected_at: str,
+) -> list:
+    rows_by_asset = defaultdict(list)
+    for row in rows:
+        asset_code = row.get("asset_code")
+        if not asset_code:
+            continue
+        rows_by_asset[asset_code].append(row)
+
+    issues = []
+    for asset_code, asset_rows in rows_by_asset.items():
+        first_row = asset_rows[0]
+        exchange = first_row.get("exchange")
+        listing_date = first_row.get("listing_date")
+        if not valid_exchange(exchange) or not is_valid_date(listing_date):
+            continue
+
+        trade_dates = {
+            row.get("trade_date")
+            for row in asset_rows
+            if is_valid_date(row.get("trade_date"))
+        }
+        if not trade_dates:
+            continue
+
+        asset_min_trade_date = min(trade_dates)
+        asset_max_trade_date = max(trade_dates)
+        effective_start_date = max(listing_date, asset_min_trade_date)
+        if effective_start_date > asset_max_trade_date:
+            continue
+
+        for calendar_date in _date_range(
+            effective_start_date,
+            asset_max_trade_date,
+        ):
+            calendar_row = calendar_by_key.get((exchange, calendar_date))
+            if calendar_row is None or calendar_row.get("is_open") != 1:
+                continue
+            if calendar_date in trade_dates:
+                continue
+            issues.append(
+                issue(
+                    scan_batch_id,
+                    detected_at,
+                    EntityType.ASSET,
+                    asset_code,
+                    "MISSING_TRADING_DAY_BAR",
+                    IssueSeverity.WARN,
+                    IssueGroup.CALENDAR,
+                    "trade_date",
+                    "missing bar",
+                    "market bar exists on open trading day",
+                    {
+                        "exchange": exchange,
+                        "calendar_date": calendar_date,
+                        "listing_date": listing_date,
+                        "asset_min_trade_date": asset_min_trade_date,
+                        "asset_max_trade_date": asset_max_trade_date,
+                        "effective_start_date": effective_start_date,
+                        "is_open": 1,
+                        "source_distribution": source_distribution(asset_rows),
+                        "missing_reason": (
+                            "open_trading_day_without_market_row"
+                        ),
+                    },
+                    asset_code=asset_code,
+                    trade_date=calendar_date,
+                    source_id=None,
                 )
             )
     return issues
@@ -198,3 +309,27 @@ def _scan_invalid_is_open(
             )
         )
     return issues
+
+
+def _missing_natural_dates(
+    calendar_dates: list[str],
+    start_date: str,
+    end_date: str,
+) -> list[str]:
+    calendar_set = set(calendar_dates)
+    return [
+        candidate
+        for candidate in _date_range(start_date, end_date)
+        if candidate not in calendar_set
+    ]
+
+
+def _date_range(start_date: str, end_date: str) -> list[str]:
+    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end = datetime.strptime(end_date, "%Y-%m-%d").date()
+    result = []
+    current = start
+    while current <= end:
+        result.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+    return result
