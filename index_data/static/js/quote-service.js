@@ -12,7 +12,7 @@
         return Array.from(unique).slice(0, 50);
     }
 
-    function chunkCodes(codes, chunkSize = 3) {
+    function chunkCodes(codes, chunkSize = 5) {
         const normalized = normalizeCodes(codes);
         const chunks = [];
         for (let i = 0; i < normalized.length; i += chunkSize) {
@@ -55,7 +55,7 @@
             if (quote.source === 'cache') summary.cache += 1;
             if (quote.source === 'stale_cache') summary.staleCache += 1;
             if (quote.origin_source === 'market_db_fallback' || quote.source === 'market_db_fallback') summary.fallback += 1;
-            if (quote.origin_source === 'efinance' && quote.source !== 'cache' && quote.source !== 'stale_cache') summary.realtime += 1;
+            if ((quote.origin_source === 'efinance' || quote.origin_source === 'tickflow' || quote.source === 'tickflow') && quote.source !== 'cache' && quote.source !== 'stale_cache') summary.realtime += 1;
         });
 
         return summary;

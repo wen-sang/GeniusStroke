@@ -47,6 +47,8 @@ class AssetType:
     INDEX = 'INDEX'
     STOCK = 'STOCK'
     ETF = 'ETF'
+    LOF = 'LOF'
+    FUND = 'FUND'
 
 
 class Exchange:

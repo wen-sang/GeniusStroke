@@ -111,6 +111,7 @@ class ImportRebuildDAO(BaseDAO):
         asset_name: str,
         exchange: str,
         listing_date: Optional[str],
+        asset_type: str = 'ETF',
         conn=None,
     ) -> None:
         """导入重建专用资产元数据 upsert。"""
@@ -118,15 +119,16 @@ class ImportRebuildDAO(BaseDAO):
         INSERT INTO sys_asset_meta (
             asset_code, asset_name, asset_type, exchange, listing_date,
             is_active, market_category
-        ) VALUES (?, ?, 'ETF', ?, ?, 1, 'EXCHANGE')
+        ) VALUES (?, ?, ?, ?, ?, 1, 'EXCHANGE')
         ON CONFLICT(asset_code) DO UPDATE SET
             asset_name = excluded.asset_name,
+            asset_type = excluded.asset_type,
             exchange = COALESCE(excluded.exchange, sys_asset_meta.exchange),
             listing_date = COALESCE(excluded.listing_date, sys_asset_meta.listing_date),
             is_active = 1,
             market_category = 'EXCHANGE'
         """
-        params = (asset_code, asset_name, exchange, listing_date)
+        params = (asset_code, asset_name, asset_type, exchange, listing_date)
         if conn is not None:
             conn.execute(sql, params)
             return

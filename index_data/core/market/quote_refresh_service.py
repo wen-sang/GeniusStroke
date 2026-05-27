@@ -35,11 +35,29 @@ class QuoteRefreshService:
         market_dao_inst=market_dao,
         efinance_adapter_inst=efinance_adapter,
         ttl_seconds: Optional[int] = None,
+        tickflow_adapter_inst=None,
+        asset_meta_dao_inst=None,
+        tickflow_limiter_inst=None,
     ):
         self.cache_dao = cache_dao
         self.market_dao = market_dao_inst
         self.efinance_adapter = efinance_adapter_inst
         self.ttl_seconds = ttl_seconds or settings.EFINANCE_REFRESH_TTL_SECONDS
+        
+        if tickflow_adapter_inst is None:
+            from data_provider.tickflow_adapter import TickFlowAdapter
+            tickflow_adapter_inst = TickFlowAdapter()
+        self.tickflow_adapter = tickflow_adapter_inst
+        
+        if asset_meta_dao_inst is None:
+            from dao.meta_dao import meta_dao
+            asset_meta_dao_inst = meta_dao
+        self.asset_meta_dao = asset_meta_dao_inst
+        
+        if tickflow_limiter_inst is None:
+            from data_provider.tickflow_adapter import tickflow_limiter
+            tickflow_limiter_inst = tickflow_limiter
+        self.tickflow_limiter = tickflow_limiter_inst
 
     def get_quotes(self, codes: List[str], force_refresh: bool = False) -> Dict[str, dict]:
         return self.get_quotes_payload(codes, force_refresh=force_refresh)["quotes"]
@@ -61,13 +79,40 @@ class QuoteRefreshService:
 
         result = self._build_cached_results(normalized_codes, cached_quotes, stale_code_set)
         unresolved_codes = list(stale_codes)
-        unresolved_codes = self._refresh_quote_stage(
-            unresolved_codes,
-            cached_quotes,
-            result,
-            default_source="efinance",
-            loader=self.refresh_quotes_from_efinance,
-        )
+        
+        final_unresolved = []
+        if unresolved_codes:
+            meta_map = self.asset_meta_dao.get_quote_route_meta_batch(unresolved_codes)
+            etf_codes = []
+            other_codes = []
+            for code in unresolved_codes:
+                m = meta_map.get(code, {})
+                if m.get("asset_type") == "ETF":
+                    etf_codes.append(code)
+                else:
+                    other_codes.append(code)
+                    
+            if etf_codes:
+                unresolved_etf = self._refresh_quote_stage(
+                    etf_codes,
+                    cached_quotes,
+                    result,
+                    default_source="tickflow",
+                    loader=lambda missing: self._fetch_tickflow_realtime(missing, meta_map),
+                )
+                final_unresolved.extend(unresolved_etf)
+                
+            if other_codes:
+                unresolved_other = self._refresh_quote_stage(
+                    other_codes,
+                    cached_quotes,
+                    result,
+                    default_source="efinance",
+                    loader=self.refresh_quotes_from_efinance,
+                )
+                final_unresolved.extend(unresolved_other)
+                
+        unresolved_codes = final_unresolved
         unresolved_codes = self._refresh_quote_stage(
             unresolved_codes,
             cached_quotes,
@@ -89,6 +134,47 @@ class QuoteRefreshService:
             refresh_context=refresh_context,
             force_refresh=force_refresh,
         )
+
+    def _fetch_tickflow_realtime(self, codes: List[str], meta_map: Dict[str, dict]) -> Dict[str, dict]:
+        normalized_codes = self._normalize_codes(codes)
+        if not normalized_codes:
+            return {}
+        
+        symbol_items = []
+        for code in normalized_codes:
+            m = meta_map.get(code, {})
+            symbol_items.append({
+                "asset_code": code,
+                "exchange": m.get("exchange"),
+                "route_source_id": m.get("route_source_id"),
+                "source_code": m.get("source_code"),
+            })
+            
+        try:
+            now = self._now_text()
+            quotes = self.tickflow_adapter.fetch_realtime(symbol_items) or {}
+            result = {}
+            for code, q in quotes.items():
+                result[code] = build_quote_snapshot(
+                    code=code,
+                    asset_name=q.get("asset_name"),
+                    quote_date=q.get("quote_date"),
+                    source="tickflow",
+                    is_realtime=True,
+                    now=now,
+                    values={
+                        "price": q.get("price"),
+                        "high": q.get("high"),
+                        "low": q.get("low"),
+                        "volume": q.get("volume"),
+                        "amount": q.get("amount"),
+                        "change_pct": q.get("change_pct"),
+                    },
+                )
+            return result
+        except Exception:
+            self._log_refresh_stage_failure("tickflow_realtime", codes=normalized_codes)
+            return {}
 
     def refresh_quotes_from_efinance(self, codes: List[str]) -> Dict[str, dict]:
         normalized_codes = self._normalize_codes(codes)

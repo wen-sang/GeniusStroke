@@ -450,12 +450,14 @@ class AccountImportRebuilder:
         asset_name: str,
         exchange: str,
         listing_date: Optional[str],
-        conn,
+        asset_type: str = 'ETF',
+        conn=None,
     ) -> None:
         import_rebuild_dao.upsert_import_asset_meta(
             asset_code=asset_code,
             asset_name=asset_name,
             exchange=exchange,
             listing_date=listing_date,
+            asset_type=asset_type,
             conn=conn,
         )

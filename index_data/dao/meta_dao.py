@@ -118,5 +118,43 @@ class MetaDAO(BaseDAO):
             conn.execute(sql, (asset_code, asset_name, asset_type, 
                                market_category, exchange, listing_date, is_active))
 
+    def get_quote_route_meta_batch(self, asset_codes: List[str]) -> dict:
+        """批量获取行情的路由元数据（按标的和类型规则，选出最高优先级）。"""
+        if not asset_codes:
+            return {}
+        
+        placeholders = ",".join(["?"] * len(asset_codes))
+        sql = f"""
+        SELECT
+            m.asset_code,
+            m.asset_type,
+            m.exchange,
+            r.source_code,
+            r.source_id AS route_source_id,
+            r.priority,
+            CASE WHEN r.asset_code IS NOT NULL THEN 0 ELSE 1 END AS route_rank
+        FROM sys_asset_meta m
+        LEFT JOIN sys_data_router r
+          ON r.interface = 'daily_bar'
+         AND (
+              r.asset_code = m.asset_code
+              OR (r.asset_code IS NULL AND r.asset_type = m.asset_type)
+         )
+        WHERE m.asset_code IN ({placeholders})
+        ORDER BY m.asset_code, route_rank ASC, r.priority ASC
+        """
+        
+        result = {}
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, asset_codes)
+            columns = [column[0] for column in cursor.description]
+            for row in cursor.fetchall():
+                row_dict = dict(zip(columns, row))
+                code = row_dict["asset_code"]
+                if code not in result:
+                    result[code] = row_dict
+        return result
+
 
 meta_dao = MetaDAO()

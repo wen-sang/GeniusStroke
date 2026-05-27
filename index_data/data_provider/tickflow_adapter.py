@@ -1,5 +1,8 @@
 import datetime
 import importlib
+import time
+import threading
+import re
 from typing import Any
 
 import pandas as pd
@@ -10,10 +13,34 @@ from config.settings import (
     TICKFLOW_KLINE_COUNT_LIMIT,
     TICKFLOW_MAX_RETRIES,
     TICKFLOW_TIMEOUT_SECONDS,
+    TICKFLOW_REALTIME_REQUEST_SLEEP_SECONDS,
+    TICKFLOW_REALTIME_MAX_CODES_PER_REQUEST,
 )
 from utils.exceptions import DataFetchError
 from utils.validators import validate_asset_code, validate_date_range
+from utils.logger import logger
 from .base import BaseDataProvider
+
+TICKFLOW_SYMBOL_PATTERN = re.compile(r"^\d{6}\.(SH|SZ|BJ)$")
+
+class TickFlowRealtimeLimiter:
+    def __init__(self, interval_seconds, clock=time.monotonic, sleeper=time.sleep):
+        self.interval_seconds = interval_seconds
+        self.clock = clock
+        self.sleeper = sleeper
+        self._lock = threading.Lock()
+        self._last_request_at = 0.0
+
+    def wait_turn(self):
+        with self._lock:
+            now = self.clock()
+            elapsed = now - self._last_request_at
+            if elapsed < self.interval_seconds:
+                sleep_time = self.interval_seconds - elapsed
+                self.sleeper(sleep_time)
+            self._last_request_at = self.clock()
+
+tickflow_limiter = TickFlowRealtimeLimiter(TICKFLOW_REALTIME_REQUEST_SLEEP_SECONDS)
 
 
 class TickFlowAdapter(BaseDataProvider):
@@ -21,6 +48,111 @@ class TickFlowAdapter(BaseDataProvider):
 
     def __init__(self, client: Any | None = None):
         self._client = client
+
+    def fetch_realtime(
+        self,
+        symbol_items: list[dict],
+    ) -> dict[str, dict]:
+        """
+        批量获取实时行情。
+        输入项格式: {"asset_code": "...", "exchange": "...", "route_source_id": "...", "source_code": "..."}
+        """
+        if not symbol_items:
+            return {}
+            
+        if not TICKFLOW_API_KEY:
+            raise DataFetchError("TickFlow realtime requires TICKFLOW_API_KEY")
+
+        symbols = []
+        code_map = {}
+        for item in symbol_items:
+            asset_code = item["asset_code"]
+            route_source_id = item.get("route_source_id")
+            source_code = item.get("source_code")
+            exchange = item.get("exchange")
+
+            if route_source_id == "tickflow" and source_code and TICKFLOW_SYMBOL_PATTERN.match(source_code):
+                symbol = source_code
+            else:
+                if not exchange:
+                    continue
+                symbol = f"{asset_code}.{exchange}"
+            
+            symbols.append(symbol)
+            code_map[symbol] = asset_code
+
+        if not symbols:
+            return {}
+            
+        chunk_size = TICKFLOW_REALTIME_MAX_CODES_PER_REQUEST
+        result = {}
+        
+        for i in range(0, len(symbols), chunk_size):
+            chunk_symbols = symbols[i:i + chunk_size]
+            tickflow_limiter.wait_turn()
+
+            try:
+                raw_data = self._get_client().quotes.get(
+                    symbols=chunk_symbols,
+                    as_dataframe=False
+                )
+            except Exception as exc:
+                if self._is_rate_limit_error(exc):
+                    raise DataFetchError(f"TickFlow rate limit while fetching realtime") from exc
+                if self._is_timeout_error(exc):
+                    raise DataFetchError(f"TickFlow timeout while fetching realtime") from exc
+                if self._is_connection_error(exc):
+                    raise DataFetchError(f"TickFlow connection error while fetching realtime") from exc
+                if exc.__class__.__name__ in ("AuthenticationError", "PermissionError", "QuotaExhaustedError"):
+                    logger.error(f"TickFlow auth/permission error: {exc}")
+                    raise DataFetchError(f"TickFlow permission error") from exc
+                raise DataFetchError(f"Failed to fetch realtime data from TickFlow") from exc
+
+            if isinstance(raw_data, pd.DataFrame):
+                items = [row.to_dict() for _, row in raw_data.iterrows()]
+            else:
+                items = raw_data if isinstance(raw_data, list) else (raw_data.values() if isinstance(raw_data, dict) else [])
+            
+            for q in items:
+                sym = q.get("symbol")
+                if not sym or sym not in code_map:
+                    continue
+                asset_code = code_map[sym]
+                
+                last_price = q.get("last_price")
+                prev_close = q.get("prev_close")
+                ext = q.get("ext", {}) if isinstance(q.get("ext"), dict) else {}
+                
+                change_pct = ext.get("change_pct") if ext else q.get("ext.change_pct")
+                if change_pct is not None:
+                    change_pct = change_pct * 100
+                elif last_price is not None and prev_close and float(prev_close) > 0:
+                    change_pct = (last_price - prev_close) / float(prev_close) * 100
+                
+                quote_date = q.get("trade_date") or q.get("date") or q.get("timestamp")
+                if quote_date and isinstance(quote_date, (int, float)):
+                    ts_val = float(quote_date)
+                    if ts_val > 2e9:
+                        ts_val /= 1000.0
+                    quote_date = datetime.datetime.fromtimestamp(ts_val).strftime("%Y-%m-%d")
+                
+                asset_name = ext.get("name") if ext else q.get("ext.name")
+                if not asset_name:
+                    asset_name = q.get("name")
+                
+                result[asset_code] = {
+                    "symbol": sym,
+                    "price": last_price,
+                    "high": q.get("high"),
+                    "low": q.get("low"),
+                    "volume": q.get("volume"),
+                    "amount": q.get("amount"),
+                    "asset_name": asset_name,
+                    "change_pct": change_pct,
+                    "quote_date": str(quote_date)[:10] if quote_date else None,
+                }
+        
+        return result
 
     @staticmethod
     def build_symbol(

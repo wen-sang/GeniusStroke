@@ -55,8 +55,8 @@ class FundamentalManager:
             code = asset['asset_code']
             asset_type = asset.get('asset_type', 'INDEX')
 
-            # [新增] 过滤 ETF 标的，因为理杏仁基本面接口不支持
-            if asset_type == 'ETF':
+            # [新增] 过滤 ETF/LOF/FUND 标的，因为理杏仁基本面接口不支持
+            if asset_type in ('ETF', 'LOF', 'FUND'):
                 continue
 
             # [数据源熔断] 非 lixinren 数据源直接跳过

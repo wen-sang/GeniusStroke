@@ -106,7 +106,8 @@ class FundDailyManager:
                     'code': code,
                     'start_date': start_date,
                     'target_date': target_date,
-                    'exchange': self.exchange_map.get(code, 'SH')
+                    'exchange': self.exchange_map.get(code, 'SH'),
+                    'asset_type': asset.get('asset_type', 'ETF')
                 })
         
         # 4. 执行更新
@@ -126,7 +127,7 @@ class FundDailyManager:
             code = task['code']
             s_date = task['start_date']
             t_date = task['target_date']
-            exchange = task['exchange']
+            asset_type = task.get('asset_type', AssetType.ETF)
             
             progress = f"[{i+1}/{len(update_queue)}]"
             
@@ -135,7 +136,7 @@ class FundDailyManager:
                     DataSource.LIXINREN,
                     interface_type=DataInterface.NET_VALUE,
                     exchange=exchange,
-                    asset_type=AssetType.ETF,
+                    asset_type=asset_type,
                 )
                 
                 # 分段拉取（理杏仁限制不超过10年）

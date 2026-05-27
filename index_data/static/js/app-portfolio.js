@@ -225,7 +225,7 @@ async function updateRealTimePrices(codes, loadContext = null, prefetchedResult 
         }
     };
 
-    const chunks = window.quoteService.chunkCodes(codes, 3);
+    const chunks = window.quoteService.chunkCodes(codes, 5);
     const aggregated = {
         summary: { total: 0, cache: 0, realtime: 0, staleCache: 0, fallback: 0 },
         meta: null,

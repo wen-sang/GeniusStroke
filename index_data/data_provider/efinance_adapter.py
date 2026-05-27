@@ -89,7 +89,7 @@ class EfinanceAdapter(BaseDataProvider):
             
             return df
         except Exception as e:
-            logger.error(f"efinance 请求失败: {asset_code} - {e}")
+            logger.warning(f"efinance 请求失败: {asset_code} - {e}")
             return None
     
     def parse(self, raw_data: Any, **kwargs) -> pd.DataFrame:

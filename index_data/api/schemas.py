@@ -3,7 +3,7 @@ from typing import Optional
 
 class AssetBase(BaseModel):
     asset_name: str = Field(..., description="资产名称")
-    asset_type: str = Field(default="INDEX", description="资产类型(INDEX/ETF/STOCK/FUND)")
+    asset_type: str = Field(default="INDEX", description="资产类型(INDEX/ETF/STOCK/FUND/LOF)")
     exchange: Optional[str] = Field(None, description="交易所(SH/SZ/HK)")
     listing_date: Optional[str] = Field(None, description="上市日期 YYYY-MM-DD")
     market_category: str = Field(default="EXCHANGE", description="市场类别(EXCHANGE/OTC)")
