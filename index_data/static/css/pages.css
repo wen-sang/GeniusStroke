@@ -661,7 +661,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 8px;
     width: 100%;
     border: 0;
     padding: 0;
@@ -672,30 +672,33 @@
 }
 
 .sort-arrows {
-    position: relative;
     display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
     width: 8px;
-    height: 12px;
+    height: 14px;
     flex: 0 0 auto;
+    margin-left: 4px;
 }
 
 .sort-arrows::before,
 .sort-arrows::after {
-    position: absolute;
-    left: 0;
     color: var(--text-tertiary);
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1;
+    transform: scale(0.65);
+    transform-origin: center;
 }
 
 .sort-arrows::before {
     content: "▲";
-    top: -1px;
 }
 
 .sort-arrows::after {
     content: "▼";
-    bottom: -1px;
+    margin-top: -3px;
 }
 
 .table-sort-button.is-active[data-sort-order="asc"] .sort-arrows::before,
@@ -1085,10 +1088,10 @@
     width: 30%;
 }
 
-/* v2.8: 已移除重复定义，统一使用上方 line 681-687 的定�?*/
-/* ==================== 侧边栏样�?==================== */
+/* v2.8: 已移除重复定义，统一使用上方 line 681-687 的定?*/
+/* ==================== 侧边栏样?==================== */
 /* 交易类型 Tab */
-/* 交易侧边栏表单网�?*/
+/* 交易侧边栏表单网?*/
 .trade-form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1108,7 +1111,7 @@
     grid-template-columns: 1fr;
 }
 
-/* 总计�?*/
+/* 总计?*/
 .trade-total-row {
     display: flex;
     justify-content: space-between;
@@ -1141,7 +1144,7 @@
     display: block;
     font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 8px;   /* TV 对标：label→input 4�? */
+    margin-bottom: 8px;   /* TV 对标：label→input 4? */
     font-weight: 500;
 }
 
@@ -1194,11 +1197,11 @@
     margin-top: var(--space-xs);
 }
 
-/* ── 侧边栏底部确认按�?── */
+/* ── 侧边栏底部确认按?── */
 /* 买入状态（默认）：红色背景 */
-/* 卖出状态：JS 切换 .is-sell �?*/
-/* 加载�?禁用 */
-/* ==================== 估值颜�?==================== */
+/* 卖出状态：JS 切换 .is-sell ?*/
+/* 加载?禁用 */
+/* ==================== 估值颜?==================== */
 .val-low {
     color: var(--down-green);
     font-weight: 600;
@@ -1265,7 +1268,7 @@
     line-height: 1.4;
 }
 
-/* 卖出按钮 - 红色�?*/
+/* 卖出按钮 - 红色?*/
 .tv-side-btn.sell {
     color: #f23645;
 }
@@ -1275,7 +1278,7 @@
     color: #f23645;
 }
 
-/* 买入按钮 - 蓝色�?*/
+/* 买入按钮 - 蓝色?*/
 .tv-side-btn.buy {
     color: #2962ff;
 }
@@ -1289,7 +1292,7 @@
     background: var(--bg-hover);
 }
 
-/* 标签与字符计数同�?*/
+/* 标签与字符计数同?*/
 .tv-label-row {
     display: flex;
     justify-content: space-between;
@@ -1297,7 +1300,7 @@
     margin-bottom: 8px;
 }
 
-/* 交易弹窗底部按钮 - 右对�?*/
+/* 交易弹窗底部按钮 - 右对?*/
 .trade-modal-footer {
     justify-content: flex-end;
 }
@@ -1612,7 +1615,7 @@
 /* ==================== 全景行情控制中心 & 二级扁平药丸 ==================== */
 .market-panoramic-control-bar {
     height: 44px !important;
-    padding: 8px 16px !important;
+    padding: 8px 0 !important;
     background: transparent !important; /* 彻底打通无界一体化体验 */
     border: none !important;
     border-bottom: none !important;

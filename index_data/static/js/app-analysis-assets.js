@@ -221,7 +221,12 @@ async function loadMarketRows(loadContext = null, append = false) {
     updateMarketSortHeaders();
     if (!append) {
         resetPaginationState(key);
-        renderTableStatusRow(tbody, 10, '数据加载中...');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        if (hasDataRows) {
+            document.getElementById('market-table-market')?.classList.add('table-fade-loading');
+        } else {
+            renderTableStatusRow(tbody, 10, '数据加载中...');
+        }
     } else {
         setPaginationLoading(key, true);
     }
@@ -300,7 +305,12 @@ async function loadTechnicalRows(loadContext = null, append = false) {
     const page = append ? (listPaginationState[key].page + 1) : 1;
     if (!append) {
         resetPaginationState(key);
-        renderTableStatusRow(tbody, 14, '数据加载中...');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        if (hasDataRows) {
+            document.getElementById('market-table-technical')?.classList.add('table-fade-loading');
+        } else {
+            renderTableStatusRow(tbody, 14, '数据加载中...');
+        }
     } else {
         setPaginationLoading(key, true);
     }
@@ -353,7 +363,12 @@ async function loadFundamentalRows(loadContext = null, append = false) {
     const page = append ? (listPaginationState[key].page + 1) : 1;
     if (!append) {
         resetPaginationState(key);
-        renderTableStatusRow(tbody, 9, '数据加载中...');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        if (hasDataRows) {
+            document.getElementById('market-table-fundamental')?.classList.add('table-fade-loading');
+        } else {
+            renderTableStatusRow(tbody, 9, '数据加载中...');
+        }
     } else {
         setPaginationLoading(key, true);
     }

@@ -471,6 +471,8 @@
     text-align: center;
 }
 
+#view-positions .data-table th:first-child,
+#view-positions .data-table td:first-child,
 #view-transactions .data-table th:first-child,
 #view-transactions .data-table td:first-child,
 #transactions-corporate-actions-panel .data-table th:first-child,

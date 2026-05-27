@@ -40,7 +40,7 @@ async function loadPositions(loadContext = null, append = false) {
 
     const rowsHtml = positions.map(p => `
         <tr data-code="${escapeHtmlAttr(p.asset_code)}" data-vol="${escapeHtmlAttr(p.total_volume)}" data-cost="${escapeHtmlAttr(p.cost_amount || 0)}" data-realized="${escapeHtmlAttr(p.realized_pnl || 0)}">
-            <td class="stock-code center">${escapeHtml(p.asset_code)}</td>
+            <td class="stock-code">${escapeHtml(p.asset_code)}</td>
             <td class="stock-name center">${escapeHtml(p.asset_name)}</td>
             <td class="price number center" style="font-weight:bold;">${formatNumber(p.current_price, 3)}</td>
             <td class="change number center">--</td>
