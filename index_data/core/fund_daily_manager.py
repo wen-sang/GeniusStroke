@@ -127,6 +127,7 @@ class FundDailyManager:
             code = task['code']
             s_date = task['start_date']
             t_date = task['target_date']
+            exchange = task['exchange']
             asset_type = task.get('asset_type', AssetType.ETF)
             
             progress = f"[{i+1}/{len(update_queue)}]"
