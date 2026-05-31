@@ -37,7 +37,7 @@ def _resolve_endpoint_keys(
     if interface_type == DataInterface.DAILY_BAR:
         if normalized_exchange == "HK":
             return [LIXINREN_ENDPOINT_HK_INDEX_DAILY_BAR]
-        if normalized_asset_type == AssetType.ETF:
+        if normalized_asset_type in (AssetType.ETF, AssetType.LOF):
             return [LIXINREN_ENDPOINT_CN_FUND_DAILY_BAR]
         return [LIXINREN_ENDPOINT_CN_INDEX_DAILY_BAR]
 
