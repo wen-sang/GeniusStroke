@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import re
+from datetime import date
 from abc import ABC, abstractmethod
 from typing import Any, Iterable
 
@@ -281,7 +282,8 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
     def _is_supported_company(raw: dict) -> bool:
         status = _first_value(raw, "listingStatus")
         if status is None:
-            return False
+            ipo_date = _normalize_date(_first_value(raw, "ipoDate"))
+            return bool(ipo_date and ipo_date <= date.today().isoformat())
         normalized = str(status).strip().lower()
         return normalized in {
             "active",
