@@ -369,16 +369,37 @@ class AssetCatalogDAO(BaseDAO):
     ) -> int:
         symbols = set(active_external_symbols)
         if symbols:
-            sorted_symbols = sorted(symbols)
-            placeholders = self._build_placeholders(sorted_symbols)
-            sql = f"""
+            cursor.execute(
+                """
+                CREATE TEMP TABLE IF NOT EXISTS tmp_active_external_catalog_symbols (
+                    external_symbol TEXT PRIMARY KEY
+                )
+                """
+            )
+            cursor.execute("DELETE FROM tmp_active_external_catalog_symbols")
+            cursor.executemany(
+                """
+                INSERT OR IGNORE INTO tmp_active_external_catalog_symbols
+                (external_symbol)
+                VALUES (?)
+                """,
+                [(symbol,) for symbol in symbols],
+            )
+            cursor.execute(
+                """
                 UPDATE dat_external_asset_catalog
                 SET is_active = 0, updated_at = ?
                 WHERE source_id = ?
                   AND is_active = 1
-                  AND external_symbol NOT IN ({placeholders})
-            """
-            cursor.execute(sql, (sync_time, source_id, *sorted_symbols))
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM tmp_active_external_catalog_symbols active
+                      WHERE active.external_symbol =
+                          dat_external_asset_catalog.external_symbol
+                  )
+                """,
+                (sync_time, source_id),
+            )
         else:
             cursor.execute(
                 """

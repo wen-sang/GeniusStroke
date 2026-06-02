@@ -199,16 +199,23 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
             return _iter_records(self._request(url))
 
         records = []
+        total = None
         for page_index in range(page_index_start, 1001):
-            page_records = list(_iter_records(
-                self._request(url, {"pageIndex": page_index})
-            ))
+            payload = self._request_payload(url, {"pageIndex": page_index})
+            if total is None:
+                total = _normalize_int(payload.get("total"))
+            page_records = list(_iter_records(payload.get("data", [])))
             if not page_records:
                 break
             records.extend(page_records)
+            if total is not None and len(records) >= total:
+                break
         return records
 
     def _request(self, url: str, extra_payload: dict | None = None) -> Any:
+        return self._request_payload(url, extra_payload).get("data", [])
+
+    def _request_payload(self, url: str, extra_payload: dict | None = None) -> dict:
         payload = {"token": self.token}
         if extra_payload:
             payload.update(extra_payload)
@@ -228,7 +235,7 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
         code = str(payload.get("code"))
         if code not in {"0", "1", "200"}:
             raise RuntimeError(payload.get("message") or "理杏仁目录接口返回失败")
-        return payload.get("data", [])
+        return payload
 
     def _map_record(
         self,
@@ -443,6 +450,15 @@ def _normalize_date(value: Any) -> str | None:
     if not match:
         return None
     return "-".join(match.groups())
+
+
+def _normalize_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _infer_cn_exchange(code: str) -> str | None:
