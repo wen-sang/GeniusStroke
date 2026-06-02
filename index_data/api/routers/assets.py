@@ -1,7 +1,7 @@
 # 文件: api/routers/assets.py
 from fastapi import APIRouter, Query
 from api.error_helpers import raise_client_http_error, raise_internal_http_error
-from api.schemas import AssetCreate, AssetUpdate
+from api.schemas import AssetCreate, AssetUpdate, AssetResponse
 from api.services.asset_service import asset_service
 from api.models import PaginatedResponse
 
@@ -21,6 +21,25 @@ async def get_asset_list(
         return asset_service.get_assets(category, page, page_size)
     except Exception:
         raise_internal_http_error("获取资产列表失败 category=%s", "服务内部错误", category)
+
+@router.get("/{asset_code}", response_model=AssetResponse)
+async def get_asset_record(asset_code: str):
+    """按资产代码精确读取内部基础档案。"""
+    try:
+        asset = asset_service.get_asset(asset_code)
+        if not asset:
+            raise ValueError(f"资产代码 {asset_code} 不存在")
+        return asset
+    except ValueError as exc:
+        raise_client_http_error(
+            "查询资产参数校验失败 asset_code=%s detail=%s",
+            str(exc),
+            asset_code,
+            str(exc),
+            status_code=404,
+        )
+    except Exception:
+        raise_internal_http_error("查询资产失败 asset_code=%s", "服务内部错误", asset_code)
 
 @router.post("")
 async def create_asset_record(asset: AssetCreate):

@@ -101,6 +101,19 @@ function createTradeIdempotencyKey() {
     return `trade-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+async function fetchAssetMetaByCode(code) {
+    const normalizedCode = String(code || '').trim();
+    if (!normalizedCode) return null;
+
+    const response = await fetch(`${API_BASE}/v1/assets/${encodeURIComponent(normalizedCode)}`);
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 404) return null;
+    if (!response.ok) {
+        throw new Error(result.detail || '资产档案查询失败');
+    }
+    return result;
+}
+
 function resetTradeEntryFields() {
     document.getElementById('tradePrice').value = '';
     document.getElementById('tradeVolume').value = '';
@@ -235,25 +248,18 @@ async function fetchStockNameAndLots(code, knownName = '') {
     // 1. 查名称 (如果还没查或外界没有传过来)
     if (!knownName) {
         nameInput.placeholder = '查询中...';
-        // 方案A：从当前的持仓或者基础档案缓存中找
-        let foundName = '';
-        if (window._cachedAssets) {
-            const asset = window._cachedAssets.find(a => a.asset_code === code);
-            if (asset) foundName = asset.asset_name;
-        }
-
-        if (foundName) {
-            nameInput.value = foundName;
-        } else {
-            // 方案B：查实时行情顶替（带短缓存与请求合并）
-            const quoteResult = window.quoteService ? await window.quoteService.fetchQuotes([code]) : null;
-            const quotes = quoteResult ? quoteResult.quotes : null;
-            if (quotes && quotes[code] && quotes[code].name) {
-                nameInput.value = quotes[code].name;
+        try {
+            const asset = await fetchAssetMetaByCode(code);
+            if (asset && asset.asset_name) {
+                nameInput.value = asset.asset_name;
             } else {
                 nameInput.value = '';
-                nameInput.placeholder = '未找到名称(可继续)';
+                nameInput.placeholder = '未找到标的档案';
             }
+        } catch (error) {
+            console.error('资产档案查询失败', error);
+            nameInput.value = '';
+            nameInput.placeholder = '档案查询失败';
         }
     } else {
         nameInput.value = knownName;
@@ -308,6 +314,24 @@ async function submitTradeOrder() {
     if (!code) {
         showToast('error', '请输入商品代码');
         return;
+    }
+
+    if (state.tradeSide === 'buy') {
+        let asset = null;
+        try {
+            asset = await fetchAssetMetaByCode(code);
+        } catch (error) {
+            showToast('error', `资产档案查询失败: ${error.message}`);
+            return;
+        }
+        if (!asset) {
+            showToast('error', '未找到标的档案，请先新增基础档案');
+            return;
+        }
+        const nameInput = document.getElementById('stockName');
+        if (nameInput && asset.asset_name) {
+            nameInput.value = asset.asset_name;
+        }
     }
 
     const price = parseFloat(document.getElementById('tradePrice').value);

@@ -64,6 +64,28 @@ class AssetDAO(BaseDAO):
             "total_pages": total_pages,
         }
 
+    def get_asset(self, asset_code: str) -> dict:
+        sql = """
+            SELECT
+                m.asset_code, m.asset_name, m.asset_type,
+                m.exchange, m.listing_date, m.market_category, m.is_active,
+                COALESCE(r.source_id, ?) as source_id,
+                r.source_code
+            FROM sys_asset_meta m
+            LEFT JOIN sys_data_router r
+                ON m.asset_code = r.asset_code
+               AND r.interface = ?
+            WHERE m.asset_code = ?
+            LIMIT 1
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                sql,
+                (DataSource.LIXINREN, DataInterface.DAILY_BAR, asset_code),
+            )
+            return self._row_to_dict(cursor, cursor.fetchone())
+
     def create_asset(
         self,
         asset_code: str,

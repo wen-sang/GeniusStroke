@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date
 from api.error_helpers import raise_internal_http_error, raise_validation_http_error
+from api.services.asset_service import asset_service
 from core.trade import trade_service
 from utils.validators import ValidationError
 from api.models import PaginatedResponse
@@ -127,6 +128,9 @@ async def buy_order(
     买入下单
     """
     try:
+        asset = asset_service.get_asset(req.code)
+        if not asset:
+            raise ValidationError("资产代码不存在，请先新增基础档案")
         order = trade_service.buy(
             account_id=account_id,
             asset_code=req.code,

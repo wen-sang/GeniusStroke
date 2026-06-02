@@ -41,6 +41,9 @@ class AssetService:
         """
         return asset_dao.list_assets(category, page, page_size)
 
+    def get_asset(self, asset_code: str) -> Dict[str, Any]:
+        return asset_dao.get_asset(asset_code.strip())
+
     def create_asset(self, asset: AssetCreate) -> Dict[str, Any]:
         """
         新增档案 (带事务联动)
