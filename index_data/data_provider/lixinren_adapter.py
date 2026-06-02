@@ -7,6 +7,7 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 from config.lixinren_endpoints import (
+    LIXINREN_ENDPOINT_CN_COMPANY_DAILY_BAR,
     LIXINREN_ENDPOINT_CN_FUND_NET_VALUE,
     LIXINREN_ENDPOINT_CN_FUND_TOTAL_NET_VALUE,
 )
@@ -85,6 +86,10 @@ class LixinrenAdapter(BaseDataProvider):
     def fetch_raw(self, asset_code: str, start_date: str, end_date: str, **kwargs) -> List[Dict]:
         exchange = kwargs.get('exchange', 'SH')
         url_kline = self._get_single_endpoint_url()
+        stock_code = kwargs.get("source_code") or asset_code
+        req_type = "normal"
+        if self.endpoint_keys[0] == LIXINREN_ENDPOINT_CN_COMPANY_DAILY_BAR:
+            req_type = "ex_rights"
 
         dt_start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         dt_end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
@@ -102,8 +107,8 @@ class LixinrenAdapter(BaseDataProvider):
             try:
                 seg_data = self._do_request(url_kline, {
                     "token": self.token,
-                    "stockCode": asset_code,
-                    "type": "normal",
+                    "stockCode": stock_code,
+                    "type": req_type,
                     "startDate": s_str,
                     "endDate": e_str
                 }, endpoint_key=self.endpoint_keys[0])
@@ -121,6 +126,22 @@ class LixinrenAdapter(BaseDataProvider):
             curr = seg_end + datetime.timedelta(days=1)
 
         return all_data
+
+    def fetch_adjustment_factors(
+        self,
+        asset_code: str,
+        start_date: str,
+        end_date: str,
+        **kwargs,
+    ) -> Dict:
+        return {
+            "status": "unavailable",
+            "reason": "lixinren_company_adjustment_factor_endpoint_not_confirmed",
+            "asset_code": asset_code,
+            "source_code": kwargs.get("source_code") or asset_code,
+            "start_date": start_date,
+            "end_date": end_date,
+        }
 
     def parse(self, raw_data, **kwargs) -> pd.DataFrame:
         if not raw_data:

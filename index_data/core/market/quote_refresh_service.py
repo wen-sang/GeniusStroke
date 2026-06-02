@@ -35,29 +35,18 @@ class QuoteRefreshService:
         market_dao_inst=market_dao,
         efinance_adapter_inst=efinance_adapter,
         ttl_seconds: Optional[int] = None,
-        tickflow_adapter_inst=None,
-        asset_meta_dao_inst=None,
-        tickflow_limiter_inst=None,
     ):
         self.cache_dao = cache_dao
         self.market_dao = market_dao_inst
         self.efinance_adapter = efinance_adapter_inst
         self.ttl_seconds = ttl_seconds or settings.EFINANCE_REFRESH_TTL_SECONDS
-        
-        if tickflow_adapter_inst is None:
-            from data_provider.tickflow_adapter import TickFlowAdapter
-            tickflow_adapter_inst = TickFlowAdapter()
-        self.tickflow_adapter = tickflow_adapter_inst
-        
-        if asset_meta_dao_inst is None:
-            from dao.meta_dao import meta_dao
-            asset_meta_dao_inst = meta_dao
-        self.asset_meta_dao = asset_meta_dao_inst
-        
-        if tickflow_limiter_inst is None:
-            from data_provider.tickflow_adapter import tickflow_limiter
-            tickflow_limiter_inst = tickflow_limiter
-        self.tickflow_limiter = tickflow_limiter_inst
+
+        from data_provider.tickflow_adapter import TickFlowAdapter, tickflow_limiter
+        from dao.meta_dao import meta_dao
+
+        self.tickflow_adapter = TickFlowAdapter()
+        self.asset_meta_dao = meta_dao
+        self.tickflow_limiter = tickflow_limiter
 
     def get_quotes(self, codes: List[str], force_refresh: bool = False) -> Dict[str, dict]:
         return self.get_quotes_payload(codes, force_refresh=force_refresh)["quotes"]

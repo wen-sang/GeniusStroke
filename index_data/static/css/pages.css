@@ -991,7 +991,7 @@
 
 .am-lookup-item {
     display: grid;
-    grid-template-columns: minmax(70px, 0.8fr) minmax(0, 1.4fr) auto auto;
+    grid-template-columns: minmax(70px, 0.8fr) minmax(0, 1.4fr) auto auto auto;
     gap: 10px;
     align-items: center;
     padding: 10px 12px;
@@ -1007,6 +1007,15 @@
 .am-lookup-item:hover,
 .am-lookup-item.is-focused {
     background: var(--bg-hover);
+}
+
+.am-lookup-item.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.am-lookup-item.is-disabled:hover {
+    background: transparent;
 }
 
 .am-lookup-item__code {
@@ -1025,10 +1034,16 @@
 }
 
 .am-lookup-item__type,
-.am-lookup-item__source {
+.am-lookup-item__source,
+.am-lookup-item__status {
     color: var(--text-tertiary);
     font-size: 12px;
     white-space: nowrap;
+}
+
+.am-lookup-item__status {
+    color: var(--color-danger);
+    font-weight: 600;
 }
 
 .am-lookup-separator {

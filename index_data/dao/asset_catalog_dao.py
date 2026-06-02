@@ -105,6 +105,7 @@ class AssetCatalogDAO(BaseDAO):
         count_sql = f"""
             SELECT COUNT(*)
             FROM dat_external_asset_catalog c
+            LEFT JOIN sys_asset_meta m ON m.asset_code = c.asset_code
             WHERE {where_sql}
         """
         query_sql = f"""
@@ -182,8 +183,16 @@ class AssetCatalogDAO(BaseDAO):
                 c.exchange AS exchange,
                 c.source_id AS source,
                 c.listing_date AS list_date,
-                c.external_symbol AS source_code
+                CASE
+                    WHEN c.source_id = 'lixinren' AND instr(c.external_symbol, ':') > 0
+                        THEN substr(c.external_symbol, instr(c.external_symbol, ':') + 1)
+                    WHEN c.source_id = 'lixinren'
+                        THEN c.asset_code
+                    ELSE c.external_symbol
+                END AS source_code,
+                CASE WHEN m.asset_code IS NULL THEN 0 ELSE 1 END AS already_added
             FROM dat_external_asset_catalog c
+            LEFT JOIN sys_asset_meta m ON m.asset_code = c.asset_code
             WHERE {where_sql}
             ORDER BY
                 c.asset_code ASC,

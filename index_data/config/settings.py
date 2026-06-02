@@ -53,7 +53,7 @@ for directory in [DATA_DIR, LOG_DIR]:
 # ==============================================================================
 ENV = os.getenv('ENV', 'development')
 APP_NAME = os.getenv('APP_NAME', 'GeniusStroke')
-VERSION = os.getenv('VERSION', '2.10.2').strip()
+VERSION = os.getenv('VERSION', '2.11.0').strip()
 DB_AUTO_SCHEMA = _get_bool_env('DB_AUTO_SCHEMA', ENV == 'development')
 
 # 服务器配置

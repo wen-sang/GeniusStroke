@@ -28,6 +28,8 @@ from config.settings import (
 from config.constants import DataInterface, DataSource
 from utils.date_utils import is_market_closed
 
+TICKFLOW_REQUEST_SLEEP_SECONDS = TICKFLOW_DAILY_BAR_REQUEST_SLEEP_SECONDS
+
 class TaskManager:
     """
     任务调度器 (v2.2 Final UX)
@@ -276,7 +278,7 @@ class TaskManager:
             time.sleep(sleep_time)
             return
         if normalized_source_id == DataSource.TICKFLOW:
-            time.sleep(TICKFLOW_DAILY_BAR_REQUEST_SLEEP_SECONDS)
+            time.sleep(TICKFLOW_REQUEST_SLEEP_SECONDS)
             return
         time.sleep(MARKET_UPDATE_NON_AKSHARE_SLEEP_SECONDS)
 

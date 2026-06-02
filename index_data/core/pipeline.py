@@ -177,11 +177,98 @@ class DataPipeline:
                 rows = 0
 
             market_dao.update_raw_status(raw_log_id, 1) 
+            self._save_adjustment_factor_raw_log(
+                adapter=adapter,
+                task_id=task_id,
+                asset_code=asset_code,
+                source_id=source_id,
+                source_code=source_code,
+                start_date=start_date,
+                end_date=end_date,
+                exchange=exchange,
+                asset_type=asset_type,
+            )
             return {"status": "success" if rows > 0 else "empty", "rows": rows}
 
         except Exception as e:
             logger.error(f"[{asset_code}] 标准数据入库失败: {e}")
             market_dao.update_raw_status(raw_log_id, -1)
             return {"status": "failed", "rows": 0}
+
+    def _save_adjustment_factor_raw_log(
+        self,
+        adapter: BaseDataProvider,
+        task_id: str,
+        asset_code: str,
+        source_id: str,
+        source_code: str | None,
+        start_date: str,
+        end_date: str,
+        exchange: str,
+        asset_type: str,
+    ) -> None:
+        if asset_type != "STOCK":
+            return
+        fetcher = getattr(adapter, "fetch_adjustment_factors", None)
+        if not callable(fetcher):
+            return
+        try:
+            factor_data = fetcher(
+                asset_code=asset_code,
+                start_date=start_date,
+                end_date=end_date,
+                source_code=source_code,
+                exchange=exchange,
+                asset_type=asset_type,
+            )
+            if isinstance(factor_data, pd.DataFrame):
+                factor_payload = factor_data.to_dict("records")
+            else:
+                factor_payload = factor_data
+            log_id = market_dao.save_raw_log(
+                batch_id=task_id,
+                asset_code=asset_code,
+                source_id=source_id,
+                req_params=(
+                    "adjustment_factor|"
+                    f"source_code={source_code or ''}|"
+                    f"start={start_date}|end={end_date}"
+                ),
+                compressed_payload=compress_data(factor_payload),
+            )
+            status = 1
+            if isinstance(factor_payload, dict):
+                if factor_payload.get("status") in {"unavailable", "skipped", "failed"}:
+                    status = -1
+            market_dao.update_raw_status(log_id, status)
+        except Exception as exc:
+            try:
+                log_id = market_dao.save_raw_log(
+                    batch_id=task_id,
+                    asset_code=asset_code,
+                    source_id=source_id,
+                    req_params=(
+                        "adjustment_factor|"
+                        f"source_code={source_code or ''}|"
+                        f"start={start_date}|end={end_date}"
+                    ),
+                    compressed_payload=compress_data({
+                        "status": "failed",
+                        "reason": str(exc),
+                    }),
+                )
+                market_dao.update_raw_status(log_id, -1)
+            except Exception:
+                logger.warning(
+                    "[%s] 复权因子失败 raw log 写入失败 source_id=%s",
+                    asset_code,
+                    source_id,
+                )
+            logger.warning(
+                "[%s] 复权因子处理失败 source_id=%s err=%s",
+                asset_code,
+                source_id,
+                exc,
+            )
 
 pipeline = DataPipeline()

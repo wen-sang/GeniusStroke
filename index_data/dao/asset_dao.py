@@ -36,7 +36,7 @@ class AssetDAO(BaseDAO):
                 (? = 1 AND m.asset_type = 'INDEX')
                 OR (? = 0 AND m.asset_type != 'INDEX')
             )
-            ORDER BY m.asset_code ASC
+            ORDER BY m.rowid DESC
             LIMIT ? OFFSET ?
         """
         count_sql = """

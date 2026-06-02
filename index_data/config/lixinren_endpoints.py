@@ -11,6 +11,7 @@ from typing import Iterable
 
 LIXINREN_ENDPOINT_CN_INDEX_DAILY_BAR = "cn_index_daily_bar"
 LIXINREN_ENDPOINT_CN_FUND_DAILY_BAR = "cn_fund_daily_bar"
+LIXINREN_ENDPOINT_CN_COMPANY_DAILY_BAR = "cn_company_daily_bar"
 LIXINREN_ENDPOINT_HK_INDEX_DAILY_BAR = "hk_index_daily_bar"
 LIXINREN_ENDPOINT_CN_INDEX_FUNDAMENTAL = "cn_index_fundamental"
 LIXINREN_ENDPOINT_HK_INDEX_FUNDAMENTAL = "hk_index_fundamental"
@@ -22,6 +23,8 @@ LIXINREN_ENDPOINTS = {
     LIXINREN_ENDPOINT_CN_INDEX_DAILY_BAR: "https://open.lixinger.com/api/cn/index/candlestick",
     # 中国区基金/ETF 日行情接口
     LIXINREN_ENDPOINT_CN_FUND_DAILY_BAR: "https://open.lixinger.com/api/cn/fund/candlestick",
+    # 中国区股票日行情接口
+    LIXINREN_ENDPOINT_CN_COMPANY_DAILY_BAR: "https://open.lixinger.com/api/cn/company/candlestick",
     # 香港区指数日行情接口
     LIXINREN_ENDPOINT_HK_INDEX_DAILY_BAR: "https://open.lixinger.com/api/hk/index/candlestick",
     # 中国区指数基本面接口

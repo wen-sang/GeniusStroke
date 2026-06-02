@@ -76,11 +76,14 @@ class AssetCatalogService:
         normalized_keyword = (keyword or "").strip()
         if not normalized_keyword:
             raise ValueError("keyword 不能为空")
-        return asset_catalog_dao.search_unified_catalog(
+        result = asset_catalog_dao.search_unified_catalog(
             keyword=normalized_keyword,
             page=page,
             page_size=page_size,
         )
+        for item in result["items"]:
+            item["already_added"] = bool(item["already_added"])
+        return result
 
     def sync_source(self, source_id: str, force: bool = False) -> dict:
         self._ensure_catalog_source(source_id)

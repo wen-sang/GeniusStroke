@@ -239,6 +239,8 @@ class TickFlowAdapter(BaseDataProvider):
             df = df[df["trade_date"] >= start_date]
         if end_date:
             df = df[df["trade_date"] <= end_date]
+        if "volume" in df.columns and self._uses_cn_lot_volume(df, kwargs):
+            df["volume"] = pd.to_numeric(df["volume"], errors="coerce") * 100
         return df
 
     def _get_client(self) -> Any:
@@ -276,6 +278,19 @@ class TickFlowAdapter(BaseDataProvider):
     def _to_epoch_ms(date_text: str) -> int:
         dt = datetime.datetime.strptime(date_text, "%Y-%m-%d")
         return int(dt.timestamp() * 1000)
+
+    @staticmethod
+    def _uses_cn_lot_volume(df: pd.DataFrame, kwargs: dict) -> bool:
+        source_code = str(kwargs.get("source_code") or "").strip().upper()
+        exchange = str(kwargs.get("exchange") or "").strip().upper()
+        if source_code.endswith((".SH", ".SZ", ".BJ")):
+            return True
+        if exchange in {"SH", "SZ", "BJ"}:
+            return True
+        if "symbol" in df.columns:
+            symbols = df["symbol"].dropna().astype(str).str.upper()
+            return symbols.str.endswith((".SH", ".SZ", ".BJ")).any()
+        return False
 
     @staticmethod
     def _is_rate_limit_error(exc: Exception) -> bool:

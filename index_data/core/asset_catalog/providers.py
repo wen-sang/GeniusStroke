@@ -33,6 +33,13 @@ LIXINREN_CATALOG_ENDPOINTS = (
         True,
     ),
     (
+        "cn_company",
+        "大陆股票",
+        "STOCK",
+        "https://open.lixinger.com/api/cn/company",
+        True,
+    ),
+    (
         "hk_index",
         "港股指数",
         "INDEX",
@@ -166,7 +173,11 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
             url,
             paginated,
         ) in LIXINREN_CATALOG_ENDPOINTS:
-            for raw in self._fetch_records(url, paginated):
+            for raw in self._fetch_records(
+                url,
+                paginated,
+                page_index_start=0 if universe_id == "cn_company" else 1,
+            ):
                 mapped = self._map_record(
                     raw=raw,
                     universe_id=universe_id,
@@ -177,12 +188,17 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
                     items.append(mapped)
         return items
 
-    def _fetch_records(self, url: str, paginated: bool) -> Iterable[dict]:
+    def _fetch_records(
+        self,
+        url: str,
+        paginated: bool,
+        page_index_start: int = 1,
+    ) -> Iterable[dict]:
         if not paginated:
             return _iter_records(self._request(url))
 
         records = []
-        for page_index in range(1, 1001):
+        for page_index in range(page_index_start, 1001):
             page_records = list(_iter_records(
                 self._request(url, {"pageIndex": page_index})
             ))
@@ -224,6 +240,8 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
         if not code:
             return None
         code = str(code).strip()
+        if universe_id == "cn_company" and not self._is_supported_company(raw):
+            return None
         name = self._resolve_name(raw, universe_id) or code
         source_exchange = _first_value(raw, "exchange", "market")
         asset_type = self._resolve_asset_type(raw, default_asset_type)
@@ -233,8 +251,11 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
             asset_type,
             universe_id,
         )
+        if universe_id == "cn_company" and asset_type == "STOCK":
+            if str(source_exchange or "").strip().lower() == "bj":
+                return None
         return {
-            "external_symbol": code,
+            "external_symbol": f"{universe_id}:{code}",
             "asset_code": code,
             "asset_name": str(name).strip(),
             "asset_type": asset_type,
@@ -250,8 +271,26 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
                 "fundType",
                 "category",
             ) or default_asset_type),
-            "source_status": str(_first_value(raw, "status") or "active"),
+            "source_status": str(
+                _first_value(raw, "listingStatus", "status") or "active"
+            ),
             "raw_payload": raw,
+        }
+
+    @staticmethod
+    def _is_supported_company(raw: dict) -> bool:
+        status = _first_value(raw, "listingStatus")
+        if status is None:
+            return False
+        normalized = str(status).strip().lower()
+        return normalized in {
+            "active",
+            "listed",
+            "listing",
+            "normal",
+            "上市",
+            "正常",
+            "正常上市",
         }
 
     @staticmethod
@@ -264,6 +303,8 @@ class LixinrenCatalogProvider(BaseCatalogProvider):
     def _resolve_listing_date(raw: dict, universe_id: str) -> str | None:
         if universe_id == "cn_fund":
             return _normalize_date(_first_value(raw, "inceptionDate"))
+        if universe_id == "cn_company":
+            return _normalize_date(_first_value(raw, "ipoDate"))
         return _normalize_date(_first_value(raw, "launchDate"))
 
     @staticmethod

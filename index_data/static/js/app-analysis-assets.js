@@ -1063,12 +1063,17 @@ function renderLookupResults(items, append = false) {
         if (index > 0 && prev && prev.code !== item.code) {
             rows.push('<div class="am-lookup-separator"></div>');
         }
+        const disabled = item.already_added ? ' disabled aria-disabled="true"' : '';
+        const addedLabel = item.already_added
+            ? '<span class="am-lookup-item__status">已添加</span>'
+            : '';
         rows.push(`
-            <button class="am-lookup-item" type="button" data-index="${index}">
+            <button class="am-lookup-item${item.already_added ? ' is-disabled' : ''}" type="button" data-index="${index}"${disabled}>
                 <span class="am-lookup-item__code">${escapeHtml(item.code)}</span>
                 <span class="am-lookup-item__name">${escapeHtml(item.name)}</span>
                 <span class="am-lookup-item__source">来自 ${escapeHtml(getSourceDisplayName(item.source))}</span>
                 <span class="am-lookup-item__type">${escapeHtml(item.type || '')}</span>
+                ${addedLabel}
             </button>
         `);
     });
@@ -1106,6 +1111,7 @@ function onDocumentClickForLookup(event) {
 
 function selectLookupItem(item) {
     if (!item) return;
+    if (item.already_added) return;
     const input = document.getElementById('am-form-code');
     if (input) {
         input.value = item.code || '';
