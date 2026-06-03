@@ -144,7 +144,8 @@ class TradeAccountOperations:
             summary.history_total_pnl_rate = float(
                 latest_complete_history.get("pnl_ratio") or summary.history_total_pnl_rate
             )
-            summary.account_xirr = float(latest_complete_history.get("account_xirr") or 0.0)
+            account_xirr = latest_complete_history.get("account_xirr")
+            summary.account_xirr = float(account_xirr) if account_xirr is not None else None
             summary.data_updated_to = latest_complete_history.get("trade_date")
 
         return summary

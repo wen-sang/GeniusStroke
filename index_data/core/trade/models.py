@@ -124,7 +124,7 @@ class AccountSummary:
     daily_return_rate: float = 0.0  # 当日收益率
     history_total_pnl: float = 0.0  # 历史累计收益
     history_total_pnl_rate: float = 0.0  # 历史累计收益率
-    account_xirr: float = 0.0  # 账户累计收益率 (XIRR)
+    account_xirr: Optional[float] = None  # 账户累计收益率 (XIRR)
     data_updated_to: Optional[str] = None  # 历史资产快照最新交易日
     commission_rate: float = 0.00025  # 佣金费率
     commission_min: float = 5.0  # 最低佣金

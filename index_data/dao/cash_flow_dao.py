@@ -90,7 +90,7 @@ class CashFlowDAO(BaseDAO):
         end_date: str,
         conn=None,
     ) -> float:
-        """汇总指定区间内外部入金/出金净额。"""
+        """汇总指定区间内外部现金流净额。"""
         if conn is not None:
             return self._sum_external_cash_delta_with_connection(
                 account_id=account_id,
@@ -126,7 +126,7 @@ class CashFlowDAO(BaseDAO):
               AND biz_date > ?
               AND biz_date <= ?
               {status_filter}
-              AND flow_type IN ('DEPOSIT', 'WITHDRAW')
+              AND flow_type IN ('DEPOSIT', 'WITHDRAW', 'ADJUST')
             """,
             (account_id, start_date, end_date),
         )

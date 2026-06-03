@@ -20,11 +20,45 @@ class AccountSummaryResponse(BaseModel):
     daily_return_rate: float
     history_total_pnl: float
     history_total_pnl_rate: float
-    account_xirr: float
+    account_xirr: Optional[float] = None
     data_updated_to: Optional[str] = None
     commission_rate: float
     commission_min: float
     stamp_duty_rate: float
+
+
+class AccountPerformanceDataQuality(BaseModel):
+    """账户绩效数据质量提示。"""
+
+    is_complete: bool
+    messages: list[str] = Field(default_factory=list)
+
+
+class AccountPerformanceResponse(BaseModel):
+    """账户绩效指标响应。"""
+
+    account_id: int
+    data_updated_to: Optional[str] = None
+    net_value: Optional[float] = None
+    cumulative_pnl_existing: Optional[float] = None
+    cumulative_pnl_performance: Optional[float] = None
+    cumulative_twr: Optional[float] = None
+    cumulative_mwr: Optional[float] = None
+    annualized_twr: Optional[float] = None
+    annualized_xirr: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    max_drawdown_start_date: Optional[str] = None
+    max_drawdown_end_date: Optional[str] = None
+    max_drawdown_recovery_date: Optional[str] = None
+    annualized_volatility: Optional[float] = None
+    win_rate: Optional[float] = None
+    profit_loss_ratio: Optional[float] = None
+    profit_loss_ratio_is_infinite: bool = False
+    total_trade_count: int = 0
+    expectancy: Optional[float] = None
+    trading_days: int = 0
+    calendar_days: int = 0
+    data_quality: AccountPerformanceDataQuality
 
 
 class DepositRequest(BaseModel):

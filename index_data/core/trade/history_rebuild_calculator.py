@@ -44,16 +44,47 @@ class AccountHistoryRebuildCalculator:
         history_rows: List[Dict] = []
         missing_quotes: List[Dict] = []
         previous_trade_date: Optional[str] = None
+        previous_total_asset = 0.0
+        total_shares = 0.0
+        current_segment_net_external_investment = 0.0
+        previous_effective_unit_net_value: Optional[float] = None
         xirr_cash_flows: List[Tuple[str, float]] = []
+        cash_flows = sorted(
+            [flow for flows in cash_flow_map.values() for flow in flows],
+            key=lambda item: (item.get("biz_date") or "", int(item.get("flow_id") or 0)),
+        )
+        cash_flow_index = 0
 
         for trade_date in trade_dates:
             day_actions = corporate_action_map.get(trade_date, [])
             split_factor_map = self._build_split_factor_map(day_actions)
             for action in day_actions:
                 trade_replay_support.apply_corporate_action(replay_state, action)
-            for flow in cash_flow_map.get(trade_date, []):
+
+            day_external_cash = 0.0
+            day_start_unit_net_value = previous_effective_unit_net_value or 1.0
+            while cash_flow_index < len(cash_flows):
+                flow = cash_flows[cash_flow_index]
+                if (flow.get("biz_date") or "") > trade_date:
+                    break
                 signed_amount = trade_replay_support.apply_cash_flow(replay_state, flow)
-                xirr_cash_flows.append((trade_date, -signed_amount))
+                if self._is_external_cash_flow(flow):
+                    if total_shares <= 1e-8 and signed_amount > 0:
+                        total_shares = 0.0
+                        current_segment_net_external_investment = 0.0
+                        xirr_cash_flows = []
+                        day_start_unit_net_value = 1.0
+                    if day_start_unit_net_value > 0:
+                        total_shares += signed_amount / day_start_unit_net_value
+                    current_segment_net_external_investment += signed_amount
+                    day_external_cash += signed_amount
+                    xirr_cash_flows.append((flow["biz_date"], -signed_amount))
+                    if total_shares <= 1e-8:
+                        total_shares = 0.0
+                        current_segment_net_external_investment = 0.0
+                        previous_effective_unit_net_value = None
+                        xirr_cash_flows = []
+                cash_flow_index += 1
 
             for order in order_map.get(trade_date, []):
                 result = trade_replay_support.apply_order(replay_state, order)
@@ -100,29 +131,24 @@ class AccountHistoryRebuildCalculator:
 
             total_asset = replay_state.cash_balance + market_value
             cum_unrealized_pnl = market_value - remain_cost
-            cum_total_pnl = replay_state.acc_profit + cum_unrealized_pnl
-            net_investment = replay_state.total_deposit - replay_state.total_withdraw
-            pnl_ratio = cum_total_pnl / net_investment if net_investment > 0 else 0.0
-
-            if previous_trade_date is None:
-                daily_return = 0.0
-                daily_return_rate = 0.0
-            else:
-                daily_return, daily_return_base, day_missing_quotes = (
-                    self._calculate_closing_holding_daily_metrics(
-                        lots=replay_state.buy_lots.values(),
-                        valuation_date=trade_date,
-                        current_price_map=current_price_map,
-                        previous_price_map=previous_price_map,
-                        split_factor_map=split_factor_map,
-                    )
-                )
-                if day_missing_quotes:
-                    missing_quotes.extend(day_missing_quotes)
-                    break
-                daily_return_rate = (
-                    daily_return / daily_return_base if daily_return_base > 0 else 0.0
-                )
+            unit_net_value = total_asset / total_shares if total_shares > 1e-8 else None
+            net_investment = current_segment_net_external_investment
+            cum_total_pnl = (
+                total_asset - current_segment_net_external_investment
+                if unit_net_value is not None
+                else None
+            )
+            pnl_ratio = (
+                cum_total_pnl / net_investment
+                if cum_total_pnl is not None and net_investment > 0
+                else None
+            )
+            daily_return = total_asset - previous_total_asset - day_external_cash
+            daily_return_rate = (
+                unit_net_value / day_start_unit_net_value - 1.0
+                if unit_net_value is not None and day_start_unit_net_value > 0
+                else None
+            )
 
             account_xirr = self._calculate_xirr(
                 cash_flows=xirr_cash_flows,
@@ -139,8 +165,8 @@ class AccountHistoryRebuildCalculator:
                         "total_asset": total_asset,
                         "total_deposit": replay_state.total_deposit,
                         "total_withdraw": replay_state.total_withdraw,
-                        "total_shares": 0.0,
-                        "unit_net_value": 0.0,
+                        "total_shares": total_shares,
+                        "unit_net_value": unit_net_value,
                         "daily_return": daily_return,
                         "daily_return_rate": daily_return_rate,
                         "net_investment": net_investment,
@@ -153,6 +179,9 @@ class AccountHistoryRebuildCalculator:
                         "is_data_complete": 1,
                     }
                 )
+            if unit_net_value is not None:
+                previous_effective_unit_net_value = unit_net_value
+            previous_total_asset = total_asset
             previous_trade_date = trade_date
 
         dedup_missing = []
@@ -213,6 +242,10 @@ class AccountHistoryRebuildCalculator:
 
         return daily_return, daily_return_base, missing_quotes
 
+    def _is_external_cash_flow(self, cash_flow: Dict) -> bool:
+        flow_type = (cash_flow.get("flow_type") or "").upper()
+        return flow_type in {"DEPOSIT", "WITHDRAW", "ADJUST"}
+
     def _resolve_close_price(
         self,
         asset_code: str,
@@ -229,7 +262,18 @@ class AccountHistoryRebuildCalculator:
         if close_price is not None:
             return close_price
 
-        return self._match_legacy_price_fallback(asset_code, trade_date)
+        fallback_price = self._match_legacy_price_fallback(asset_code, trade_date)
+        if fallback_price is not None:
+            return fallback_price
+
+        dated_prices = [
+            (date, float(price))
+            for (code, date), price in {**fund_nav_map, **price_map}.items()
+            if code == asset_code and date <= trade_date and price is not None
+        ]
+        if dated_prices:
+            return max(dated_prices, key=lambda item: item[0])[1]
+        return None
 
     def _match_legacy_price_fallback(self, asset_code: str, trade_date: str) -> Optional[float]:
         """匹配保留中的历史人工价格补丁。"""
@@ -250,12 +294,14 @@ class AccountHistoryRebuildCalculator:
         cash_flows: List[Tuple[str, float]],
         valuation_date: str,
         terminal_value: float,
-    ) -> float:
+    ) -> Optional[float]:
         if terminal_value <= 0:
-            return 0.0
+            return None
         flows = cash_flows + [(valuation_date, terminal_value)]
         if len(flows) < 2:
-            return 0.0
+            return None
+        if not any(amount < 0 for _, amount in flows) or not any(amount > 0 for _, amount in flows):
+            return None
 
         base_date = datetime.strptime(flows[0][0], "%Y-%m-%d")
         dated_flows = [
@@ -269,28 +315,34 @@ class AccountHistoryRebuildCalculator:
                 total += amount / ((1.0 + rate) ** years)
             return total
 
-        def derivative(rate: float) -> float:
-            total = 0.0
-            for years, amount in dated_flows:
-                if years == 0:
-                    continue
-                total -= years * amount / ((1.0 + rate) ** (years + 1.0))
-            return total
-
-        rate = 0.1
-        for _ in range(50):
-            f_value = npv(rate)
-            d_value = derivative(rate)
-            if abs(d_value) < 1e-12:
+        low = -0.999999
+        high = 1.0
+        low_value = npv(low)
+        high_value = npv(high)
+        for _ in range(40):
+            if isfinite(low_value) and isfinite(high_value) and low_value * high_value <= 0:
                 break
-            next_rate = rate - f_value / d_value
-            if not isfinite(next_rate) or next_rate <= -0.999999:
-                break
-            if abs(next_rate - rate) < 1e-7:
-                return next_rate
-            rate = next_rate
+            high *= 2.0
+            if high > 1_000_000:
+                return None
+            high_value = npv(high)
+        else:
+            return None
 
-        return 0.0
+        for _ in range(200):
+            candidate = (low + high) / 2.0
+            value = npv(candidate)
+            if not isfinite(value):
+                return None
+            if abs(value) < 1e-7 or abs(high - low) < 1e-7:
+                return candidate
+            if low_value * value <= 0:
+                high = candidate
+                high_value = value
+            else:
+                low = candidate
+                low_value = value
+        return None
 
 
 account_history_rebuild_calculator = AccountHistoryRebuildCalculator()

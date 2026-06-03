@@ -1,5 +1,6 @@
 # 文件: api/services/asset_service.py
 from core.router import router
+from core.source_code_normalizer import normalize_daily_bar_source_code
 from api.schemas import AssetCreate, AssetUpdate
 from typing import Dict, Any
 from config.constants import DataSource
@@ -49,6 +50,12 @@ class AssetService:
         新增档案 (带事务联动)
         """
         normalized_source_id = self._validate_collection_source(asset.source_id)
+        source_code = normalize_daily_bar_source_code(
+            asset_code=asset.asset_code,
+            source_id=normalized_source_id,
+            asset_type=asset.asset_type,
+            source_code=asset.source_code,
+        )
         asset_dao.create_asset(
             asset_code=asset.asset_code,
             asset_name=asset.asset_name,
@@ -57,7 +64,7 @@ class AssetService:
             listing_date=asset.listing_date,
             market_category=asset.market_category,
             source_id=normalized_source_id,
-            source_code=asset.source_code,
+            source_code=source_code,
         )
         self._refresh_router_cache("新增", asset.asset_code)
         return {"status": "success", "asset_code": asset.asset_code}
@@ -68,6 +75,12 @@ class AssetService:
         """
         normalized_source_id = self._validate_collection_source(asset.source_id)
         update_source_code = "source_code" in asset.model_fields_set
+        source_code = normalize_daily_bar_source_code(
+            asset_code=asset_code,
+            source_id=normalized_source_id,
+            asset_type=asset.asset_type,
+            source_code=asset.source_code,
+        )
         asset_dao.update_asset(
             asset_code=asset_code,
             asset_name=asset.asset_name,
@@ -76,7 +89,7 @@ class AssetService:
             listing_date=asset.listing_date,
             market_category=asset.market_category,
             source_id=normalized_source_id,
-            source_code=asset.source_code,
+            source_code=source_code,
             update_source_code=update_source_code,
         )
         self._refresh_router_cache("更新", asset_code)

@@ -235,6 +235,8 @@ class AccountHistoryRebuildService:
 
         if base_row:
             base_total_asset = float(base_row["total_asset"] or 0.0)
+            base_total_shares = float(base_row.get("total_shares") or 0.0)
+            base_unit_net_value = float(base_row.get("unit_net_value") or 0.0)
             external_cash = cash_flow_dao.sum_external_cash_delta(
                 account_id=account_id,
                 start_date=base_row["trade_date"],
@@ -243,12 +245,25 @@ class AccountHistoryRebuildService:
             )
             # 实时快照必须相对“上一条正式收盘历史”计算，不能叠加上一条 live snapshot 的 daily_return。
             daily_return = (total_asset - base_total_asset) - external_cash
-            daily_return_rate = daily_return / base_total_asset if base_total_asset > 0 else 0.0
-            account_xirr = float((existing_row or base_row).get("account_xirr") or 0.0)
+            if base_total_shares > 0 and base_unit_net_value > 0:
+                total_shares = base_total_shares + external_cash / base_unit_net_value
+                unit_net_value = total_asset / total_shares if total_shares > 0 else None
+                daily_return_rate = (
+                    unit_net_value / base_unit_net_value - 1.0
+                    if unit_net_value is not None
+                    else None
+                )
+            else:
+                total_shares = None
+                unit_net_value = None
+                daily_return_rate = None
+            account_xirr = (existing_row or base_row).get("account_xirr")
         else:
             daily_return = 0.0
-            daily_return_rate = 0.0
-            account_xirr = 0.0
+            daily_return_rate = None
+            total_shares = None
+            unit_net_value = None
+            account_xirr = None
 
         account_history_dao.upsert_history(
             account_id=account_id,
@@ -258,8 +273,8 @@ class AccountHistoryRebuildService:
             total_asset=total_asset,
             total_deposit=total_deposit,
             total_withdraw=total_withdraw,
-            total_shares=0.0,
-            unit_net_value=0.0,
+            total_shares=total_shares,
+            unit_net_value=unit_net_value,
             daily_return=daily_return,
             daily_return_rate=daily_return_rate,
             net_investment=net_investment,

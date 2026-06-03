@@ -494,7 +494,15 @@ class TradeDAO(BaseDAO):
             total_deposit = ?,
             total_withdraw = ?,
             acc_profit = ?,
-            total_shares = 0,
+            total_shares = COALESCE((
+                SELECT h.total_shares
+                FROM dat_account_history h
+                WHERE h.account_id = ?
+                  AND h.is_data_complete = 1
+                  AND h.total_shares IS NOT NULL
+                ORDER BY h.trade_date DESC
+                LIMIT 1
+            ), total_shares),
             broker_name = COALESCE(?, broker_name),
             updated_at = datetime('now', 'localtime')
         WHERE account_id = ?
@@ -504,6 +512,7 @@ class TradeDAO(BaseDAO):
             total_deposit,
             total_withdraw,
             acc_profit,
+            account_id,
             broker_name,
             account_id,
         )
@@ -723,6 +732,63 @@ class TradeDAO(BaseDAO):
             cursor = conn.cursor()
             cursor.execute(sql, (account_id,))
             return cursor.fetchone()[0]
+
+    def count_performance_trades(self, account_id: int, start_date: Optional[str] = None, conn=None) -> int:
+        """统计绩效口径的有效普通买卖订单数。"""
+        sql = """
+        SELECT COUNT(*)
+        FROM trade_order
+        WHERE account_id = ?
+          AND side IN ('BUY', 'SELL')
+          AND status = 1
+          AND COALESCE(volume, 0) > 0
+          AND COALESCE(source_type, 'MANUAL') != 'CORPORATE_ACTION'
+          AND COALESCE(order_type, '') NOT IN ('SPLIT_ADJUST', 'DIVIDEND_REINVEST_BUY')
+        """
+        params: list[object] = [account_id]
+        if start_date:
+            sql += " AND substr(trade_time, 1, 10) >= ?"
+            params.append(start_date)
+        if conn is not None:
+            cursor = conn.cursor()
+            cursor.execute(sql, tuple(params))
+            return int(cursor.fetchone()[0] or 0)
+        with self.db_engine.get_connection(readonly=True) as ro_conn:
+            cursor = ro_conn.cursor()
+            cursor.execute(sql, tuple(params))
+            return int(cursor.fetchone()[0] or 0)
+
+    def list_performance_sell_orders(
+        self,
+        account_id: int,
+        start_date: Optional[str] = None,
+        conn=None,
+    ) -> List[Dict]:
+        """获取绩效口径的有效普通卖单样本。"""
+        sql = """
+        SELECT order_id, trade_time, realized_pnl
+        FROM trade_order
+        WHERE account_id = ?
+          AND side = 'SELL'
+          AND status = 1
+          AND COALESCE(volume, 0) > 0
+          AND link_order_id IS NOT NULL
+          AND COALESCE(source_type, 'MANUAL') != 'CORPORATE_ACTION'
+          AND COALESCE(order_type, '') != 'SPLIT_ADJUST'
+        ORDER BY trade_time ASC, order_id ASC
+        """
+        params: list[object] = [account_id]
+        if start_date:
+            sql = sql.replace("ORDER BY", "AND substr(trade_time, 1, 10) >= ?\n        ORDER BY")
+            params.append(start_date)
+        if conn is not None:
+            cursor = conn.cursor()
+            cursor.execute(sql, tuple(params))
+            return self._rows_to_dicts(cursor, cursor.fetchall())
+        with self.db_engine.get_connection(readonly=True) as ro_conn:
+            cursor = ro_conn.cursor()
+            cursor.execute(sql, tuple(params))
+            return self._rows_to_dicts(cursor, cursor.fetchall())
 
     @staticmethod
     def _infer_order_type(side: str, source_type: Optional[str]) -> Optional[str]:

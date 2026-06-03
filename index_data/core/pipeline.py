@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Dict, Optional
 
 from config.constants import DataInterface, DataSource
+from core.source_code_normalizer import normalize_daily_bar_source_code
 from data_provider import get_data_provider
 from data_provider.base import BaseDataProvider
 from dao.market_dao import market_dao
@@ -85,6 +86,18 @@ class DataPipeline:
         if not adapter:
             return {"status": "failed", "rows": 0}
 
+        effective_source_code = normalize_daily_bar_source_code(
+            asset_code=asset_code,
+            source_id=source_id,
+            asset_type=asset_type,
+            source_code=source_code,
+        )
+        endpoint_label = (
+            "cn_index_daily_bar"
+            if source_id == DataSource.LIXINREN and asset_type == "INDEX"
+            else DataInterface.DAILY_BAR
+        )
+
         # --- Step 1: Extract (Fetch Raw) ---
         raw_data = None
         try:
@@ -93,12 +106,19 @@ class DataPipeline:
                 asset_code=asset_code, 
                 start_date=start_date,
                 end_date=end_date,
-                source_code=source_code,
+                source_code=effective_source_code,
                 exchange=exchange,
                 asset_type=asset_type
             )
             if raw_data is None or (isinstance(raw_data, pd.DataFrame) and raw_data.empty) or (isinstance(raw_data, list) and not raw_data):
-                logger.info(f"[{asset_code}] 接口返回空数据")
+                logger.info(
+                    f"[{asset_code}] 接口返回空数据 "
+                    f"source_id={source_id} source_code={source_code} "
+                    f"effective_source_code={effective_source_code} "
+                    f"asset_type={asset_type} exchange={exchange} "
+                    f"range={start_date}->{end_date} "
+                    f"endpoint={endpoint_label}"
+                )
                 return {"status": "empty", "rows": 0}
         except DataFetchError as e:
             logger.error(f"[{asset_code}] 数据获取失败: {e}")
@@ -124,7 +144,7 @@ class DataPipeline:
                 batch_id=task_id, 
                 asset_code=asset_code, 
                 source_id=source_id, 
-                req_params=f"{start_date},{end_date}|{source_code}", 
+                req_params=f"{start_date},{end_date}|{effective_source_code}",
                 compressed_payload=compressed
             )
         except Exception as e:

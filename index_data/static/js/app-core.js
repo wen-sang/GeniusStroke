@@ -27,7 +27,7 @@ function initializeTradeDateDefault() {
 
 // 状态管理
 const state = {
-    currentTab: 'positions', // positions, transactions, analysis
+    currentTab: 'positions', // positions, transactions, analysis, performance
     currentAccount: null,
     currentAccountName: '',
     currentAccountSummary: null,
@@ -105,6 +105,7 @@ function loadCurrentTabData() {
     if (tab === 'positions') loadPositions(loadContext);
     if (tab === 'transactions') loadTransactions(loadContext);
     if (tab === 'analysis') loadAnalysis(loadContext);
+    if (tab === 'performance') loadPerformance(loadContext);
 }
 
 function isStaleSummaryLoad(loadContext) {

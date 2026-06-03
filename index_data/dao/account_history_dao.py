@@ -228,6 +228,15 @@ class AccountHistoryDAO(BaseDAO):
             "ORDER BY trade_date ASC",
             conn=conn,
         )
+
+    def get_complete_history(self, account_id: int, conn=None) -> List[Dict]:
+        """获取账户完整正式收盘历史。"""
+        return self._fetch_history_rows(
+            "account_id = ? AND is_data_complete = 1",
+            (account_id,),
+            "ORDER BY trade_date ASC",
+            conn=conn,
+        )
     
     def get_latest_history(self, account_id: int, conn=None) -> Optional[Dict]:
         """获取最新的历史记录"""

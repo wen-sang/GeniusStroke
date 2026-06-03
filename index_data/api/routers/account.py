@@ -13,6 +13,7 @@ from api.routers.account_models import (
     AccountManageModel,
     AccountManageRequest,
     AccountManageResponse,
+    AccountPerformanceResponse,
     AccountSummaryResponse,
     AdjustRequest,
     CashFlowCreateRequest,
@@ -35,6 +36,7 @@ from api.routers.account_route_helpers import (
 )
 from core.trade import (
     account_history_rebuild_service,
+    account_performance_service,
     account_rebuild_service,
     cash_flow_service,
     trade_service,
@@ -66,6 +68,24 @@ async def get_account_summary(account_id: int = Query(1, description="账户ID")
     summary = trade_service.get_account_summary(account_id)
 
     return build_account_summary_response(summary)
+
+
+@router.get("/performance", response_model=AccountPerformanceResponse)
+async def get_account_performance(account_id: int = Query(1, description="账户ID")):
+    """获取账户绩效指标。"""
+    try:
+        return AccountPerformanceResponse(
+            **account_performance_service.get_account_performance(account_id)
+        )
+    except ValidationError as exc:
+        raise_validation_http_error(
+            "账户绩效查询校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
+    except Exception as exc:
+        raise_internal_http_error("账户绩效查询失败 account_id=%s", "账户绩效查询失败", exc, account_id)
 
 
 @router.post("", response_model=AccountManageResponse)

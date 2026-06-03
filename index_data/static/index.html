@@ -196,6 +196,7 @@
                 <div class="main-tab-item active" data-tab="positions">持仓</div>
                 <div class="main-tab-item" data-tab="transactions">交易</div>
                 <div class="main-tab-item" data-tab="analysis">行情</div>
+                <div class="main-tab-item" data-tab="performance">绩效</div>
             </div>
         </div>
 
@@ -536,6 +537,132 @@
                     </div>
                 </div>
             </div>
+                </div>
+
+                <!-- 4. 绩效 View -->
+                <div id="view-performance" class="hidden">
+                    <div class="section-header performance-header">
+                        <h1 class="section-title">
+                            <span class="section-title-main">
+                                <span>绩效指标</span>
+                            </span>
+                        </h1>
+                        <div class="performance-updated-to" id="performance-data-updated-to">数据更新至 --</div>
+                    </div>
+
+                    <section class="performance-section">
+                        <h2 class="performance-group-title">收益表现</h2>
+                        <div class="performance-grid performance-grid-5">
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">净值</div>
+                                <div class="performance-metric-value" id="performance-net-value">--</div>
+                                <div class="performance-metric-sub">单位净值</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">累计收益（现有口径）</div>
+                                <div class="performance-metric-value" id="performance-cumulative-pnl-existing">--</div>
+                                <div class="performance-metric-sub">过渡对照</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">累计收益（绩效口径）</div>
+                                <div class="performance-metric-value" id="performance-cumulative-pnl-performance">--</div>
+                                <div class="performance-metric-sub">当前绩效段</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">
+                                    <span>累计收益率 TWR</span>
+                                    <span class="tooltip-trigger" tabindex="0" aria-label="累计收益率 TWR 说明">?
+                                        <span class="tooltip-bubble">当前有效净值段内单位净值日收益率连乘。</span>
+                                    </span>
+                                </div>
+                                <div class="performance-metric-value" id="performance-cumulative-twr">--</div>
+                                <div class="performance-metric-sub">时间加权累计</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">
+                                    <span>累计收益率 MWR</span>
+                                    <span class="tooltip-trigger" tabindex="0" aria-label="累计收益率 MWR 说明">?
+                                        <span class="tooltip-bubble">按 XIRR 和当前绩效段持有天数折算。</span>
+                                    </span>
+                                </div>
+                                <div class="performance-metric-value" id="performance-cumulative-mwr">--</div>
+                                <div class="performance-metric-sub">资金加权累计</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="performance-section">
+                        <h2 class="performance-group-title">年化收益</h2>
+                        <div class="performance-grid performance-grid-2">
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">
+                                    <span>年化收益率 TWR</span>
+                                    <span class="tooltip-trigger" tabindex="0" aria-label="年化收益率 TWR 说明">?
+                                        <span class="tooltip-bubble">至少 126 个正式交易日样本后按 252 个交易日年化。</span>
+                                    </span>
+                                </div>
+                                <div class="performance-metric-value" id="performance-annualized-twr">--</div>
+                                <div class="performance-metric-sub">时间加权年化</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">
+                                    <span>年化收益率 XIRR</span>
+                                    <span class="tooltip-trigger" tabindex="0" aria-label="年化收益率 XIRR 说明">?
+                                        <span class="tooltip-bubble">外部现金流按真实日期折现，至少 180 个自然日展示。</span>
+                                    </span>
+                                </div>
+                                <div class="performance-metric-value" id="performance-annualized-xirr">--</div>
+                                <div class="performance-metric-sub">资金加权年化</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="performance-section">
+                        <h2 class="performance-group-title">风险指标</h2>
+                        <div class="performance-grid performance-grid-3">
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">最大回撤</div>
+                                <div class="performance-metric-value" id="performance-max-drawdown">--</div>
+                                <div class="performance-metric-sub" id="performance-drawdown-period">--</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">年化波动率</div>
+                                <div class="performance-metric-value" id="performance-annualized-volatility">--</div>
+                                <div class="performance-metric-sub">基于净值日收益</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">样本天数</div>
+                                <div class="performance-metric-value" id="performance-sample-days">--</div>
+                                <div class="performance-metric-sub" id="performance-data-quality">--</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="performance-section">
+                        <h2 class="performance-group-title">交易质量</h2>
+                        <div class="performance-grid performance-grid-4">
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">胜率</div>
+                                <div class="performance-metric-value" id="performance-win-rate">--</div>
+                                <div class="performance-metric-sub">盈利卖单 / 卖单样本</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">盈亏比</div>
+                                <div class="performance-metric-value" id="performance-profit-loss-ratio">--</div>
+                                <div class="performance-metric-sub">平均盈利 / 平均亏损</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">总交易次数</div>
+                                <div class="performance-metric-value" id="performance-total-trade-count">--</div>
+                                <div class="performance-metric-sub">普通买卖订单</div>
+                            </div>
+                            <div class="performance-metric-card">
+                                <div class="performance-metric-label">期望值</div>
+                                <div class="performance-metric-value" id="performance-expectancy">--</div>
+                                <div class="performance-metric-sub">每笔卖单平均盈亏</div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </section>
         </div>
@@ -1130,6 +1257,7 @@
     <script src="/static/js/app-transactions.js?v=20260509-trade-fix-r2"></script>
     <script src="/static/js/app-asset-catalog.js?v=20260515-asset-catalog-v1"></script>
     <script src="/static/js/app-analysis-assets.js?v=20260516-tickflow-v2"></script>
+    <script src="/static/js/app-performance.js?v=20260602-performance-v1"></script>
     <script src="/static/js/app-data-sync.js?v=20260422-f05-app-split-r1"></script>
     <script src="/static/js/app.js?v=20260422-f05-app-split-r1"></script>
 </body>
