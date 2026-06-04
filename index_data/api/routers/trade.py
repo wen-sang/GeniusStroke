@@ -26,6 +26,7 @@ class BuyRequest(BaseModel):
     volume: float = Field(..., gt=0, description="成交数量")
     target_rate: float = Field(0.0, ge=0, le=1, description="目标收益率 (0.1=10%)")
     commission: Optional[float] = Field(None, ge=0, description="佣金 (可选，不填自动计算)")
+    transfer_fee: float = Field(0.0, ge=0, description="过户费")
     remark: str = Field("", description="备注")
 
 
@@ -36,6 +37,7 @@ class SellRequest(BaseModel):
     price: float = Field(..., gt=0, description="成交价格")
     volume: float = Field(..., gt=0, description="成交数量")
     commission: Optional[float] = Field(None, ge=0, description="佣金 (可选)")
+    transfer_fee: float = Field(0.0, ge=0, description="过户费")
     tax: Optional[float] = Field(None, ge=0, description="印花税 (可选)")
     remark: str = Field("", description="备注")
 
@@ -76,6 +78,7 @@ class OrderResponse(BaseModel):
     volume: float
     amount: float
     commission: float
+    transfer_fee: float
     tax: float
     realized_pnl: float
 
@@ -139,6 +142,7 @@ async def buy_order(
             volume=req.volume,
             target_rate=req.target_rate,
             commission=req.commission,
+            transfer_fee=req.transfer_fee,
             remark=req.remark,
             idempotency_key=idempotency_key,
         )
@@ -152,6 +156,7 @@ async def buy_order(
             volume=order.volume,
             amount=order.amount,
             commission=order.commission,
+            transfer_fee=order.transfer_fee,
             tax=order.tax,
             realized_pnl=order.realized_pnl,
         )
@@ -183,6 +188,7 @@ async def sell_order(
             price=req.price,
             volume=req.volume,
             commission=req.commission,
+            transfer_fee=req.transfer_fee,
             tax=req.tax,
             remark=req.remark,
             idempotency_key=idempotency_key,
@@ -197,6 +203,7 @@ async def sell_order(
             volume=order.volume,
             amount=order.amount,
             commission=order.commission,
+            transfer_fee=order.transfer_fee,
             tax=order.tax,
             realized_pnl=order.realized_pnl,
         )
@@ -223,6 +230,8 @@ class OrderUpdateRequest(BaseModel):
     price: float = Field(..., gt=0, description="成交价格")
     volume: float = Field(..., gt=0, description="成交数量")
     commission: float = Field(..., ge=0, description="佣金")
+    transfer_fee: float = Field(0.0, ge=0, description="过户费")
+    tax: Optional[float] = Field(None, ge=0, description="印花税")
     remark: Optional[str] = Field("", description="备注")
 
 @router.put("/order/{order_id}")
@@ -243,6 +252,8 @@ async def update_order(
             price=req.price,
             volume=req.volume,
             commission=req.commission,
+            transfer_fee=req.transfer_fee,
+            tax=req.tax,
             remark=req.remark
         )
         return {"success": True, "message": "订单修改成功"}

@@ -293,6 +293,7 @@
                         <col class="col-w-8">  <!-- 价格 -->
                         <col class="col-w-8">  <!-- 数量 -->
                         <col class="col-w-9">  <!-- 成交额 -->
+                        <col class="col-w-8">  <!-- 过户费 -->
                         <col class="col-w-9">  <!-- 收益金额 -->
                         <col class="col-w-8">  <!-- 收益率 -->
                         <col class="col-w-7">  <!-- 状态 -->
@@ -308,6 +309,7 @@
                             <th>价格</th>
                             <th>数量</th>
                             <th>成交额</th>
+                            <th>过户费</th>
                             <th>收益金额</th>
                             <th>收益率</th>
                             <th>状态</th>
@@ -955,6 +957,14 @@
                         <label class="form-label">佣金 <span class="required-mark">*</span></label>
                         <input type="number" step="0.01" class="form-input" id="edit-trade-commission">
                     </div>
+                    <div class="form-group hidden" id="edit-trade-transfer-fee-group">
+                        <label class="form-label">过户费 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" id="edit-trade-transfer-fee">
+                    </div>
+                    <div class="form-group hidden" id="edit-trade-tax-group">
+                        <label class="form-label">印花税 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" id="edit-trade-tax">
+                    </div>
                     <div class="form-group">
                         <label class="form-label">成交额 (自动计算)</label>
                         <input type="text" class="form-input" id="edit-trade-amount" disabled>
@@ -1025,6 +1035,14 @@
                         <label class="form-label">手续费</label>
                         <input type="number" class="form-input" id="tradeCommission" placeholder="留空则自动计算" step="0.01">
                     </div>
+                    <div class="form-group hidden" id="tradeTransferFeeGroup">
+                        <label class="form-label">过户费</label>
+                        <input type="number" class="form-input" id="tradeTransferFee" value="0" step="0.01">
+                    </div>
+                    <div class="form-group hidden" id="tradeTaxInputGroup">
+                        <label class="form-label">印花税</label>
+                        <input type="number" class="form-input" id="tradeTax" placeholder="留空则自动计算" step="0.01">
+                    </div>
 
                     <!-- 笔记 -->
                     <div class="form-group span-2">
@@ -1044,6 +1062,10 @@
                     <div class="trade-breakdown-row">
                         <span class="trade-breakdown-label" id="tradeCommissionSummaryLabel">手续费</span>
                         <span class="trade-breakdown-value" id="tradeCommissionValue">0.00</span>
+                    </div>
+                    <div class="trade-breakdown-row hidden" id="tradeTransferFeeRow">
+                        <span class="trade-breakdown-label">过户费</span>
+                        <span class="trade-breakdown-value" id="tradeTransferFeeValue">0.00</span>
                     </div>
                     <div class="trade-breakdown-row hidden" id="tradeTaxRow">
                         <span class="trade-breakdown-label" id="tradeTaxLabel">印花税</span>

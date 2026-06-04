@@ -36,6 +36,8 @@ const state = {
     isEmptyAccountState: false,
     accountModalMode: null,
     tradeSide: 'buy', // buy, sell
+    tradeAssetType: null,
+    editTradeAssetType: null,
     currentStock: null,
     summaryLoadSeq: 0,
     contentLoadSeq: 0,

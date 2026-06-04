@@ -16,7 +16,7 @@ function initTradeModal() {
     }
 
     // 绑定 input 计算总计
-    const calcInputs = ['tradePrice', 'tradeVolume', 'tradeCommission'];
+    const calcInputs = ['tradePrice', 'tradeVolume', 'tradeCommission', 'tradeTransferFee', 'tradeTax'];
     calcInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -59,8 +59,11 @@ function openTradeModal(type, stockCode = '', stockName = '') {
     const dateInput = document.getElementById('tradeDate');
     if (dateInput) dateInput.value = getTodayDateString();
     document.getElementById('tradeCommission').value = '';
+    document.getElementById('tradeTransferFee').value = '0';
+    document.getElementById('tradeTax').value = '';
     document.getElementById('tradeRemark').value = '';
     document.getElementById('stockName').value = stockName;
+    state.tradeAssetType = null;
     const remarkCount = document.getElementById('remarkCount');
     if (remarkCount) remarkCount.textContent = '0/128';
 
@@ -92,6 +95,7 @@ function closeTradeModal() {
     const modal = document.getElementById('tradeModal');
     if (modal) modal.classList.remove('active');
     state.tradeIdempotencyKey = null;
+    state.tradeAssetType = null;
 }
 
 function createTradeIdempotencyKey() {
@@ -118,6 +122,8 @@ function resetTradeEntryFields() {
     document.getElementById('tradePrice').value = '';
     document.getElementById('tradeVolume').value = '';
     document.getElementById('tradeCommission').value = '';
+    document.getElementById('tradeTransferFee').value = '0';
+    document.getElementById('tradeTax').value = '';
     document.getElementById('tradeRemark').value = '';
     const remarkCount = document.getElementById('remarkCount');
     if (remarkCount) remarkCount.textContent = '0/128';
@@ -156,7 +162,27 @@ function switchTradeSide(type) {
         }
     }
 
+    updateTradeFeeFieldVisibility();
     calculateTradeTotal();
+}
+
+function isTradeAssetStock(assetType = state.tradeAssetType) {
+    return String(assetType || '').toUpperCase() === 'STOCK';
+}
+
+function updateTradeFeeFieldVisibility() {
+    const isStock = isTradeAssetStock();
+    const showTransferFee = isStock;
+    const showTax = isStock && state.tradeSide === 'sell';
+    const transferGroup = document.getElementById('tradeTransferFeeGroup');
+    const taxGroup = document.getElementById('tradeTaxInputGroup');
+    const transferInput = document.getElementById('tradeTransferFee');
+    const taxInput = document.getElementById('tradeTax');
+
+    if (transferGroup) transferGroup.classList.toggle('hidden', !showTransferFee);
+    if (taxGroup) taxGroup.classList.toggle('hidden', !showTax);
+    if (!showTransferFee && transferInput) transferInput.value = '0';
+    if (!showTax && taxInput) taxInput.value = '';
 }
 
 function getCurrentTradeFeeConfig() {
@@ -191,11 +217,19 @@ function getTradeCalculationBreakdown() {
     const price = parseFloat(document.getElementById('tradePrice').value) || 0;
     const volume = parseFloat(document.getElementById('tradeVolume').value) || 0;
     const commissionText = document.getElementById('tradeCommission').value.trim();
+    const transferFeeText = document.getElementById('tradeTransferFee').value.trim();
+    const taxText = document.getElementById('tradeTax').value.trim();
     const hasManualCommission = commissionText !== '';
+    const hasManualTransferFee = transferFeeText !== '';
+    const hasManualTax = taxText !== '';
     const manualCommission = hasManualCommission ? parseFloat(commissionText) : NaN;
+    const manualTransferFee = hasManualTransferFee ? parseFloat(transferFeeText) : NaN;
+    const manualTax = hasManualTax ? parseFloat(taxText) : NaN;
     const feeConfig = getCurrentTradeFeeConfig();
     const amount = price * volume;
     let commission = 0;
+    let transferFee = 0;
+    let tax = 0;
 
     if (amount > 0) {
         if (hasManualCommission && Number.isFinite(manualCommission) && manualCommission >= 0) {
@@ -205,18 +239,36 @@ function getTradeCalculationBreakdown() {
         }
     }
 
-    const tax = state.tradeSide === 'sell' && amount > 0 ? amount * feeConfig.stampDutyRate : 0;
-    const total = state.tradeSide === 'sell' ? amount - commission - tax : amount + commission;
+    if (isTradeAssetStock()) {
+        if (hasManualTransferFee && Number.isFinite(manualTransferFee) && manualTransferFee >= 0) {
+            transferFee = manualTransferFee;
+        }
+        if (state.tradeSide === 'sell' && amount > 0) {
+            if (hasManualTax && Number.isFinite(manualTax) && manualTax >= 0) {
+                tax = manualTax;
+            } else {
+                tax = amount * feeConfig.stampDutyRate;
+            }
+        }
+    }
+
+    const total = state.tradeSide === 'sell'
+        ? amount - commission - transferFee - tax
+        : amount + commission + transferFee;
 
     return {
         amount,
         commission,
+        transferFee,
         tax,
         total,
         hasManualCommission,
+        hasManualTransferFee,
+        hasManualTax,
         commissionLabel: '手续费',
         totalLabel: '总计金额',
-        showTax: state.tradeSide === 'sell' && tax > 0,
+        showTransferFee: isTradeAssetStock(),
+        showTax: isTradeAssetStock() && state.tradeSide === 'sell',
     };
 }
 
@@ -225,6 +277,8 @@ function calculateTradeTotal() {
     const amountEl = document.getElementById('tradeAmountValue');
     const commissionLabelEl = document.getElementById('tradeCommissionSummaryLabel');
     const commissionValueEl = document.getElementById('tradeCommissionValue');
+    const transferFeeRowEl = document.getElementById('tradeTransferFeeRow');
+    const transferFeeValueEl = document.getElementById('tradeTransferFeeValue');
     const taxRowEl = document.getElementById('tradeTaxRow');
     const taxValueEl = document.getElementById('tradeTaxValue');
     const totalLabelEl = document.getElementById('tradeTotalLabel');
@@ -233,6 +287,11 @@ function calculateTradeTotal() {
     if (amountEl) amountEl.textContent = formatCurrency(breakdown.amount);
     if (commissionLabelEl) commissionLabelEl.textContent = breakdown.commissionLabel;
     if (commissionValueEl) commissionValueEl.textContent = formatCurrency(breakdown.commission);
+    if (transferFeeRowEl) {
+        transferFeeRowEl.style.display = breakdown.showTransferFee ? 'flex' : 'none';
+        transferFeeRowEl.classList.toggle('hidden', !breakdown.showTransferFee);
+    }
+    if (transferFeeValueEl) transferFeeValueEl.textContent = formatCurrency(breakdown.transferFee);
     if (taxRowEl) {
         taxRowEl.style.display = breakdown.showTax ? 'flex' : 'none';
         taxRowEl.classList.toggle('hidden', !breakdown.showTax);
@@ -245,25 +304,25 @@ function calculateTradeTotal() {
 async function fetchStockNameAndLots(code, knownName = '') {
     const nameInput = document.getElementById('stockName');
 
-    // 1. 查名称 (如果还没查或外界没有传过来)
-    if (!knownName) {
-        nameInput.placeholder = '查询中...';
-        try {
-            const asset = await fetchAssetMetaByCode(code);
-            if (asset && asset.asset_name) {
-                nameInput.value = asset.asset_name;
-            } else {
-                nameInput.value = '';
-                nameInput.placeholder = '未找到标的档案';
-            }
-        } catch (error) {
-            console.error('资产档案查询失败', error);
-            nameInput.value = '';
-            nameInput.placeholder = '档案查询失败';
+    nameInput.placeholder = '查询中...';
+    try {
+        const asset = await fetchAssetMetaByCode(code);
+        if (asset && asset.asset_name) {
+            nameInput.value = asset.asset_name;
+            state.tradeAssetType = asset.asset_type || null;
+        } else {
+            nameInput.value = knownName || '';
+            nameInput.placeholder = '未找到标的档案';
+            state.tradeAssetType = null;
         }
-    } else {
-        nameInput.value = knownName;
+    } catch (error) {
+        console.error('资产档案查询失败', error);
+        nameInput.value = knownName || '';
+        nameInput.placeholder = '档案查询失败';
+        state.tradeAssetType = null;
     }
+    updateTradeFeeFieldVisibility();
+    calculateTradeTotal();
 
     // 2. 如果当前是卖出，拉取批次
     if (state.tradeSide === 'sell') {
@@ -316,23 +375,23 @@ async function submitTradeOrder() {
         return;
     }
 
-    if (state.tradeSide === 'buy') {
-        let asset = null;
-        try {
-            asset = await fetchAssetMetaByCode(code);
-        } catch (error) {
-            showToast('error', `资产档案查询失败: ${error.message}`);
-            return;
-        }
-        if (!asset) {
-            showToast('error', '未找到标的档案，请先新增基础档案');
-            return;
-        }
-        const nameInput = document.getElementById('stockName');
-        if (nameInput && asset.asset_name) {
-            nameInput.value = asset.asset_name;
-        }
+    let asset = null;
+    try {
+        asset = await fetchAssetMetaByCode(code);
+    } catch (error) {
+        showToast('error', `资产档案查询失败: ${error.message}`);
+        return;
     }
+    if (!asset && state.tradeSide === 'buy') {
+        showToast('error', '未找到标的档案，请先新增基础档案');
+        return;
+    }
+    state.tradeAssetType = asset?.asset_type || null;
+    const nameInput = document.getElementById('stockName');
+    if (nameInput && asset?.asset_name) {
+        nameInput.value = asset.asset_name;
+    }
+    updateTradeFeeFieldVisibility();
 
     const price = parseFloat(document.getElementById('tradePrice').value);
     const vol = parseFloat(document.getElementById('tradeVolume').value);
@@ -347,6 +406,22 @@ async function submitTradeOrder() {
         const manualCommission = parseFloat(commStr);
         if (isNaN(manualCommission) || manualCommission < 0) {
             showToast('error', '手续费不能为负数');
+            return;
+        }
+    }
+    const transferFeeStr = document.getElementById('tradeTransferFee').value.trim();
+    if (transferFeeStr !== '') {
+        const manualTransferFee = parseFloat(transferFeeStr);
+        if (isNaN(manualTransferFee) || manualTransferFee < 0) {
+            showToast('error', '过户费不能为负数');
+            return;
+        }
+    }
+    const taxStr = document.getElementById('tradeTax').value.trim();
+    if (taxStr !== '') {
+        const manualTax = parseFloat(taxStr);
+        if (isNaN(manualTax) || manualTax < 0) {
+            showToast('error', '印花税不能为负数');
             return;
         }
     }
@@ -393,6 +468,7 @@ async function submitTradeOrder() {
                 volume: vol,
                 target_rate: 0.0, // 默认0
                 commission: breakdown.commission,
+                transfer_fee: breakdown.transferFee,
                 remark: remark
             };
 
@@ -424,6 +500,7 @@ async function submitTradeOrder() {
                 price: price,
                 volume: vol,
                 commission: breakdown.commission,
+                transfer_fee: breakdown.transferFee,
                 tax: breakdown.tax,
                 remark: remark
             };
@@ -1021,7 +1098,7 @@ async function loadTradeOrders(loadContext = null, append = false) {
     if (!append) {
         resetPaginationState('transaction_orders');
         state.tradeOrders = [];
-        renderTableStatusRow(tbody, 12, '加载中...');
+        renderTableStatusRow(tbody, 13, '加载中...');
     } else {
         setPaginationLoading('transaction_orders', true);
     }
@@ -1032,14 +1109,14 @@ async function loadTradeOrders(loadContext = null, append = false) {
         listPaginationState.transaction_orders.loading = false;
         updatePaginationUI('transaction_orders');
         if (!append) {
-            renderTableStatusRow(tbody, 12, '暂无记录', { padded: true });
+            renderTableStatusRow(tbody, 13, '暂无记录', { padded: true });
         }
         return;
     }
 
     const items = applyPaginatedResult('transaction_orders', result, append);
     if (!append && items.length === 0) {
-        renderTableStatusRow(tbody, 12, '暂无记录', { padded: true });
+        renderTableStatusRow(tbody, 13, '暂无记录', { padded: true });
         return;
     }
 
@@ -1052,6 +1129,7 @@ async function loadTradeOrders(loadContext = null, append = false) {
             <td class="number">${escapeHtml(String(getTradeOrderPriceText(item)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderQuantityText(item)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderAmountText(item)))}</td>
+            <td class="number">${escapeHtml(String(formatCurrency(item.transfer_fee || 0)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderRealizedPnlText(item)))}</td>
             <td class="number">${escapeHtml(String(getTradeOrderRealizedReturnRateText(item)))}</td>
             <td class="center">${getCorporateActionStatusChip(item.status || 'ACTIVE')}</td>
@@ -1125,6 +1203,21 @@ function syncTransactionEditAmount() {
     document.getElementById('edit-trade-amount').value = (price * volume).toFixed(2);
 }
 
+function updateTransactionEditFeeVisibility() {
+    const isStock = isTradeAssetStock(state.editTradeAssetType);
+    const side = document.getElementById('edit-trade-side').value;
+    const transferGroup = document.getElementById('edit-trade-transfer-fee-group');
+    const taxGroup = document.getElementById('edit-trade-tax-group');
+    const transferInput = document.getElementById('edit-trade-transfer-fee');
+    const taxInput = document.getElementById('edit-trade-tax');
+    const showTax = isStock && side === 'SELL';
+
+    if (transferGroup) transferGroup.classList.toggle('hidden', !isStock);
+    if (taxGroup) taxGroup.classList.toggle('hidden', !showTax);
+    if (!isStock && transferInput) transferInput.value = '0';
+    if (!showTax && taxInput) taxInput.value = '0';
+}
+
 function openTransactionEditModal(orderId) {
     const normalizedOrderId = Number(orderId);
     const order = state.tradeOrders.find((item) => Number(item.row_id) === normalizedOrderId);
@@ -1134,6 +1227,7 @@ function openTransactionEditModal(orderId) {
     }
 
     currentEditOrderId = normalizedOrderId;
+    state.editTradeAssetType = order.asset_type || null;
 
     document.getElementById('edit-trade-code').value = order.asset_code;
     document.getElementById('edit-trade-name').value = order.asset_name || '';
@@ -1142,10 +1236,14 @@ function openTransactionEditModal(orderId) {
     document.getElementById('edit-trade-price').value = order.price;
     document.getElementById('edit-trade-volume').value = order.volume;
     document.getElementById('edit-trade-commission').value = order.commission || 0;
+    document.getElementById('edit-trade-transfer-fee').value = order.transfer_fee || 0;
+    document.getElementById('edit-trade-tax').value = order.tax || 0;
     document.getElementById('edit-trade-amount').value = order.amount || 0;
 
     document.getElementById('edit-trade-price').oninput = syncTransactionEditAmount;
     document.getElementById('edit-trade-volume').oninput = syncTransactionEditAmount;
+    document.getElementById('edit-trade-side').onchange = updateTransactionEditFeeVisibility;
+    updateTransactionEditFeeVisibility();
 
     document.getElementById('transactionEditModal').classList.add('active');
 }
@@ -1153,6 +1251,7 @@ function openTransactionEditModal(orderId) {
 function closeTransactionEditModal() {
     document.getElementById('transactionEditModal').classList.remove('active');
     currentEditOrderId = null;
+    state.editTradeAssetType = null;
 }
 
 async function saveTransactionEdit() {
@@ -1163,6 +1262,8 @@ async function saveTransactionEdit() {
     const price = parseFloat(document.getElementById('edit-trade-price').value);
     const volume = parseFloat(document.getElementById('edit-trade-volume').value);
     const commission = parseFloat(document.getElementById('edit-trade-commission').value);
+    const transferFee = parseFloat(document.getElementById('edit-trade-transfer-fee').value);
+    const tax = parseFloat(document.getElementById('edit-trade-tax').value);
 
     if (!tradeDate || !side || isNaN(price) || isNaN(volume)) {
         showToast('error', '请完整填写必填字段，且价格与数量必须为有效数值');
@@ -1172,6 +1273,18 @@ async function saveTransactionEdit() {
         showToast('error', '价格和数量必须大于 0');
         return;
     }
+    if (!isNaN(commission) && commission < 0) {
+        showToast('error', '佣金不能为负数');
+        return;
+    }
+    if (!isNaN(transferFee) && transferFee < 0) {
+        showToast('error', '过户费不能为负数');
+        return;
+    }
+    if (!isNaN(tax) && tax < 0) {
+        showToast('error', '印花税不能为负数');
+        return;
+    }
 
     const payload = {
         trade_time: `${tradeDate} 00:00:00`,
@@ -1179,6 +1292,8 @@ async function saveTransactionEdit() {
         price,
         volume,
         commission: isNaN(commission) ? 0 : commission,
+        transfer_fee: isTradeAssetStock(state.editTradeAssetType) && !isNaN(transferFee) ? transferFee : 0,
+        tax: side === 'SELL' && isTradeAssetStock(state.editTradeAssetType) && !isNaN(tax) ? tax : 0,
         remark: '用户修改单据'
     };
 

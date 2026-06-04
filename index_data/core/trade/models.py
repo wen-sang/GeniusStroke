@@ -21,6 +21,7 @@ class Order:
     volume: float = 0.0
     amount: float = 0.0
     commission: float = 0.0
+    transfer_fee: float = 0.0
     tax: float = 0.0
     remain_vol: float = 0.0  # 剩余可用份额 (仅 BUY)
     link_order_id: Optional[int] = None  # 关联买单ID (仅 SELL)
@@ -47,6 +48,7 @@ class Order:
             'volume': self.volume,
             'amount': self.amount,
             'commission': self.commission,
+            'transfer_fee': self.transfer_fee,
             'tax': self.tax,
             'remain_vol': self.remain_vol,
             'link_order_id': self.link_order_id,
@@ -75,6 +77,7 @@ class Order:
             volume=data.get('volume', 0.0),
             amount=data.get('amount', 0.0),
             commission=data.get('commission', 0.0),
+            transfer_fee=data.get('transfer_fee', 0.0),
             tax=data.get('tax', 0.0),
             remain_vol=data.get('remain_vol', 0.0),
             link_order_id=data.get('link_order_id'),

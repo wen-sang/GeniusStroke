@@ -85,6 +85,7 @@ class TradeService:
         volume: float,
         target_rate: float = 0.0,
         commission: Optional[float] = None,
+        transfer_fee: Optional[float] = 0.0,
         remark: str = "",
         idempotency_key: Optional[str] = None,
     ) -> Order:
@@ -96,6 +97,7 @@ class TradeService:
             volume=volume,
             target_rate=target_rate,
             commission=commission,
+            transfer_fee=transfer_fee,
             remark=remark,
             idempotency_key=idempotency_key,
         )
@@ -108,6 +110,7 @@ class TradeService:
         price: float,
         volume: float,
         commission: Optional[float] = None,
+        transfer_fee: Optional[float] = 0.0,
         tax: Optional[float] = None,
         remark: str = "",
         idempotency_key: Optional[str] = None,
@@ -119,6 +122,7 @@ class TradeService:
             price=price,
             volume=volume,
             commission=commission,
+            transfer_fee=transfer_fee,
             tax=tax,
             remark=remark,
             idempotency_key=idempotency_key,
@@ -133,6 +137,8 @@ class TradeService:
         price: float,
         volume: float,
         commission: float,
+        transfer_fee: float = 0.0,
+        tax: Optional[float] = None,
         remark: str = "",
     ) -> None:
         self._execution_ops.update_order(
@@ -143,6 +149,8 @@ class TradeService:
             price=price,
             volume=volume,
             commission=commission,
+            transfer_fee=transfer_fee,
+            tax=tax,
             remark=remark,
         )
 

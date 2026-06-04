@@ -527,6 +527,7 @@ trade_order = Table(
     Column("volume", REAL, nullable=False),
     Column("amount", REAL, nullable=False),
     Column("commission", REAL, server_default=text("0")),
+    Column("transfer_fee", REAL, server_default=text("0")),
     Column("tax", REAL, server_default=text("0")),
     Column("remain_vol", REAL, server_default=text("0")),
     Column("link_order_id", Integer),

@@ -142,6 +142,20 @@ class TradeDAO(BaseDAO):
             row = cursor.fetchone()
             return self._row_to_dict(cursor, row)
 
+    def get_asset_type(self, asset_code: str, conn=None) -> Optional[str]:
+        """获取资产类型，用于交易费用口径判断。"""
+        sql = "SELECT asset_type FROM sys_asset_meta WHERE asset_code = ?"
+        if conn is not None:
+            cursor = conn.cursor()
+            cursor.execute(sql, (asset_code,))
+            row = cursor.fetchone()
+            return row[0] if row and row[0] else None
+        with self.db_engine.get_connection(readonly=True) as ro_conn:
+            cursor = ro_conn.cursor()
+            cursor.execute(sql, (asset_code,))
+            row = cursor.fetchone()
+            return row[0] if row and row[0] else None
+
     def create_account(self, account_name: str, conn=None) -> Dict:
         """创建账户并返回完整账户信息。"""
         sql = """
@@ -325,16 +339,16 @@ class TradeDAO(BaseDAO):
         sql = """
         INSERT INTO trade_order (
             order_no, account_id, asset_code, trade_time, side, order_type, price, volume, amount,
-            commission, tax, remain_vol, link_order_id, target_rate,
+            commission, transfer_fee, tax, remain_vol, link_order_id, target_rate,
             realized_pnl, status, remark, source_type, source_ref_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         if conn is not None:
             cursor = conn.cursor()
             cursor.execute(sql, (
                 order_no, order.account_id, order.asset_code, order.trade_time,
                 order.side, order_type, order.price, order.volume, order.amount,
-                order.commission, order.tax, order.remain_vol,
+                order.commission, order.transfer_fee, order.tax, order.remain_vol,
                 order.link_order_id, order.target_rate, order.realized_pnl,
                 order.status, order.remark, order.source_type, order.source_ref_id
             ))
@@ -344,7 +358,7 @@ class TradeDAO(BaseDAO):
             cursor.execute(sql, (
                 order_no, order.account_id, order.asset_code, order.trade_time,
                 order.side, order_type, order.price, order.volume, order.amount,
-                order.commission, order.tax, order.remain_vol,
+                order.commission, order.transfer_fee, order.tax, order.remain_vol,
                 order.link_order_id, order.target_rate, order.realized_pnl,
                 order.status, order.remark, order.source_type, order.source_ref_id
             ))
@@ -357,7 +371,7 @@ class TradeDAO(BaseDAO):
         sql = """
         SELECT
             order_id, order_no, account_id, asset_code, trade_time,
-            side, order_type, price, volume, amount, commission, tax,
+            side, order_type, price, volume, amount, commission, transfer_fee, tax,
             remain_vol, link_order_id, target_rate, realized_pnl,
             status, remark, source_type, source_ref_id, updated_at, created_at
         FROM trade_order
@@ -387,7 +401,7 @@ class TradeDAO(BaseDAO):
         sql = """
         SELECT
             order_id, order_no, account_id, asset_code, trade_time,
-            side, order_type, price, volume, amount, commission, tax,
+            side, order_type, price, volume, amount, commission, transfer_fee, tax,
             remain_vol, link_order_id, target_rate, realized_pnl,
             status, remark, source_type, source_ref_id, updated_at, created_at
         FROM trade_order
@@ -529,22 +543,31 @@ class TradeDAO(BaseDAO):
             conn.execute(sql, (status, order_id))
 
     def update_order_details(self, order_id: int, trade_time: str, side: str,
-                             price: float, volume: float, amount: float, commission: float, conn=None) -> None:
+                             price: float, volume: float, amount: float,
+                             commission: float, transfer_fee: float,
+                             tax: float, conn=None) -> None:
         """
         更新订单详情 (主要用于数据修正流水)
         注: 不更新 link_order_id、target_rate, realized_pnl 等联动字段, 仅更新本身核心数据
         """
         sql = """
         UPDATE trade_order
-        SET trade_time = ?, side = ?, price = ?, volume = ?, amount = ?, commission = ?,
+        SET trade_time = ?, side = ?, price = ?, volume = ?, amount = ?,
+            commission = ?, transfer_fee = ?, tax = ?,
             updated_at = datetime('now', 'localtime')
         WHERE order_id = ?
         """
         if conn is not None:
-            conn.execute(sql, (trade_time, side, price, volume, amount, commission, order_id))
+            conn.execute(sql, (
+                trade_time, side, price, volume, amount, commission,
+                transfer_fee, tax, order_id,
+            ))
             return
         with self.db_engine.get_connection() as write_conn:
-            write_conn.execute(sql, (trade_time, side, price, volume, amount, commission, order_id))
+            write_conn.execute(sql, (
+                trade_time, side, price, volume, amount, commission,
+                transfer_fee, tax, order_id,
+            ))
 
     def get_account_first_fact_date(self, account_id: int, conn=None) -> Optional[str]:
         """获取账户最早业务事实日期。"""
@@ -686,10 +709,10 @@ class TradeDAO(BaseDAO):
         sql = """
         SELECT
             o.order_id, o.order_no, o.account_id, o.asset_code, o.trade_time,
-            o.side, o.order_type, o.price, o.volume, o.amount, o.commission, o.tax,
+            o.side, o.order_type, o.price, o.volume, o.amount, o.commission, o.transfer_fee, o.tax,
             o.remain_vol, o.link_order_id, o.target_rate, o.realized_pnl,
             o.status, o.remark, o.source_type, o.source_ref_id, o.updated_at, o.created_at,
-            m.asset_name
+            m.asset_name, m.asset_type
         FROM trade_order o
         LEFT JOIN sys_asset_meta m ON o.asset_code = m.asset_code
         WHERE o.account_id = ?
@@ -706,10 +729,11 @@ class TradeDAO(BaseDAO):
         sql = """
         SELECT
             o.order_id, o.order_no, o.account_id, o.asset_code, o.trade_time,
-            o.side, o.order_type, o.price, o.volume, o.amount, o.commission, o.tax,
+            o.side, o.order_type, o.price, o.volume, o.amount, o.commission, o.transfer_fee, o.tax,
             o.remain_vol, o.link_order_id, o.target_rate, o.realized_pnl,
             o.status, o.remark, o.source_type, o.source_ref_id, o.updated_at, o.created_at,
-            COALESCE(m.asset_name, o.asset_code) AS asset_name
+            COALESCE(m.asset_name, o.asset_code) AS asset_name,
+            m.asset_type
         FROM trade_order o
         LEFT JOIN sys_asset_meta m ON o.asset_code = m.asset_code
         WHERE o.account_id = ?

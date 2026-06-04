@@ -222,6 +222,37 @@ class TradeExecutionOperations:
             raise ValidationError("幂等键长度不能超过128个字符")
         return normalized
 
+    @staticmethod
+    def _normalize_fee(value: Optional[float], field_name: str, default: float = 0.0) -> float:
+        if value is None:
+            return default
+        normalized = float(value)
+        if normalized < 0:
+            raise ValidationError(f"{field_name}不能为负数")
+        return normalized
+
+    @staticmethod
+    def _is_stock_asset(asset_type: Optional[str]) -> bool:
+        return (asset_type or "").upper() == "STOCK"
+
+    def _validate_fee_policy(
+        self,
+        *,
+        asset_type: Optional[str],
+        side: str,
+        transfer_fee: float,
+        tax: float,
+    ) -> None:
+        is_stock = self._is_stock_asset(asset_type)
+        if not is_stock and (transfer_fee > 0 or tax > 0):
+            raise ValidationError("非股票交易不允许填写过户费或印花税")
+        if side != "SELL" and tax > 0:
+            raise ValidationError("只有股票卖出允许填写印花税")
+
+    @staticmethod
+    def _fee_summary(commission: float, transfer_fee: float, tax: float) -> str:
+        return f"Fee: commission={commission:.2f}, transfer_fee={transfer_fee:.2f}, tax={tax:.2f}"
+
     def buy(
         self,
         account_id: int,
@@ -231,6 +262,7 @@ class TradeExecutionOperations:
         volume: float,
         target_rate: float = 0.0,
         commission: Optional[float] = None,
+        transfer_fee: Optional[float] = 0.0,
         remark: str = "",
         idempotency_key: Optional[str] = None,
     ) -> Order:
@@ -250,6 +282,7 @@ class TradeExecutionOperations:
                     return existing_order
 
             account = self.dao.get_or_create_account(account_id, conn=conn)
+            asset_type = self.dao.get_asset_type(asset_code, conn=conn)
             before_cash = account.get("cash_balance", 0.0)
             amount = price * volume
 
@@ -257,8 +290,16 @@ class TradeExecutionOperations:
                 rate = account.get("commission_rate", 0.00025)
                 min_comm = account.get("commission_min", 5.0)
                 commission = max(amount * rate, min_comm)
+            commission = self._normalize_fee(commission, "佣金")
+            transfer_fee = self._normalize_fee(transfer_fee, "过户费")
+            self._validate_fee_policy(
+                asset_type=asset_type,
+                side="BUY",
+                transfer_fee=transfer_fee,
+                tax=0.0,
+            )
 
-            total_cost = amount + commission
+            total_cost = amount + commission + transfer_fee
             if before_cash < total_cost:
                 raise ValidationError(
                     f"可用现金不足: 可用 {before_cash:.2f}, 需要 {total_cost:.2f}"
@@ -274,6 +315,7 @@ class TradeExecutionOperations:
                 volume=volume,
                 amount=amount,
                 commission=commission,
+                transfer_fee=transfer_fee,
                 remain_vol=volume,
                 target_rate=target_rate,
                 remark=remark or "BUY",
@@ -291,7 +333,10 @@ class TradeExecutionOperations:
                 before_cash=before_cash,
                 after_cash=after_cash,
                 amount_change=-total_cost,
-                remark=f"BUY {asset_code} | Vol:{volume} | Price:{price}",
+                remark=(
+                    f"BUY {asset_code} | Vol:{volume} | Price:{price} | "
+                    f"{self._fee_summary(commission, transfer_fee, 0.0)}"
+                ),
                 conn=conn,
             )
             self.mutation_rebuild_orchestrator.refresh_after_mutation(
@@ -319,6 +364,7 @@ class TradeExecutionOperations:
         price: float,
         volume: float,
         commission: Optional[float] = None,
+        transfer_fee: Optional[float] = 0.0,
         tax: Optional[float] = None,
         remark: str = "",
         idempotency_key: Optional[str] = None,
@@ -355,6 +401,7 @@ class TradeExecutionOperations:
                 )
 
             account = self.dao.get_or_create_account(account_id, conn=conn)
+            asset_type = self.dao.get_asset_type(buy_order.asset_code, conn=conn)
             before_cash = account.get("cash_balance", 0.0)
             amount = price * volume
 
@@ -362,15 +409,27 @@ class TradeExecutionOperations:
                 rate = account.get("commission_rate", 0.00025)
                 min_comm = account.get("commission_min", 5.0)
                 commission = max(amount * rate, min_comm)
+            commission = self._normalize_fee(commission, "佣金")
+            transfer_fee = self._normalize_fee(transfer_fee, "过户费")
 
             if tax is None:
-                stamp_rate = account.get("stamp_duty_rate", 0.001)
-                tax = amount * stamp_rate
-
-            net_income = amount - commission - tax
-            buy_cost_per_share = buy_order.price + (
-                buy_order.commission / buy_order.volume if buy_order.volume > 0 else 0
+                if self._is_stock_asset(asset_type):
+                    stamp_rate = account.get("stamp_duty_rate", 0.001)
+                    tax = amount * stamp_rate
+                else:
+                    tax = 0.0
+            tax = self._normalize_fee(tax, "印花税")
+            self._validate_fee_policy(
+                asset_type=asset_type,
+                side="SELL",
+                transfer_fee=transfer_fee,
+                tax=tax,
             )
+
+            net_income = amount - commission - transfer_fee - tax
+            buy_amount = buy_order.amount or (buy_order.price * buy_order.volume)
+            buy_total_cost = buy_amount + buy_order.commission + buy_order.transfer_fee
+            buy_cost_per_share = buy_total_cost / buy_order.volume if buy_order.volume > 0 else 0
             buy_cost = buy_cost_per_share * volume
             realized_pnl = net_income - buy_cost
             after_cash = before_cash + net_income
@@ -384,6 +443,7 @@ class TradeExecutionOperations:
                 volume=volume,
                 amount=amount,
                 commission=commission,
+                transfer_fee=transfer_fee,
                 tax=tax,
                 link_order_id=link_order_id,
                 realized_pnl=realized_pnl,
@@ -404,7 +464,8 @@ class TradeExecutionOperations:
                 amount_change=net_income,
                 remark=(
                     f"SELL {buy_order.asset_code} | Vol:{volume} | Price:{price} | "
-                    f"PnL:{realized_pnl:.2f}"
+                    f"PnL:{realized_pnl:.2f} | "
+                    f"{self._fee_summary(commission, transfer_fee, tax)}"
                 ),
                 conn=conn,
             )
@@ -435,14 +496,16 @@ class TradeExecutionOperations:
         price: float,
         volume: float,
         commission: float,
+        transfer_fee: float = 0.0,
+        tax: Optional[float] = None,
         remark: str = "",
     ) -> None:
         if price <= 0 or volume <= 0:
             raise ValidationError("价格和数量必须大于 0")
-        if commission < 0:
-            raise ValidationError("佣金不能为负数")
         if side not in ("BUY", "SELL"):
             raise ValidationError(f"不支持的交易类型: {side}")
+        commission = self._normalize_fee(commission, "佣金")
+        transfer_fee = self._normalize_fee(transfer_fee, "过户费")
 
         with self.db_engine.get_connection() as conn:
             order = self.dao.get_order(order_id, conn=conn)
@@ -450,6 +513,19 @@ class TradeExecutionOperations:
                 raise ValidationError(f"需要修改的订单不存在: {order_id}")
             if order.account_id != account_id:
                 raise ValidationError("无权修改该账户的订单")
+
+            asset_type = self.dao.get_asset_type(order.asset_code, conn=conn)
+            tax_to_write = (
+                float(order.tax or 0.0)
+                if tax is None and side == "SELL"
+                else self._normalize_fee(tax, "印花税", default=0.0)
+            )
+            self._validate_fee_policy(
+                asset_type=asset_type,
+                side=side,
+                transfer_fee=transfer_fee,
+                tax=tax_to_write,
+            )
 
             amount = price * volume
             self.dao.update_order_details(
@@ -460,6 +536,8 @@ class TradeExecutionOperations:
                 volume=volume,
                 amount=amount,
                 commission=commission,
+                transfer_fee=transfer_fee,
+                tax=tax_to_write,
                 conn=conn,
             )
             self.dao.insert_audit_log(
@@ -605,13 +683,15 @@ class TradeQueryOperations:
                 realized_pnl = float(realized_pnl_raw)
                 amount = float(order_dict.get("amount") or 0.0)
                 commission = float(order_dict.get("commission") or 0.0)
+                transfer_fee = float(order_dict.get("transfer_fee") or 0.0)
                 tax = float(order_dict.get("tax") or 0.0)
-                realized_cost_basis = amount - commission - tax - realized_pnl
+                realized_cost_basis = amount - commission - transfer_fee - tax - realized_pnl
                 if realized_cost_basis > 0:
                     realized_return_rate = realized_pnl / realized_cost_basis
             order_dict["realized_return_rate"] = realized_return_rate
             order_dict["realized_pnl"] = order_dict.get("realized_pnl") or 0.0
             order_dict["commission"] = order_dict.get("commission") or 0.0
+            order_dict["transfer_fee"] = order_dict.get("transfer_fee") or 0.0
             order_dict["tax"] = order_dict.get("tax") or 0.0
             orders.append(order_dict)
 

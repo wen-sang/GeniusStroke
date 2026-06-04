@@ -105,17 +105,20 @@ class HistoryRow:
     row_num: int
     asset_code: str
     asset_name: str
+    asset_type: str
     exchange: str
     listing_date: Optional[str]
     buy_date: str
     buy_price: float
     buy_volume: float
     buy_commission: float
+    buy_transfer_fee: float
     target_rate: float
     sell_date: Optional[str]
     sell_price: float
     sell_volume: float
     sell_commission: float
+    sell_transfer_fee: float
     sell_tax: float
 
 
@@ -265,6 +268,7 @@ class AccountImportRebuilder:
                 asset_name=row.asset_name,
                 exchange=row.exchange,
                 listing_date=row.listing_date,
+                asset_type=row.asset_type,
                 conn=conn,
             )
 
@@ -277,6 +281,7 @@ class AccountImportRebuilder:
                 volume=row.buy_volume,
                 amount=row.buy_price * row.buy_volume,
                 commission=row.buy_commission,
+                transfer_fee=row.buy_transfer_fee,
                 remain_vol=row.buy_volume,
                 target_rate=row.target_rate,
                 remark="历史导入",
@@ -295,6 +300,7 @@ class AccountImportRebuilder:
                     volume=row.sell_volume,
                     amount=row.sell_price * row.sell_volume,
                     commission=row.sell_commission,
+                    transfer_fee=row.sell_transfer_fee,
                     tax=row.sell_tax,
                     link_order_id=buy_order_id,
                     remark="历史导入",
@@ -311,13 +317,24 @@ class AccountImportRebuilder:
         plan = self._build_cash_flow_plan(include_auto_adjust=False)
         trade_events = []
         for row in self.history_rows:
-            trade_events.append((row.buy_date, "BUY", row.buy_price * row.buy_volume + row.buy_commission))
+            trade_events.append(
+                (
+                    row.buy_date,
+                    "BUY",
+                    row.buy_price * row.buy_volume + row.buy_commission + row.buy_transfer_fee,
+                )
+            )
             if row.sell_date and row.sell_volume > 0 and row.sell_price > 0:
                 trade_events.append(
                     (
                         row.sell_date,
                         "SELL",
-                        row.sell_price * row.sell_volume - row.sell_commission - row.sell_tax,
+                        (
+                            row.sell_price * row.sell_volume
+                            - row.sell_commission
+                            - row.sell_transfer_fee
+                            - row.sell_tax
+                        ),
                     )
                 )
 
@@ -404,17 +421,20 @@ class AccountImportRebuilder:
                     row_num=index + 2,
                     asset_code=asset_code,
                     asset_name=safe_str(row.get("名称")) or asset_code,
+                    asset_type=(safe_str(row.get("资产类型")) or "ETF").upper(),
                     exchange=infer_exchange(asset_code),
                     listing_date=format_date(row.get("上市时期")) or format_date(row.get("上市日期")),
                     buy_date=buy_date,
                     buy_price=buy_price,
                     buy_volume=buy_volume,
                     buy_commission=safe_float(row.get("买入手续费")),
+                    buy_transfer_fee=safe_float(row.get("买入过户费")),
                     target_rate=target_rate,
                     sell_date=format_date(row.get("卖出日期")),
                     sell_price=safe_float(row.get("卖出价格")),
                     sell_volume=safe_float(row.get("卖出份数")),
                     sell_commission=safe_float(row.get("卖出手续费")),
+                    sell_transfer_fee=safe_float(row.get("卖出过户费")),
                     sell_tax=safe_float(row.get("卖出印花税")),
                 )
             )
@@ -450,7 +470,7 @@ class AccountImportRebuilder:
         asset_name: str,
         exchange: str,
         listing_date: Optional[str],
-        asset_type: str = 'ETF',
+        asset_type: str = "ETF",
         conn=None,
     ) -> None:
         import_rebuild_dao.upsert_import_asset_meta(

@@ -52,10 +52,11 @@ class TradeReplaySupport:
         cursor = conn.cursor()
         columns = self._get_table_columns(conn, "trade_order")
         order_type_expr = "order_type" if "order_type" in columns else "'' AS order_type"
+        transfer_fee_expr = "transfer_fee" if "transfer_fee" in columns else "0 AS transfer_fee"
         sql = f"""
             SELECT
                 order_id, account_id, asset_code, trade_time, side, {order_type_expr}, price, volume, amount,
-                commission, tax, remain_vol, link_order_id, target_rate, realized_pnl,
+                commission, {transfer_fee_expr}, tax, remain_vol, link_order_id, target_rate, realized_pnl,
                 status, remark, source_type, source_ref_id, updated_at, created_at
             FROM trade_order
             WHERE account_id = ? AND status = 1
@@ -231,6 +232,7 @@ class TradeReplaySupport:
         order_id = int(order["order_id"])
         amount = float(order.get("amount") or 0.0)
         commission = float(order.get("commission") or 0.0)
+        transfer_fee = float(order.get("transfer_fee") or 0.0)
         tax = float(order.get("tax") or 0.0)
         volume = float(order.get("volume") or 0.0)
 
@@ -244,7 +246,7 @@ class TradeReplaySupport:
             }
 
         if side == "BUY":
-            total_cost = amount + commission
+            total_cost = amount + commission + transfer_fee
             state.cash_balance -= total_cost
             if state.cash_balance < -1e-6:
                 raise ValidationError(
@@ -268,6 +270,7 @@ class TradeReplaySupport:
                 "volume": volume,
                 "amount": amount,
                 "commission": commission,
+                "transfer_fee": transfer_fee,
                 "tax": tax,
             }
 
@@ -278,6 +281,7 @@ class TradeReplaySupport:
                 "volume": volume,
                 "amount": amount,
                 "commission": commission,
+                "transfer_fee": transfer_fee,
                 "tax": tax,
             }
 
@@ -297,7 +301,7 @@ class TradeReplaySupport:
             )
 
         linked_buy.remain_vol -= volume
-        net_income = amount - commission - tax
+        net_income = amount - commission - transfer_fee - tax
         realized_pnl = net_income - linked_buy.unit_cost * volume
         state.cash_balance += net_income
         state.acc_profit += realized_pnl
@@ -309,6 +313,7 @@ class TradeReplaySupport:
             "volume": volume,
             "amount": amount,
             "commission": commission,
+            "transfer_fee": transfer_fee,
             "tax": tax,
             "net_income": net_income,
             "realized_pnl": realized_pnl,

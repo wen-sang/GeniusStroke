@@ -59,6 +59,7 @@ class DatabaseManager:
             ("trade_order", "source_type", "TEXT"),
             ("trade_order", "source_ref_id", "TEXT"),
             ("trade_order", "order_type", "TEXT"),
+            ("trade_order", "transfer_fee", "REAL DEFAULT 0"),
             ("account_cash_flow", "direction", "TEXT DEFAULT 'IN'"),
             ("account_cash_flow", "status", "TEXT DEFAULT 'ACTIVE'"),
             ("account_corporate_action", "confirmed_at", "TEXT"),
