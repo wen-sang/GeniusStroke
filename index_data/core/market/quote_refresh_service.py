@@ -35,6 +35,8 @@ class QuoteRefreshService:
         market_dao_inst=market_dao,
         efinance_adapter_inst=efinance_adapter,
         ttl_seconds: Optional[int] = None,
+        asset_meta_dao_inst=None,
+        tickflow_adapter_inst=None,
     ):
         self.cache_dao = cache_dao
         self.market_dao = market_dao_inst
@@ -44,8 +46,8 @@ class QuoteRefreshService:
         from data_provider.tickflow_adapter import TickFlowAdapter, tickflow_limiter
         from dao.meta_dao import meta_dao
 
-        self.tickflow_adapter = TickFlowAdapter()
-        self.asset_meta_dao = meta_dao
+        self.tickflow_adapter = tickflow_adapter_inst or TickFlowAdapter()
+        self.asset_meta_dao = asset_meta_dao_inst or meta_dao
         self.tickflow_limiter = tickflow_limiter
 
     def get_quotes(self, codes: List[str], force_refresh: bool = False) -> Dict[str, dict]:
@@ -72,34 +74,34 @@ class QuoteRefreshService:
         final_unresolved = []
         if unresolved_codes:
             meta_map = self.asset_meta_dao.get_quote_route_meta_batch(unresolved_codes)
-            etf_codes = []
-            other_codes = []
+            tickflow_codes = []
+            efinance_codes = []
             for code in unresolved_codes:
                 m = meta_map.get(code, {})
-                if m.get("asset_type") == "ETF":
-                    etf_codes.append(code)
+                if m.get("asset_type") == "LOF":
+                    efinance_codes.append(code)
                 else:
-                    other_codes.append(code)
+                    tickflow_codes.append(code)
                     
-            if etf_codes:
-                unresolved_etf = self._refresh_quote_stage(
-                    etf_codes,
+            if tickflow_codes:
+                unresolved_tickflow = self._refresh_quote_stage(
+                    tickflow_codes,
                     cached_quotes,
                     result,
                     default_source="tickflow",
                     loader=lambda missing: self._fetch_tickflow_realtime(missing, meta_map),
                 )
-                final_unresolved.extend(unresolved_etf)
+                final_unresolved.extend(unresolved_tickflow)
                 
-            if other_codes:
-                unresolved_other = self._refresh_quote_stage(
-                    other_codes,
+            if efinance_codes:
+                unresolved_efinance = self._refresh_quote_stage(
+                    efinance_codes,
                     cached_quotes,
                     result,
                     default_source="efinance",
                     loader=self.refresh_quotes_from_efinance,
                 )
-                final_unresolved.extend(unresolved_other)
+                final_unresolved.extend(unresolved_efinance)
                 
         unresolved_codes = final_unresolved
         unresolved_codes = self._refresh_quote_stage(
