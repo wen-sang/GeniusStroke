@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from core.data_quality.models import DataQualityIssue
+from core.data_quality.models import SCAN_SCOPE_INCREMENTAL
 from core.data_quality.models import SCAN_SCOPE_FULL
 from core.data_quality.models import SOURCE_TABLE_MARKET_DAILY
+from core.data_quality.models import TRIGGER_DAILY_JOB
 from core.data_quality.models import TRIGGER_MANUAL
 from dao.base_dao import BaseDAO
 
@@ -13,6 +15,20 @@ class DataQualityDAO(BaseDAO):
         return "dat_data_quality_issue"
 
     def create_running_batch(self, scan_batch_id: str, started_at: str) -> None:
+        self.create_running_batch_with_scope(
+            scan_batch_id=scan_batch_id,
+            started_at=started_at,
+            trigger_type=TRIGGER_MANUAL,
+            scan_scope=SCAN_SCOPE_FULL,
+        )
+
+    def create_running_batch_with_scope(
+        self,
+        scan_batch_id: str,
+        started_at: str,
+        trigger_type: str,
+        scan_scope: str,
+    ) -> None:
         sql = """
         INSERT INTO dat_data_quality_scan_batch (
             scan_batch_id,
@@ -29,11 +45,19 @@ class DataQualityDAO(BaseDAO):
         params = (
             scan_batch_id,
             SOURCE_TABLE_MARKET_DAILY,
-            TRIGGER_MANUAL,
-            SCAN_SCOPE_FULL,
+            trigger_type,
+            scan_scope,
             started_at,
         )
         self._execute_update(sql, params)
+
+    def create_daily_gap_batch(self, scan_batch_id: str, started_at: str) -> None:
+        self.create_running_batch_with_scope(
+            scan_batch_id=scan_batch_id,
+            started_at=started_at,
+            trigger_type=TRIGGER_DAILY_JOB,
+            scan_scope=SCAN_SCOPE_INCREMENTAL,
+        )
 
     def fetch_market_daily_rows(self) -> list[dict]:
         sql = """
@@ -138,8 +162,31 @@ class DataQualityDAO(BaseDAO):
                     report_path,
                     scan_batch_id,
                 ),
-            )
+        )
         return inserted_count
+
+    def complete_success_batch_without_report(
+        self,
+        scan_batch_id: str,
+        issues: list[DataQualityIssue],
+        scanned_rows: int,
+        finished_at: str,
+    ) -> int:
+        return self.complete_success_batch(
+            scan_batch_id=scan_batch_id,
+            issues=issues,
+            scanned_rows=scanned_rows,
+            report_path="",
+            finished_at=finished_at,
+        )
+
+    def update_issue_status(self, issue_id: int, issue_status: str) -> None:
+        sql = """
+        UPDATE dat_data_quality_issue
+        SET issue_status = ?
+        WHERE id = ?
+        """
+        self._execute_update(sql, (issue_status, issue_id))
 
     def mark_batch_failed(
         self,

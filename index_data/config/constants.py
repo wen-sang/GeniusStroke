@@ -9,8 +9,10 @@ class DataSource:
     LIXINREN = 'lixinren'
     EFINANCE = 'efinance'
     TICKFLOW = 'tickflow'
+    TDX = 'tdx'
     VALID = (AKSHARE, LIXINREN, EFINANCE, TICKFLOW)
     ASSET_ROUTE_VALID = (AKSHARE, LIXINREN, TICKFLOW)
+    MARKET_DAILY_SOURCE_VALID = (AKSHARE, LIXINREN, TICKFLOW, TDX)
 
     @classmethod
     def validate(cls, source_id: str) -> str:
@@ -25,6 +27,15 @@ class DataSource:
         if source_id not in cls.ASSET_ROUTE_VALID:
             raise ValueError(
                 cls._unknown_message(source_id, cls.ASSET_ROUTE_VALID)
+            )
+        return source_id
+
+    @classmethod
+    def validate_market_daily_source(cls, source_id: str) -> str:
+        """校验标准行情行可写入的数据来源。"""
+        if source_id not in cls.MARKET_DAILY_SOURCE_VALID:
+            raise ValueError(
+                cls._unknown_message(source_id, cls.MARKET_DAILY_SOURCE_VALID)
             )
         return source_id
 

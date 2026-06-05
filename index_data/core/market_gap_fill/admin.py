@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import datetime
+
+from core.market_gap_fill.models import MarketGapFillRunOptions
+from core.market_gap_fill.service import market_gap_fill_service
+from core.market_gap_fill.source_coverage import check_gap_source_coverage
+from core.market_gap_fill.tdx_vipdoc_refresh import refresh_tdx_vipdoc
+from dao.market_dao import market_dao
+
+
+def _validate_date_args(
+    target_date: str,
+    start_date: str | None,
+    end_date: str | None,
+) -> None:
+    for value in (target_date, start_date, end_date):
+        if value:
+            datetime.strptime(value, "%Y-%m-%d")
+    if start_date and end_date and start_date > end_date:
+        raise ValueError("start-date must be <= end-date")
+    if end_date and end_date > target_date:
+        raise ValueError("end-date must be <= target-date")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser("market gap fill admin")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    refresh_parser = subparsers.add_parser("refresh-tdx-vipdoc")
+    refresh_parser.add_argument("--target-date")
+
+    run_parser = subparsers.add_parser("run-gap-fill")
+    run_parser.add_argument("--target-date")
+    run_parser.add_argument("--asset-code")
+    run_parser.add_argument("--start-date")
+    run_parser.add_argument("--end-date")
+    run_parser.add_argument("--limit", type=int)
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview due existing tasks without scanning, claiming, or filling.",
+    )
+    run_parser.add_argument(
+        "--no-external",
+        action="store_true",
+        help="Skip original route source and TickFlow; only existing rows and TDX are used.",
+    )
+
+    coverage_parser = subparsers.add_parser("check-gap-source-coverage")
+    coverage_parser.add_argument("--target-date")
+    coverage_parser.add_argument("--asset-code")
+    coverage_parser.add_argument("--start-date")
+    coverage_parser.add_argument("--end-date")
+    coverage_parser.add_argument("--limit", type=int)
+
+    args = parser.parse_args()
+    if args.command == "refresh-tdx-vipdoc":
+        result = refresh_tdx_vipdoc(target_date=args.target_date)
+    elif args.command == "run-gap-fill":
+        target_date = args.target_date or market_dao.get_latest_trade_date_global()
+        if not target_date:
+            result = {"status": "skipped", "message": "No target_date available"}
+        else:
+            _validate_date_args(target_date, args.start_date, args.end_date)
+            result = market_gap_fill_service.run(
+                target_date=target_date,
+                options=MarketGapFillRunOptions(
+                    asset_code=args.asset_code,
+                    start_date=args.start_date,
+                    end_date=args.end_date,
+                    limit=args.limit,
+                    dry_run=args.dry_run,
+                    no_external=args.no_external,
+                ),
+            )
+    elif args.command == "check-gap-source-coverage":
+        target_date = args.target_date or market_dao.get_latest_trade_date_global()
+        if not target_date:
+            result = {"status": "skipped", "message": "No target_date available"}
+        else:
+            _validate_date_args(target_date, args.start_date, args.end_date)
+            result = check_gap_source_coverage(
+                target_date=target_date,
+                options=MarketGapFillRunOptions(
+                    asset_code=args.asset_code,
+                    start_date=args.start_date,
+                    end_date=args.end_date,
+                    limit=args.limit,
+                ),
+            )
+    else:
+        raise ValueError(f"Unsupported command: {args.command}")
+
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

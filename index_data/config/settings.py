@@ -53,7 +53,7 @@ for directory in [DATA_DIR, LOG_DIR]:
 # ==============================================================================
 ENV = os.getenv('ENV', 'development')
 APP_NAME = os.getenv('APP_NAME', 'GeniusStroke')
-VERSION = os.getenv('VERSION', '2.13.1').strip()
+VERSION = os.getenv('VERSION', '2.14.0').strip()
 DB_AUTO_SCHEMA = _get_bool_env('DB_AUTO_SCHEMA', ENV == 'development')
 
 # 服务器配置
@@ -347,3 +347,37 @@ TICKFLOW_REALTIME_MAX_CODES_PER_REQUEST = int(os.getenv("TICKFLOW_REALTIME_MAX_C
 TICKFLOW_REALTIME_REQUESTS_PER_MINUTE = int(os.getenv("TICKFLOW_REALTIME_REQUESTS_PER_MINUTE", "10"))
 TICKFLOW_REALTIME_REQUEST_SLEEP_SECONDS = float(os.getenv("TICKFLOW_REALTIME_REQUEST_SLEEP_SECONDS", "6.1"))
 TICKFLOW_KLINE_COUNT_LIMIT = int(os.getenv("TICKFLOW_KLINE_COUNT_LIMIT", "10000"))
+
+# ==============================================================================
+# 8. 历史行情缺口回补配置
+# ==============================================================================
+MARKET_GAP_FILL_ENABLED = _get_bool_env("MARKET_GAP_FILL_ENABLED", True)
+MARKET_GAP_FILL_MAX_RETRIES = int(os.getenv("MARKET_GAP_FILL_MAX_RETRIES", "3"))
+MARKET_GAP_FILL_RETRY_DELAY_MINUTES = int(
+    os.getenv("MARKET_GAP_FILL_RETRY_DELAY_MINUTES", "60")
+)
+MARKET_GAP_FILL_RUNNING_TTL_MINUTES = int(
+    os.getenv("MARKET_GAP_FILL_RUNNING_TTL_MINUTES", "30")
+)
+MARKET_GAP_FILL_ZERO_HISTORY_DAYS_PER_ASSET = int(
+    os.getenv("MARKET_GAP_FILL_ZERO_HISTORY_DAYS_PER_ASSET", "250")
+)
+MARKET_GAP_FILL_MAX_NEW_TASKS_PER_RUN = int(
+    os.getenv("MARKET_GAP_FILL_MAX_NEW_TASKS_PER_RUN", "5000")
+)
+TICKFLOW_GAP_FILL_MAX_REQUESTS_PER_RUN = int(
+    os.getenv("TICKFLOW_GAP_FILL_MAX_REQUESTS_PER_RUN", "30")
+)
+TICKFLOW_GAP_FILL_SLEEP_SECONDS = float(
+    os.getenv("TICKFLOW_GAP_FILL_SLEEP_SECONDS", "6.1")
+)
+TDX_VIPDOC_PAGE_URL = _get_stripped_env(
+    "TDX_VIPDOC_PAGE_URL",
+    "https://www.tdx.com.cn/article/vipdata.html",
+)
+TDX_VIPDOC_ZIP_URL = _get_stripped_env("TDX_VIPDOC_ZIP_URL")
+TDX_VIPDOC_ROOT = pathlib.Path(
+    os.getenv("TDX_VIPDOC_ROOT", str(DATA_DIR / "tdx_vipdoc"))
+)
+TDX_VIPDOC_STALE_DAYS = int(os.getenv("TDX_VIPDOC_STALE_DAYS", "1"))
+TDX_REFRESH_TIMEOUT_SECONDS = int(os.getenv("TDX_REFRESH_TIMEOUT_SECONDS", "1800"))

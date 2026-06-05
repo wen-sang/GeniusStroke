@@ -32,6 +32,48 @@ class MarketReturnSnapshotService:
         upserted = market_return_snapshot_dao.upsert_snapshots(snapshot_rows)
         return self._build_summary(trade_date, snapshot_rows, upserted)
 
+    def rebuild_for_asset_date_range(
+        self,
+        asset_code: str,
+        start_date: str,
+        end_date: str,
+    ) -> dict:
+        market_rows = market_return_snapshot_dao.fetch_asset_market_rows_between(
+            asset_code=asset_code,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not market_rows:
+            return {
+                "asset_code": asset_code,
+                "start_date": start_date,
+                "end_date": end_date,
+                "total": 0,
+                "upserted": 0,
+            }
+
+        snapshot_rows = []
+        for row in market_rows:
+            close_windows = market_return_snapshot_dao.fetch_recent_close_windows(
+                asset_codes=[asset_code],
+                trade_date=row["trade_date"],
+                max_window=max(MARKET_RETURN_WINDOWS.values()),
+            )
+            snapshot_rows.append(
+                self._build_snapshot_row(
+                    row,
+                    close_windows.get(asset_code, []),
+                )
+            )
+        upserted = market_return_snapshot_dao.upsert_snapshots(snapshot_rows)
+        return {
+            "asset_code": asset_code,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total": len(snapshot_rows),
+            "upserted": upserted,
+        }
+
     @staticmethod
     def _build_snapshot_row(row: dict, closes: List[Optional[float]]) -> dict:
         snapshot = {

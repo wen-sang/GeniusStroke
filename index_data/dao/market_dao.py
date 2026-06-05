@@ -588,7 +588,7 @@ class MarketDAO(BaseDAO):
         invalid_sources = sorted(
             source_id
             for source_id in df['source_id'].dropna().unique()
-            if source_id not in DataSource.ASSET_ROUTE_VALID
+            if source_id not in DataSource.MARKET_DAILY_SOURCE_VALID
         )
         if invalid_sources:
             raise ValidationError(f"Invalid source_id values: {invalid_sources}")
@@ -619,5 +619,91 @@ class MarketDAO(BaseDAO):
         with self.db_engine.get_connection() as conn:
             cursor = conn.cursor()
             cursor.executemany(sql, data_tuples)
+
+    def insert_missing_daily_rows(self, rows: List[dict]) -> int:
+        """只插入缺失行情行，不覆盖已有 `(asset_code, trade_date)`。"""
+        if not rows:
+            return 0
+
+        data = []
+        for row in rows:
+            self._validate_complete_market_row(row)
+            source_id = DataSource.validate_market_daily_source(row["source_id"])
+            data.append(
+                (
+                    row["asset_code"],
+                    row["trade_date"],
+                    row["open"],
+                    row["high"],
+                    row["low"],
+                    row["close"],
+                    row["volume"],
+                    row["amount"],
+                    source_id,
+                    row["updated_at"],
+                )
+            )
+
+        sql = """
+        INSERT OR IGNORE INTO dat_market_daily (
+            asset_code,
+            trade_date,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            amount,
+            source_id,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany(sql, data)
+            return cursor.rowcount
+
+    @staticmethod
+    def _validate_complete_market_row(row: dict) -> None:
+        required_columns = [
+            "asset_code",
+            "trade_date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "source_id",
+            "updated_at",
+        ]
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in row or row[column] is None
+        ]
+        if missing_columns:
+            raise ValidationError(
+                f"Missing required market row fields: {missing_columns}"
+            )
+
+        open_price = float(row["open"])
+        high = float(row["high"])
+        low = float(row["low"])
+        close = float(row["close"])
+        volume = float(row["volume"])
+        amount = float(row["amount"])
+
+        if min(open_price, high, low, close) <= 0:
+            raise ValidationError("OHLC prices must be positive")
+        if high < max(open_price, close, low):
+            raise ValidationError("high must be >= open/close/low")
+        if low > min(open_price, close):
+            raise ValidationError("low must be <= open/close")
+        if volume < 0:
+            raise ValidationError("volume must be >= 0")
+        if amount < 0:
+            raise ValidationError("amount must be >= 0")
 
 market_dao = MarketDAO()

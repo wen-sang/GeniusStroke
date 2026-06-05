@@ -300,5 +300,16 @@ class IndicatorDAO(BaseDAO):
             logger.error(f"Batch Upsert Indicator Failed (Count: {len(data_list)}): {e}")
             raise e
 
+    def delete_asset_from_date(self, asset_code: str, from_date: str) -> int:
+        sql = """
+        DELETE FROM dat_indicator_daily
+        WHERE asset_code = ?
+          AND trade_date >= ?
+        """
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (asset_code, from_date))
+            return cursor.rowcount
+
 # 单例导出
 indicator_dao = IndicatorDAO()

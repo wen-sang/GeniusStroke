@@ -9,6 +9,7 @@ from config import settings
 from core.calculation.engine import calc_engine
 from api.services.asset_catalog_service import asset_catalog_service
 from core.db_engine import db_engine
+from core.market_gap_fill.service import market_gap_fill_service
 from core.sync_models import (
     TOTAL_SYNC_STEPS,
     SyncCallbacks,
@@ -49,9 +50,11 @@ def check_environment() -> None:
 def extract_post_market_refresh_codes(
     collection_result: dict[str, Any],
 ) -> tuple[list[str], list[str], list[str]]:
+    gap_fill_result = collection_result.get("market_gap_fill_result") or {}
     updated_codes = sorted(
         set(collection_result.get("market_success_codes", []))
         | set(collection_result.get("fund_success_codes", []))
+        | set(gap_fill_result.get("filled_codes", []))
     )
     failed_codes = sorted(
         set(collection_result.get("market_failed_codes", []))
@@ -84,11 +87,13 @@ class SyncRunner:
         self,
         check_environment_fn: Callable[[], None] = check_environment,
         collection_fn: Callable[[], dict[str, Any]] = task_manager.run_daily_job,
+        gap_fill_fn: Optional[Callable[[str], dict[str, Any]]] = None,
         calc_fn: Callable[[], None] = calc_engine.run,
         asset_refresh_fn: Callable[[dict[str, Any]], dict[str, Any]] = run_post_market_refresh,
     ) -> None:
         self._check_environment_fn = check_environment_fn
         self._collection_fn = collection_fn
+        self._gap_fill_fn = gap_fill_fn or (lambda target_date: {})
         self._calc_fn = calc_fn
         self._asset_refresh_fn = asset_refresh_fn
 
@@ -145,6 +150,11 @@ class SyncRunner:
                 self._build_step_progress_callback(step.number, callbacks),
             ) or {}
             collection_result["catalog_sync_result"] = catalog_sync_result
+            collection_result["market_gap_fill_result"] = self._run_market_gap_fill(
+                collection_result=collection_result,
+                callbacks=callbacks,
+                step_number=step.number,
+            )
         except Exception as exc:
             logger.critical(f"数据采集任务异常终止: {exc}", exc_info=True)
             return self._finalize_failure(
@@ -209,6 +219,39 @@ class SyncRunner:
         self._finalize_common(result, started_epoch)
         logger.info(f"所有任务执行完毕，总耗时: {result.elapsed_seconds:.2f} 秒")
         return result
+
+    def _run_market_gap_fill(
+        self,
+        collection_result: dict[str, Any],
+        callbacks: SyncCallbacks,
+        step_number: int,
+    ) -> dict[str, Any]:
+        target_date = collection_result.get("target_date")
+        if not target_date:
+            return {}
+
+        logger.info("[Step 2.5/4] 历史行情缺口治理回补...")
+        try:
+            return self._invoke_with_optional_progress(
+                self._gap_fill_fn,
+                self._build_step_progress_callback(step_number, callbacks),
+                target_date,
+            ) or {}
+        except Exception as exc:
+            logger.error("[MARKET_GAP_FILL] Step 2.5 failed: %s", exc, exc_info=True)
+            return {
+                "filled_codes": [],
+                "min_filled_date_by_code": {},
+                "filled_task_count": 0,
+                "failed_task_count": 0,
+                "skipped_task_count": 0,
+                "errors": [
+                    {
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                    }
+                ],
+            }
 
     def _log_start_banner(self) -> None:
         logger.info("========================================")
@@ -332,4 +375,4 @@ class SyncRunner:
         return False
 
 
-sync_runner = SyncRunner()
+sync_runner = SyncRunner(gap_fill_fn=market_gap_fill_service.run)

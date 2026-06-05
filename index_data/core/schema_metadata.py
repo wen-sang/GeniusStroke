@@ -337,6 +337,70 @@ Index(
     unique=True,
 )
 
+dat_market_gap_fill_task = Table(
+    "dat_market_gap_fill_task",
+    metadata,
+    Column("task_id", Integer, primary_key=True, autoincrement=True),
+    Column("asset_code", Text, nullable=False),
+    Column("missing_date", Text, nullable=False),
+    Column("exchange", Text),
+    Column("asset_type", Text),
+    Column("route_source_id", Text),
+    Column("route_source_code", Text),
+    Column("latest_issue_id", Integer, ForeignKey("dat_data_quality_issue.id")),
+    Column("status", Text, nullable=False, server_default=text("'PENDING'")),
+    Column("attempt_count", Integer, nullable=False, server_default=text("0")),
+    Column("max_attempts", Integer, nullable=False, server_default=text("3")),
+    Column("next_retry_at", Text),
+    Column("run_id", Text),
+    Column("claimed_at", Text),
+    Column("claim_expires_at", Text),
+    Column("filled_source_id", Text),
+    Column("filled_at", Text),
+    Column("last_error_code", Text),
+    Column("last_error_message", Text),
+    Column("detail_json", Text, nullable=False, server_default=text("'{}'")),
+    Column("created_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    CheckConstraint(
+        "status IN ('PENDING', 'RUNNING', 'FILLED', 'FAILED', 'SKIPPED')",
+        name="ck_market_gap_fill_task_status",
+    ),
+    UniqueConstraint(
+        "asset_code",
+        "missing_date",
+        name="uq_market_gap_fill_task_asset_date",
+    ),
+)
+Index(
+    "idx_market_gap_fill_task_status_retry",
+    dat_market_gap_fill_task.c.status,
+    dat_market_gap_fill_task.c.next_retry_at,
+)
+Index(
+    "idx_market_gap_fill_task_asset_status",
+    dat_market_gap_fill_task.c.asset_code,
+    dat_market_gap_fill_task.c.status,
+)
+Index(
+    "idx_market_gap_fill_task_issue",
+    dat_market_gap_fill_task.c.latest_issue_id,
+)
+Index(
+    "idx_market_gap_fill_task_claim",
+    dat_market_gap_fill_task.c.run_id,
+    dat_market_gap_fill_task.c.claim_expires_at,
+)
+
+dat_market_gap_fill_asset_state = Table(
+    "dat_market_gap_fill_asset_state",
+    metadata,
+    Column("asset_code", Text, primary_key=True),
+    Column("target_start_date", Text, nullable=False),
+    Column("earliest_generated_date", Text),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+)
+
 sys_algo_meta = Table(
     "sys_algo_meta",
     metadata,

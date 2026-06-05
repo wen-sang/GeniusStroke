@@ -33,6 +33,28 @@ class MarketReturnSnapshotDAO(BaseDAO):
             cursor.execute(sql, (trade_date,))
             return self._rows_to_dicts(cursor, cursor.fetchall())
 
+    def fetch_asset_market_rows_between(
+        self,
+        asset_code: str,
+        start_date: str,
+        end_date: str,
+    ) -> List[dict]:
+        sql = """
+        SELECT
+            asset_code,
+            trade_date,
+            close
+        FROM dat_market_daily
+        WHERE asset_code = ?
+          AND trade_date >= ?
+          AND trade_date <= ?
+        ORDER BY trade_date ASC
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (asset_code, start_date, end_date))
+            return self._rows_to_dicts(cursor, cursor.fetchall())
+
     def fetch_recent_close_windows(
         self,
         asset_codes: List[str],
