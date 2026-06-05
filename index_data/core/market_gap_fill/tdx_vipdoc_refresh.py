@@ -38,10 +38,11 @@ def refresh_tdx_vipdoc(
     root_path.mkdir(parents=True, exist_ok=True)
     current_dir = root_path / "current"
     status_path = root_path / "refresh_status.json"
-    resolved_target_date = target_date or _resolve_target_date()
+    local_target_date = _resolve_target_date()
     current_max_date = scan_max_trade_date(current_dir)
+    resolved_package = None
 
-    if current_max_date and resolved_target_date and current_max_date >= resolved_target_date:
+    if target_date and current_max_date and current_max_date >= target_date:
         result = {
             "status": TdxRefreshStatus.SKIPPED_FRESH,
             "started_at": started_at,
@@ -56,14 +57,45 @@ def refresh_tdx_vipdoc(
         _write_status(status_path, result)
         return result
 
+    try:
+        resolved_package = resolve_tdx_vipdoc_package(source_url)
+    except Exception as exc:
+        logger.error("[TDX_REFRESH] failed: %s", exc, exc_info=True)
+        result = _failed_status(
+            started_at,
+            current_max_date,
+            current_dir,
+            str(exc),
+        )
+        _write_status(status_path, result)
+        return result
+
+    resolved_target_date = _resolve_refresh_target_date(
+        explicit_target_date=target_date,
+        local_target_date=local_target_date,
+        package=resolved_package,
+    )
+    if current_max_date and resolved_target_date and current_max_date >= resolved_target_date:
+        result = {
+            "status": TdxRefreshStatus.SKIPPED_FRESH,
+            "started_at": started_at,
+            "finished_at": _now_text(),
+            "max_trade_date": current_max_date,
+            "page_url": resolved_package.page_url,
+            "page_update_date": resolved_package.page_update_date,
+            "resolved_zip_url": resolved_package.zip_url,
+            "package_path": str(current_dir),
+            "error_message": "",
+        }
+        _write_status(status_path, result)
+        return result
+
     staging_dir = root_path / "staging"
     _remove_tree(staging_dir)
     staging_dir.mkdir(parents=True, exist_ok=True)
 
     temp_path = None
-    resolved_package = None
     try:
-        resolved_package = resolve_tdx_vipdoc_package(source_url)
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as temp_file:
             temp_path = Path(temp_file.name)
         _download_zip(resolved_package.zip_url, temp_path)
@@ -301,6 +333,25 @@ def _failed_status(
 
 def _resolve_target_date() -> str | None:
     return market_dao.get_latest_trade_date_global()
+
+
+def _resolve_refresh_target_date(
+    explicit_target_date: str | None,
+    local_target_date: str | None,
+    package: ResolvedTdxPackage,
+) -> str | None:
+    if explicit_target_date:
+        return explicit_target_date
+    page_date = _date_from_update_datetime(package.page_update_date)
+    dates = [date for date in (local_target_date, page_date) if date]
+    return max(dates) if dates else None
+
+
+def _date_from_update_datetime(value: str) -> str | None:
+    if not value:
+        return None
+    datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+    return value[:10]
 
 
 def _now_text() -> str:
