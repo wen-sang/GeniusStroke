@@ -87,10 +87,11 @@ class AdjustRequest(BaseModel):
 class CashFlowCreateRequest(BaseModel):
     """资金流水新增请求"""
 
-    flow_type: Literal["DEPOSIT", "WITHDRAW", "ADJUST"] = Field(..., description="资金流水类型")
+    flow_type: Literal["DEPOSIT", "WITHDRAW", "ADJUST", "DIVIDEND_TAX"] = Field(..., description="资金流水类型")
     amount: float = Field(..., gt=0, description="金额，始终传正值")
     remark: str = Field("", description="备注")
     biz_date: Optional[str] = Field(None, description="业务日期 YYYY-MM-DD")
+    related_action_id: Optional[int] = Field(None, gt=0, description="关联企业事件 ID")
     adjust_direction: Optional[Literal["IN", "OUT"]] = Field(
         None,
         description="仅 ADJUST 需要，IN=增加现金，OUT=减少现金",

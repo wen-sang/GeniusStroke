@@ -619,6 +619,7 @@ class TradeQueryOperations:
                 {
                     "asset_code": position.asset_code,
                     "asset_name": position.asset_name,
+                    "asset_type": position_data.get("asset_type", ""),
                     "total_volume": position.total_volume,
                     "avg_cost": position.avg_cost,
                     "cost_amount": position.cost_amount,

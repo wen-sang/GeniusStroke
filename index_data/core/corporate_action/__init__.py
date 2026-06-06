@@ -1,4 +1,4 @@
-from .dao import CorporateActionDAO, corporate_action_dao
+from dao.corporate_action_dao import CorporateActionDAO, corporate_action_dao
 from .models import (
     CorporateAction,
     CorporateActionCreateRequest,

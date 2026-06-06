@@ -27,16 +27,17 @@ def load_eligible_lots(
     account_id: int,
     asset_code: str,
     effective_date: str,
+    record_date: Optional[str],
     conn,
 ) -> List[ReplayLotState]:
-    """通过交易回放，加载生效日前仍持有的合格批次。"""
-    previous_date = previous_calendar_date(effective_date)
-    orders = trade_replay_support.load_orders(account_id=account_id, conn=conn, as_of_date=previous_date)
-    cash_flows = trade_replay_support.load_cash_flows(account_id=account_id, conn=conn, as_of_date=previous_date)
+    """通过交易回放，加载权益资格日仍持有的合格批次。"""
+    eligibility_date = record_date or previous_calendar_date(effective_date)
+    orders = trade_replay_support.load_orders(account_id=account_id, conn=conn, as_of_date=eligibility_date)
+    cash_flows = trade_replay_support.load_cash_flows(account_id=account_id, conn=conn, as_of_date=eligibility_date)
     corporate_actions = trade_replay_support.load_corporate_actions(
         account_id=account_id,
         conn=conn,
-        as_of_date=previous_date,
+        as_of_date=eligibility_date,
     )
     replay_state = ReplayState(account_id=account_id)
     events = trade_replay_support.build_replay_events(
@@ -61,6 +62,7 @@ def load_eligible_lots(
 def calculate_dividend_cash(
     eligible_qty: Decimal,
     cash_base_unit: Optional[str],
+    cash_base_qty: Optional[Decimal],
     cash_amount: Optional[Decimal],
 ) -> Decimal:
     """根据合格份额和分红口径计算应发分红现金。"""
@@ -68,6 +70,10 @@ def calculate_dividend_cash(
         return quantize_amount(eligible_qty * (cash_amount or Decimal("0")))
     if cash_base_unit == "PER_10_SHARES":
         return quantize_amount((eligible_qty / Decimal("10")) * (cash_amount or Decimal("0")))
+    if cash_base_unit == "PER_N_SHARES":
+        if cash_base_qty is None or cash_base_qty <= 0:
+            raise ValidationError("每 N 份分红必须填写分红基准数量")
+        return quantize_amount((eligible_qty / cash_base_qty) * (cash_amount or Decimal("0")))
     raise ValidationError("分红口径不合法")
 
 
@@ -96,7 +102,9 @@ def build_preview(
     asset_code: str,
     action_type: str,
     effective_date: str,
+    record_date: Optional[str],
     cash_base_unit: Optional[str],
+    cash_base_qty: Optional[Decimal],
     cash_amount: Optional[Decimal],
     ratio_from: Optional[int],
     ratio_to: Optional[int],
@@ -105,7 +113,13 @@ def build_preview(
     conn,
 ) -> Dict:
     """构建企业事件预览数据，包含合格份额、分红现金、再投份额等。"""
-    lots = load_eligible_lots(account_id=account_id, asset_code=asset_code, effective_date=effective_date, conn=conn)
+    lots = load_eligible_lots(
+        account_id=account_id,
+        asset_code=asset_code,
+        effective_date=effective_date,
+        record_date=record_date,
+        conn=conn,
+    )
     eligible_qty = sum((to_decimal(lot.remain_vol) for lot in lots), Decimal("0"))
     affected_lot_count = len(lots)
     dividend_cash = Decimal("0")
@@ -120,6 +134,7 @@ def build_preview(
         dividend_cash = calculate_dividend_cash(
             eligible_qty=eligible_qty,
             cash_base_unit=cash_base_unit,
+            cash_base_qty=cash_base_qty,
             cash_amount=cash_amount,
         )
     if action_type == "DIVIDEND_REINVEST":

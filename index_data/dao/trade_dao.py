@@ -625,6 +625,7 @@ class TradeDAO(BaseDAO):
         SELECT
             o.asset_code,
             COALESCE(m.asset_name, o.asset_code) as asset_name,
+            COALESCE(m.asset_type, '') as asset_type,
             SUM(o.remain_vol) as total_volume,
             SUM(o.remain_vol * o.price) / NULLIF(SUM(o.remain_vol), 0) as avg_cost,
             SUM(o.remain_vol * o.target_rate) / NULLIF(SUM(o.remain_vol), 0) as avg_target_rate

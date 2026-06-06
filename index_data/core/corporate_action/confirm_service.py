@@ -9,7 +9,7 @@ from dao.market_dao import market_dao
 from utils.logger import logger
 from utils.validators import ValidationError
 
-from .dao import corporate_action_dao
+from dao.corporate_action_dao import corporate_action_dao
 from .derived_records import rebuild_derived_records
 from .models import CorporateAction
 from .preview_helpers import build_preview, ensure_preview_has_eligible_holding
@@ -84,7 +84,9 @@ class CorporateActionConfirmService:
                     asset_code=action.asset_code,
                     action_type=action.action_type,
                     effective_date=action.effective_date,
+                    record_date=action.record_date,
                     cash_base_unit=action.cash_base_unit,
+                    cash_base_qty=self._to_decimal_or_none(action.cash_base_qty),
                     cash_amount=self._to_decimal_or_none(action.cash_amount),
                     ratio_from=action.ratio_from,
                     ratio_to=action.ratio_to,

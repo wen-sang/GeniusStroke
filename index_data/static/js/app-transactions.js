@@ -573,6 +573,7 @@ function getCorporateActionStatusLabel(status) {
     if (status === 'ACTIVE') return '有效';
     if (status === 'CONFIRMED') return '已确认';
     if (status === 'CANCELLED') return '已作废';
+    if (status === 'PARTIAL') return '部分确认';
     return status || '--';
 }
 
@@ -588,6 +589,9 @@ function getCorporateActionStatusChip(status) {
     }
     if (status === 'CANCELLED') {
         return '<span class="status-chip status-chip-cancelled">已作废</span>';
+    }
+    if (status === 'PARTIAL') {
+        return '<span class="status-chip status-chip-pending">部分确认</span>';
     }
     return `<span class="status-chip status-chip-pending">${escapeHtml(status || '--')}</span>`;
 }
@@ -984,6 +988,78 @@ function cancelCurrentCorporateAction() {
     cancelCorporateAction(corporateActionState.actionId);
 }
 
+async function confirmStockCorporateActionBundle(bundleRefId) {
+    if (!bundleRefId || !state.currentAccount) return;
+    const target = state.corporateActions.find((item) => item.bundle_ref_id === bundleRefId);
+    const targetLabel = target
+        ? `${target.asset_code} ${target.display_type} ${target.biz_date}`
+        : `股票组合事件 ${bundleRefId}`;
+
+    if (!window.confirm(`确认执行 ${targetLabel} 吗？`)) {
+        return;
+    }
+
+    try {
+        await fetchApiOrThrow(`/stock-corporate-actions/bundles/${encodeURIComponent(bundleRefId)}/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account_id: state.currentAccount })
+        });
+        showToast('success', '股票除权除息已确认');
+        loadPageData();
+    } catch (err) {
+        showToast('error', `确认失败: ${err.message}`);
+    }
+}
+
+async function openStockCorporateActionBundleEditModal(bundleRefId) {
+    if (!bundleRefId || !state.currentAccount) return;
+    const target = state.corporateActions.find((item) => item.bundle_ref_id === bundleRefId);
+    showLoadingModal('加载股票除权除息详情...');
+
+    try {
+        const result = await fetchApiOrThrow(
+            `/stock-corporate-actions/bundles/${encodeURIComponent(bundleRefId)}?account_id=${state.currentAccount}`
+        );
+        openStockCorporateActionModal('', target?.asset_name || '', {
+            mode: 'edit',
+            bundleRefId,
+            bundleData: result
+        });
+    } catch (err) {
+        showToast('error', `加载股票除权除息失败: ${err.message}`);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
+async function cancelStockCorporateActionBundle(bundleRefId) {
+    if (!bundleRefId || !state.currentAccount) return;
+    const target = state.corporateActions.find((item) => item.bundle_ref_id === bundleRefId);
+    const targetLabel = target
+        ? `${target.asset_code} ${target.display_type} ${target.biz_date}`
+        : `股票组合事件 ${bundleRefId}`;
+
+    if (!window.confirm(`确认作废 ${targetLabel} 吗？此操作会同步重建账户状态。`)) {
+        return;
+    }
+
+    try {
+        await fetchApiOrThrow(`/stock-corporate-actions/bundles/${encodeURIComponent(bundleRefId)}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: state.currentAccount,
+                remark: '前端作废股票除权除息'
+            })
+        });
+        showToast('success', '股票除权除息已作废');
+        loadPageData();
+    } catch (err) {
+        showToast('error', `作废失败: ${err.message}`);
+    }
+}
+
 function getTradeOrderTypeClass(item) {
     if (item.side === 'BUY') return 'positive';
     if (item.side === 'SELL') return 'negative';
@@ -1047,7 +1123,106 @@ function getCorporateActionErrorText(item) {
     return item.last_error_message ? escapeHtml(item.last_error_message) : '--';
 }
 
+function aggregateCorporateActionStatus(actions) {
+    const statuses = actions.map((item) => item.status || 'PENDING');
+    if (statuses.every((status) => status === 'PENDING')) return 'PENDING';
+    if (statuses.every((status) => status === 'CONFIRMED')) return 'CONFIRMED';
+    if (statuses.every((status) => status === 'CANCELLED')) return 'CANCELLED';
+    return 'PARTIAL';
+}
+
+function getStockBundleDisplayType(actions) {
+    const types = new Set(actions.map((item) => item.action_type));
+    if (types.has('CASH_DIVIDEND') && types.has('SPLIT')) return '股票除权除息';
+    if (types.has('CASH_DIVIDEND')) return '股票现金派息';
+    if (types.has('SPLIT')) return '股票股份变动';
+    return '股票企业事件';
+}
+
+function buildStockCorporateActionBundleRows(items) {
+    const rows = [];
+    const groups = new Map();
+
+    items.forEach((item) => {
+        if (!item.bundle_ref_id) {
+            rows.push(item);
+            return;
+        }
+
+        let group = groups.get(item.bundle_ref_id);
+        if (!group) {
+            group = {
+                row_kind: 'stock_corporate_action_bundle',
+                row_id: item.bundle_ref_id,
+                account_id: item.account_id,
+                bundle_ref_id: item.bundle_ref_id,
+                biz_date: item.ex_date || item.effective_date || item.biz_date,
+                effective_date: item.effective_date,
+                record_date: item.record_date,
+                ex_date: item.ex_date,
+                asset_code: item.asset_code,
+                asset_name: item.asset_name,
+                action_type: 'STOCK_BUNDLE',
+                display_type: '股票除权除息',
+                remark: item.remark || '',
+                children: [],
+            };
+            groups.set(item.bundle_ref_id, group);
+            rows.push(group);
+        }
+        group.children.push(item);
+    });
+
+    rows.forEach((item) => {
+        if (item.row_kind !== 'stock_corporate_action_bundle') return;
+        item.display_type = getStockBundleDisplayType(item.children);
+        item.status = aggregateCorporateActionStatus(item.children);
+        item.last_error_message = item.children
+            .map((child) => child.last_error_message)
+            .filter(Boolean)
+            .join('；');
+        item.remark = item.children.map((child) => child.remark).find(Boolean) || '';
+    });
+
+    return rows;
+}
+
+function getStockBundleSummaryText(item) {
+    const children = item.children || [];
+    const parts = children.map((child) => {
+        if (child.action_type === 'SPLIT' && child.ratio_from && child.ratio_to) {
+            return `比例 ${child.ratio_from}:${child.ratio_to}`;
+        }
+        if (child.action_type === 'CASH_DIVIDEND' && child.cash_amount !== null && child.cash_amount !== undefined) {
+            const unitText = child.cash_base_unit === 'PER_SHARE' ? '每股' : `每${formatNumber(child.cash_base_qty || 10, 0)}股`;
+            return `${unitText} ${formatNumber(child.cash_amount, 4)}`;
+        }
+        return getCorporateActionSummaryText(child);
+    }).filter((text) => text && text !== '--');
+    return parts.length ? parts.map(escapeHtml).join(' + ') : '--';
+}
+
 function getCorporateActionActionHtml(item) {
+    if (item.row_kind === 'stock_corporate_action_bundle') {
+        const children = item.children || [];
+        const canConfirm = children.some((child) => child.status === 'PENDING');
+        const canEdit = canConfirm;
+        const canCancel = children.some((child) => child.status === 'PENDING' || child.status === 'CONFIRMED');
+        const actions = [];
+        const bundle = escapeHtmlAttr(item.bundle_ref_id || '');
+        if (canConfirm) {
+            const label = item.status === 'PARTIAL' ? '重试确认' : '确认';
+            actions.push(`<a href="javascript:void(0)" data-action="confirm-stock-ca-bundle" data-bundle="${bundle}" style="color: var(--primary); text-decoration: none; font-size: 13px;">${label}</a>`);
+        }
+        if (canEdit) {
+            actions.push(`<a href="javascript:void(0)" data-action="edit-stock-ca-bundle" data-bundle="${bundle}" style="color: var(--primary); text-decoration: none; font-size: 13px;">修改</a>`);
+        }
+        if (canCancel) {
+            actions.push(`<a href="javascript:void(0)" data-action="cancel-stock-ca-bundle" data-bundle="${bundle}" style="color: #b91c1c; text-decoration: none; font-size: 13px;">作废</a>`);
+        }
+        return actions.length ? actions.join('<span style="margin: 0 6px; color: var(--border-color);">/</span>') : '--';
+    }
+
     const canEdit = item.status === 'PENDING';
     const canCancel = item.status === 'PENDING' || item.status === 'CONFIRMED';
     if (!canEdit && !canCancel) return '--';
@@ -1170,18 +1345,19 @@ async function loadCorporateActionRows(loadContext = null, append = false) {
     }
 
     const items = applyPaginatedResult('transaction_actions', result, append);
-    if (!append && items.length === 0) {
+    const displayItems = buildStockCorporateActionBundleRows(items);
+    if (!append && displayItems.length === 0) {
         renderTableStatusRow(tbody, 9, '暂无记录', { padded: true });
         return;
     }
 
-    const rowsHtml = items.map((item) => `
+    const rowsHtml = displayItems.map((item) => `
         <tr>
             <td>${escapeHtml(item.biz_date || '--')}</td>
             <td class="stock-code">${escapeHtml(item.asset_code || '--')}</td>
             <td class="stock-name">${escapeHtml(item.asset_name || '--')}</td>
             <td>${escapeHtml(item.display_type || '--')}</td>
-            <td>${getCorporateActionSummaryText(item)}</td>
+            <td>${item.row_kind === 'stock_corporate_action_bundle' ? getStockBundleSummaryText(item) : getCorporateActionSummaryText(item)}</td>
             <td class="center">${getCorporateActionStatusChip(item.status || 'PENDING')}</td>
             <td>${getCorporateActionErrorText(item)}</td>
             <td>${item.remark ? escapeHtml(item.remark) : '--'}</td>
@@ -1191,7 +1367,7 @@ async function loadCorporateActionRows(loadContext = null, append = false) {
 
     renderTableRows(tbody, rowsHtml, append);
 
-    state.corporateActions = listPaginationState.transaction_actions.items.slice();
+    state.corporateActions = displayItems.slice();
 }
 
 // 交易记录弹窗逻辑
@@ -1451,6 +1627,87 @@ async function submitWithdraw() {
             btnSubmit.disabled = false;
             btnSubmit.textContent = oldText;
         }
+    }
+}
+
+/* ==================== 红利税弹窗 ==================== */
+function openDividendTaxModal() {
+    const modal = document.getElementById("dividendTaxModal");
+    if (!modal) return;
+    document.getElementById("form-dividend-tax-date").value = getTodayDateString();
+    document.getElementById("form-dividend-tax-amount").value = "";
+    document.getElementById("form-dividend-tax-related-action-id").value = "";
+    document.getElementById("form-dividend-tax-remark").value = "";
+    document.getElementById("err-dividend-tax-amount").classList.add("hidden");
+    modal.classList.add("active");
+    setTimeout(() => {
+        const input = document.getElementById("form-dividend-tax-amount");
+        if (input) input.focus();
+    }, 100);
+}
+
+function closeDividendTaxModal() {
+    const modal = document.getElementById("dividendTaxModal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function submitDividendTax() {
+    const dateInput = document.getElementById("form-dividend-tax-date");
+    const amountInput = document.getElementById("form-dividend-tax-amount");
+    const relatedActionInput = document.getElementById("form-dividend-tax-related-action-id");
+    const remarkInput = document.getElementById("form-dividend-tax-remark");
+    const errSpan = document.getElementById("err-dividend-tax-amount");
+    const btnSubmit = document.getElementById("btn-save-dividend-tax");
+
+    const amount = parseFloat(amountInput.value);
+    if (!dateInput.value) {
+        errSpan.textContent = "请选择扣税日期";
+        errSpan.classList.remove("hidden");
+        return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+        errSpan.textContent = "金额必须大于0，请输入合法金额";
+        errSpan.classList.remove("hidden");
+        return;
+    }
+
+    const afterCash = (state.currentCashBalance || 0) - amount;
+    if (afterCash < 0 && !window.confirm(`扣税后可用现金将为 ${formatCurrency(afterCash)}，确认继续吗？`)) {
+        return;
+    }
+
+    errSpan.classList.add("hidden");
+    btnSubmit.disabled = true;
+    const oldText = btnSubmit.textContent;
+    btnSubmit.textContent = "提交中...";
+
+    try {
+        const payload = {
+            account_id: state.currentAccount,
+            flow_type: "DIVIDEND_TAX",
+            amount,
+            biz_date: dateInput.value,
+            remark: remarkInput.value || "红利税"
+        };
+        const relatedActionId = Number(relatedActionInput.value);
+        if (Number.isInteger(relatedActionId) && relatedActionId > 0) {
+            payload.related_action_id = relatedActionId;
+        }
+
+        await fetchApiOrThrow('/account/cash-flows', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        closeDividendTaxModal();
+        showToast("success", "红利税已记录");
+        loadPageData();
+    } catch (err) {
+        showToast("error", `红利税记录失败: ${err.message}`);
+    } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = oldText;
     }
 }
 

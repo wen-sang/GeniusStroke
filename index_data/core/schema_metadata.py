@@ -541,10 +541,15 @@ account_corporate_action = Table(
     Column("action_type", Text, nullable=False),
     Column("effective_date", Text, nullable=False),
     Column("record_date", Text),
+    Column("ex_date", Text),
     Column("cash_base_unit", Text),
+    Column("cash_base_qty", REAL),
     Column("cash_amount", REAL),
     Column("ratio_from", Integer),
     Column("ratio_to", Integer),
+    Column("share_change_subtype", Text),
+    Column("tax_mode", Text),
+    Column("bundle_ref_id", Text),
     Column("reinvest_price", REAL),
     Column("rounding_policy", Text),
     Column("status", Text, nullable=False, server_default=text("'PENDING'")),
@@ -575,6 +580,25 @@ Index(
     account_corporate_action.c.account_id,
     account_corporate_action.c.status,
     account_corporate_action.c.effective_date.desc(),
+)
+Index("idx_corp_action_bundle_ref", account_corporate_action.c.bundle_ref_id)
+Index(
+    "idx_corp_action_account_bundle",
+    account_corporate_action.c.account_id,
+    account_corporate_action.c.bundle_ref_id,
+)
+Index(
+    "idx_corp_action_asset_record_ex",
+    account_corporate_action.c.account_id,
+    account_corporate_action.c.asset_code,
+    account_corporate_action.c.record_date,
+    account_corporate_action.c.ex_date,
+)
+Index(
+    "idx_cash_flow_dividend_tax_source",
+    account_cash_flow.c.source_type,
+    account_cash_flow.c.source_ref_id,
+    account_cash_flow.c.flow_type,
 )
 
 trade_order = Table(

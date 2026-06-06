@@ -18,6 +18,7 @@ from api.routers import (
     asset_catalog,
     catalog,
     corporate_action,
+    stock_corporate_action,
     account_ledger,
 )
 from config.settings import APP_NAME, ENABLE_DATA_SYNC_API, ENV, HOST, PORT, RELOAD, VERSION
@@ -45,6 +46,7 @@ app.include_router(assets.router)
 app.include_router(asset_catalog.router)
 app.include_router(catalog.router)
 app.include_router(corporate_action.router)
+app.include_router(stock_corporate_action.router)
 app.include_router(account_ledger.router)
 if ENABLE_DATA_SYNC_API:
     app.include_router(data_sync.router)

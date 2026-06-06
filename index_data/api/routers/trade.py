@@ -56,6 +56,7 @@ class PositionResponse(BaseModel):
     """持仓响应"""
     asset_code: str
     asset_name: str
+    asset_type: str = ""
     total_volume: float
     avg_cost: float
     cost_amount: float

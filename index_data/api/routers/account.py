@@ -244,6 +244,8 @@ async def create_cash_flow(
             amount=req.amount,
             remark=req.remark,
             biz_date=req.biz_date,
+            source_type="CORPORATE_ACTION" if req.related_action_id else "MANUAL",
+            source_ref_id=str(req.related_action_id) if req.related_action_id else None,
             adjust_direction=req.adjust_direction,
         )
         return CashFlowResponse(**cash_flow.to_dict())

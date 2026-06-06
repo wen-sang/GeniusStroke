@@ -10,10 +10,15 @@ class CorporateAction:
     action_type: str = ""
     effective_date: str = ""
     record_date: Optional[str] = None
+    ex_date: Optional[str] = None
     cash_base_unit: Optional[str] = None
+    cash_base_qty: Optional[float] = None
     cash_amount: Optional[float] = None
     ratio_from: Optional[int] = None
     ratio_to: Optional[int] = None
+    share_change_subtype: Optional[str] = None
+    tax_mode: Optional[str] = None
+    bundle_ref_id: Optional[str] = None
     reinvest_price: Optional[float] = None
     rounding_policy: Optional[str] = None
     status: str = "PENDING"
@@ -34,10 +39,15 @@ class CorporateAction:
             "action_type": self.action_type,
             "effective_date": self.effective_date,
             "record_date": self.record_date,
+            "ex_date": self.ex_date,
             "cash_base_unit": self.cash_base_unit,
+            "cash_base_qty": self.cash_base_qty,
             "cash_amount": self.cash_amount,
             "ratio_from": self.ratio_from,
             "ratio_to": self.ratio_to,
+            "share_change_subtype": self.share_change_subtype,
+            "tax_mode": self.tax_mode,
+            "bundle_ref_id": self.bundle_ref_id,
             "reinvest_price": self.reinvest_price,
             "rounding_policy": self.rounding_policy,
             "status": self.status,
@@ -60,10 +70,15 @@ class CorporateAction:
             action_type=data.get("action_type", ""),
             effective_date=data.get("effective_date", ""),
             record_date=data.get("record_date"),
+            ex_date=data.get("ex_date"),
             cash_base_unit=data.get("cash_base_unit"),
+            cash_base_qty=data.get("cash_base_qty"),
             cash_amount=data.get("cash_amount"),
             ratio_from=data.get("ratio_from"),
             ratio_to=data.get("ratio_to"),
+            share_change_subtype=data.get("share_change_subtype"),
+            tax_mode=data.get("tax_mode"),
+            bundle_ref_id=data.get("bundle_ref_id"),
             reinvest_price=data.get("reinvest_price"),
             rounding_policy=data.get("rounding_policy"),
             status=data.get("status", "PENDING"),
@@ -85,10 +100,15 @@ class CorporateActionCreateRequest:
     action_type: str = ""
     effective_date: str = ""
     record_date: Optional[str] = None
+    ex_date: Optional[str] = None
     cash_base_unit: Optional[str] = None
+    cash_base_qty: Optional[float] = None
     cash_amount: Optional[float] = None
     ratio_from: Optional[int] = None
     ratio_to: Optional[int] = None
+    share_change_subtype: Optional[str] = None
+    tax_mode: Optional[str] = None
+    bundle_ref_id: Optional[str] = None
     reinvest_price: Optional[float] = None
     rounding_policy: Optional[str] = None
     remark: str = ""
@@ -100,10 +120,15 @@ class CorporateActionUpdateRequest:
     account_id: int = 1
     effective_date: str = ""
     record_date: Optional[str] = None
+    ex_date: Optional[str] = None
     cash_base_unit: Optional[str] = None
+    cash_base_qty: Optional[float] = None
     cash_amount: Optional[float] = None
     ratio_from: Optional[int] = None
     ratio_to: Optional[int] = None
+    share_change_subtype: Optional[str] = None
+    tax_mode: Optional[str] = None
+    bundle_ref_id: Optional[str] = None
     reinvest_price: Optional[float] = None
     rounding_policy: Optional[str] = None
     remark: str = ""
@@ -116,10 +141,15 @@ class CorporateActionPreviewRequest:
     action_type: str = ""
     effective_date: str = ""
     record_date: Optional[str] = None
+    ex_date: Optional[str] = None
     cash_base_unit: Optional[str] = None
+    cash_base_qty: Optional[float] = None
     cash_amount: Optional[float] = None
     ratio_from: Optional[int] = None
     ratio_to: Optional[int] = None
+    share_change_subtype: Optional[str] = None
+    tax_mode: Optional[str] = None
+    bundle_ref_id: Optional[str] = None
     reinvest_price: Optional[float] = None
     rounding_policy: Optional[str] = None
 

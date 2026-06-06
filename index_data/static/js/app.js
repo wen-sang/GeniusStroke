@@ -35,6 +35,7 @@ function setupGlobalActionBindings() {
                 if (modalId === 'depositModal' && typeof openDepositModal === 'function') openDepositModal();
                 if (modalId === 'withdrawModal' && typeof openWithdrawModal === 'function') openWithdrawModal();
                 if (modalId === 'cashAdjustModal' && typeof openCashAdjustModal === 'function') openCashAdjustModal();
+                if (modalId === 'dividendTaxModal' && typeof openDividendTaxModal === 'function') openDividendTaxModal();
                 break;
             case 'open-create-account-modal':
                 e.preventDefault();
@@ -64,7 +65,9 @@ function setupGlobalActionBindings() {
                 if (mClose === 'depositModal' && typeof closeDepositModal === 'function') closeDepositModal();
                 if (mClose === 'withdrawModal' && typeof closeWithdrawModal === 'function') closeWithdrawModal();
                 if (mClose === 'cashAdjustModal' && typeof closeCashAdjustModal === 'function') closeCashAdjustModal();
+                if (mClose === 'dividendTaxModal' && typeof closeDividendTaxModal === 'function') closeDividendTaxModal();
                 if (mClose === 'corporateActionModal' && typeof closeCorporateActionModal === 'function') closeCorporateActionModal();
+                if (mClose === 'stockCorporateActionModal' && typeof closeStockCorporateActionModal === 'function') closeStockCorporateActionModal();
                 break;
             case 'save-transaction-edit':
                 e.preventDefault();
@@ -90,6 +93,10 @@ function setupGlobalActionBindings() {
                 e.preventDefault();
                 if (typeof saveCashAdjust === 'function') saveCashAdjust();
                 break;
+            case 'submit-dividend-tax':
+                e.preventDefault();
+                if (typeof submitDividendTax === 'function') submitDividendTax();
+                break;
             case 'edit-transaction':
                 e.preventDefault();
                 if (typeof openTransactionEditModal === 'function') openTransactionEditModal(actionEl.getAttribute('data-id'));
@@ -107,6 +114,18 @@ function setupGlobalActionBindings() {
                     if (typeof cancelCurrentCorporateAction === 'function') cancelCurrentCorporateAction();
                 }
                 break;
+            case 'confirm-stock-ca-bundle':
+                e.preventDefault();
+                if (typeof confirmStockCorporateActionBundle === 'function') confirmStockCorporateActionBundle(actionEl.getAttribute('data-bundle'));
+                break;
+            case 'edit-stock-ca-bundle':
+                e.preventDefault();
+                if (typeof openStockCorporateActionBundleEditModal === 'function') openStockCorporateActionBundleEditModal(actionEl.getAttribute('data-bundle'));
+                break;
+            case 'cancel-stock-ca-bundle':
+                e.preventDefault();
+                if (typeof cancelStockCorporateActionBundle === 'function') cancelStockCorporateActionBundle(actionEl.getAttribute('data-bundle'));
+                break;
             case 'preview-ca':
                 e.preventDefault();
                 if (typeof previewCorporateAction === 'function') previewCorporateAction();
@@ -114,6 +133,14 @@ function setupGlobalActionBindings() {
             case 'submit-ca':
                 e.preventDefault();
                 if (typeof submitCorporateAction === 'function') submitCorporateAction();
+                break;
+            case 'preview-stock-ca':
+                e.preventDefault();
+                if (typeof previewStockCorporateAction === 'function') previewStockCorporateAction();
+                break;
+            case 'submit-stock-ca':
+                e.preventDefault();
+                if (typeof submitStockCorporateAction === 'function') submitStockCorporateAction();
                 break;
         }
     });

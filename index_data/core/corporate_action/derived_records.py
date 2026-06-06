@@ -12,7 +12,7 @@ from core.trade.models import CashFlow, Order
 from core.trade.rebuild_service import account_rebuild_service
 from dao.cash_flow_dao import cash_flow_dao
 
-from .dao import corporate_action_dao
+from dao.corporate_action_dao import corporate_action_dao
 from .models import CorporateAction
 
 

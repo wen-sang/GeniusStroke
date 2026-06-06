@@ -24,7 +24,7 @@ from core.db_engine import db_engine
 class CashFlowService:
     """资金流水业务服务。"""
 
-    VALID_FLOW_TYPES = {"DEPOSIT", "WITHDRAW", "ADJUST"}
+    VALID_FLOW_TYPES = {"DEPOSIT", "WITHDRAW", "ADJUST", "DIVIDEND_TAX"}
 
     def __init__(self) -> None:
         self.cash_flow_dao = cash_flow_dao
@@ -68,7 +68,7 @@ class CashFlowService:
             account = self.trade_dao.get_or_create_account(account_id, conn=conn)
             before_cash = float(account.get("cash_balance", 0.0) or 0.0)
             after_cash = before_cash + cash_delta
-            if after_cash < 0:
+            if after_cash < 0 and normalized_type != "DIVIDEND_TAX":
                 raise ValidationError(
                     f"资金变动后现金不能为负数: 当前 {before_cash:.2f}, 变动 {cash_delta:.2f}"
                 )
@@ -87,7 +87,7 @@ class CashFlowService:
             self.trade_dao.insert_audit_log(
                 account_id=account_id,
                 order_id=None,
-                action_type=normalized_type,
+                action_type="DIVIDEND_TAX_CREATE" if normalized_type == "DIVIDEND_TAX" else normalized_type,
                 before_cash=before_cash,
                 after_cash=after_cash,
                 amount_change=cash_delta,
@@ -196,6 +196,8 @@ class CashFlowService:
         if flow_type == "DEPOSIT":
             return amount
         if flow_type == "WITHDRAW":
+            return -amount
+        if flow_type == "DIVIDEND_TAX":
             return -amount
         if flow_type == "ADJUST":
             normalized_direction = (adjust_direction or "").upper()

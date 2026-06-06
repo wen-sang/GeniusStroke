@@ -9,7 +9,7 @@ from utils.decimal_utils import quantize_amount, quantize_price, to_decimal
 from utils.logger import logger
 from utils.validators import ValidationError
 
-from .dao import corporate_action_dao
+from dao.corporate_action_dao import corporate_action_dao
 from .derived_records import (
     account_history_rebuild_service,
     account_rebuild_service,
@@ -28,7 +28,7 @@ from .preview_helpers import build_preview
 
 class CorporateActionService:
     VALID_ACTION_TYPES = {"SPLIT", "CASH_DIVIDEND", "DIVIDEND_REINVEST"}
-    VALID_CASH_BASE_UNITS = {"PER_SHARE", "PER_10_SHARES"}
+    VALID_CASH_BASE_UNITS = {"PER_SHARE", "PER_10_SHARES", "PER_N_SHARES"}
     VALID_ROUNDING_POLICIES = {"KEEP_DECIMAL", "ROUND_DOWN"}
 
     def __init__(self) -> None:
@@ -45,7 +45,9 @@ class CorporateActionService:
                 asset_code=normalized.asset_code,
                 action_type=normalized.action_type,
                 effective_date=normalized.effective_date,
+                record_date=normalized.record_date,
                 cash_base_unit=normalized.cash_base_unit,
+                cash_base_qty=to_decimal(normalized.cash_base_qty) if normalized.cash_base_qty is not None else None,
                 cash_amount=normalized.cash_amount,
                 ratio_from=normalized.ratio_from,
                 ratio_to=normalized.ratio_to,
@@ -59,53 +61,7 @@ class CorporateActionService:
         self._validate_request(normalized)
 
         with db_engine.get_connection() as conn:
-            self.trade_dao.get_or_create_account(normalized.account_id, conn=conn)
-            if self.dao.exists_active_action(
-                account_id=normalized.account_id,
-                asset_code=normalized.asset_code,
-                effective_date=normalized.effective_date,
-                action_type=normalized.action_type,
-                conn=conn,
-            ):
-                raise ValidationError("同一账户、标的、生效日、事件类型的有效企业事件已存在")
-
-            preview = build_preview(
-                account_id=normalized.account_id,
-                asset_code=normalized.asset_code,
-                action_type=normalized.action_type,
-                effective_date=normalized.effective_date,
-                cash_base_unit=normalized.cash_base_unit,
-                cash_amount=normalized.cash_amount,
-                ratio_from=normalized.ratio_from,
-                ratio_to=normalized.ratio_to,
-                reinvest_price=normalized.reinvest_price,
-                rounding_policy=normalized.rounding_policy,
-                conn=conn,
-            )
-            action = CorporateAction(
-                account_id=normalized.account_id,
-                asset_code=normalized.asset_code,
-                action_type=normalized.action_type,
-                effective_date=normalized.effective_date,
-                record_date=normalized.record_date,
-                cash_base_unit=normalized.cash_base_unit,
-                cash_amount=float(normalized.cash_amount) if normalized.cash_amount is not None else None,
-                ratio_from=normalized.ratio_from,
-                ratio_to=normalized.ratio_to,
-                reinvest_price=float(normalized.reinvest_price) if normalized.reinvest_price is not None else None,
-                rounding_policy=normalized.rounding_policy,
-                remark=normalized.remark,
-                status="PENDING",
-                source_type="MANUAL",
-            )
-            action.action_id = self.dao.insert_action(action, conn=conn)
-            insert_audit_log(
-                account_id=action.account_id,
-                action_type=f"CORP_{action.action_type}",
-                amount_change=float(preview["dividend_cash"]),
-                remark=f"CREATE corporate action {action.action_type} #{action.action_id}",
-                conn=conn,
-            )
+            action = self._create_action_in_conn(normalized, conn)
 
         logger.info(
             "[CORP_ACTION_CREATE] action_id=%s account_id=%s asset=%s type=%s",
@@ -113,6 +69,68 @@ class CorporateActionService:
             action.account_id,
             action.asset_code,
             action.action_type,
+        )
+        return action
+
+    def _create_action_in_conn(
+        self,
+        normalized: CorporateActionCreateRequest,
+        conn,
+        skip_duplicate_check: bool = False,
+    ) -> CorporateAction:
+        self.trade_dao.get_or_create_account(normalized.account_id, conn=conn)
+        if not skip_duplicate_check and self.dao.exists_active_action(
+            account_id=normalized.account_id,
+            asset_code=normalized.asset_code,
+            effective_date=normalized.effective_date,
+            action_type=normalized.action_type,
+            conn=conn,
+        ):
+            raise ValidationError("同一账户、标的、生效日、事件类型的有效企业事件已存在")
+
+        preview = build_preview(
+            account_id=normalized.account_id,
+            asset_code=normalized.asset_code,
+            action_type=normalized.action_type,
+            effective_date=normalized.effective_date,
+            record_date=normalized.record_date,
+            cash_base_unit=normalized.cash_base_unit,
+            cash_base_qty=to_decimal(normalized.cash_base_qty) if normalized.cash_base_qty is not None else None,
+            cash_amount=normalized.cash_amount,
+            ratio_from=normalized.ratio_from,
+            ratio_to=normalized.ratio_to,
+            reinvest_price=normalized.reinvest_price,
+            rounding_policy=normalized.rounding_policy,
+            conn=conn,
+        )
+        action = CorporateAction(
+            account_id=normalized.account_id,
+            asset_code=normalized.asset_code,
+            action_type=normalized.action_type,
+            effective_date=normalized.effective_date,
+            record_date=normalized.record_date,
+            ex_date=normalized.ex_date,
+            cash_base_unit=normalized.cash_base_unit,
+            cash_base_qty=normalized.cash_base_qty,
+            cash_amount=float(normalized.cash_amount) if normalized.cash_amount is not None else None,
+            ratio_from=normalized.ratio_from,
+            ratio_to=normalized.ratio_to,
+            share_change_subtype=normalized.share_change_subtype,
+            tax_mode=normalized.tax_mode,
+            bundle_ref_id=normalized.bundle_ref_id,
+            reinvest_price=float(normalized.reinvest_price) if normalized.reinvest_price is not None else None,
+            rounding_policy=normalized.rounding_policy,
+            remark=normalized.remark,
+            status="PENDING",
+            source_type="MANUAL",
+        )
+        action.action_id = self.dao.insert_action(action, conn=conn)
+        insert_audit_log(
+            account_id=action.account_id,
+            action_type=f"CORP_{action.action_type}",
+            amount_change=float(preview["dividend_cash"]),
+            remark=f"CREATE corporate action {action.action_type} #{action.action_id}",
+            conn=conn,
         )
         return action
 
@@ -130,10 +148,15 @@ class CorporateActionService:
                 existing,
                 effective_date=normalized.effective_date,
                 record_date=normalized.record_date,
+                ex_date=normalized.ex_date,
                 cash_base_unit=normalized.cash_base_unit,
+                cash_base_qty=normalized.cash_base_qty,
                 cash_amount=float(normalized.cash_amount) if normalized.cash_amount is not None else None,
                 ratio_from=normalized.ratio_from,
                 ratio_to=normalized.ratio_to,
+                share_change_subtype=normalized.share_change_subtype,
+                tax_mode=normalized.tax_mode,
+                bundle_ref_id=normalized.bundle_ref_id,
                 reinvest_price=float(normalized.reinvest_price) if normalized.reinvest_price is not None else None,
                 rounding_policy=normalized.rounding_policy,
                 remark=normalized.remark,
@@ -154,7 +177,9 @@ class CorporateActionService:
                 asset_code=updated.asset_code,
                 action_type=updated.action_type,
                 effective_date=updated.effective_date,
+                record_date=updated.record_date,
                 cash_base_unit=updated.cash_base_unit,
+                cash_base_qty=to_decimal(updated.cash_base_qty) if updated.cash_base_qty is not None else None,
                 cash_amount=to_decimal(updated.cash_amount) if updated.cash_amount is not None else None,
                 ratio_from=updated.ratio_from,
                 ratio_to=updated.ratio_to,
@@ -243,13 +268,18 @@ class CorporateActionService:
                         "biz_date": action["effective_date"],
                         "effective_date": action["effective_date"],
                         "record_date": action.get("record_date"),
+                        "ex_date": action.get("ex_date"),
                         "asset_code": action["asset_code"],
                         "asset_name": asset_name,
                         "action_type": action["action_type"],
                         "cash_base_unit": action.get("cash_base_unit"),
+                        "cash_base_qty": float(action["cash_base_qty"]) if action.get("cash_base_qty") is not None else None,
                         "cash_amount": float(action["cash_amount"]) if action.get("cash_amount") is not None else None,
                         "ratio_from": int(action["ratio_from"]) if action.get("ratio_from") is not None else None,
                         "ratio_to": int(action["ratio_to"]) if action.get("ratio_to") is not None else None,
+                        "share_change_subtype": action.get("share_change_subtype"),
+                        "tax_mode": action.get("tax_mode"),
+                        "bundle_ref_id": action.get("bundle_ref_id"),
                         "reinvest_price": float(action["reinvest_price"]) if action.get("reinvest_price") is not None else None,
                         "rounding_policy": action.get("rounding_policy"),
                         "display_type": self._display_action_type(action["action_type"]),
@@ -325,13 +355,18 @@ class CorporateActionService:
                         "biz_date": action["effective_date"],
                         "effective_date": action["effective_date"],
                         "record_date": action.get("record_date"),
+                        "ex_date": action.get("ex_date"),
                         "asset_code": action["asset_code"],
                         "asset_name": asset_name,
                         "action_type": action["action_type"],
                         "cash_base_unit": action.get("cash_base_unit"),
+                        "cash_base_qty": float(action["cash_base_qty"]) if action.get("cash_base_qty") is not None else None,
                         "cash_amount": float(action["cash_amount"]) if action.get("cash_amount") is not None else None,
                         "ratio_from": int(action["ratio_from"]) if action.get("ratio_from") is not None else None,
                         "ratio_to": int(action["ratio_to"]) if action.get("ratio_to") is not None else None,
+                        "share_change_subtype": action.get("share_change_subtype"),
+                        "tax_mode": action.get("tax_mode"),
+                        "bundle_ref_id": action.get("bundle_ref_id"),
                         "reinvest_price": float(action["reinvest_price"]) if action.get("reinvest_price") is not None else None,
                         "rounding_policy": action.get("rounding_policy"),
                         "display_type": self._display_action_type(action["action_type"]),
@@ -368,10 +403,15 @@ class CorporateActionService:
             action_type=(request.action_type or "").upper(),
             effective_date=(request.effective_date or "").strip(),
             record_date=(request.record_date or "").strip() or None,
+            ex_date=(request.ex_date or "").strip() or None,
             cash_base_unit=(request.cash_base_unit or "").upper() or None,
+            cash_base_qty=request.cash_base_qty,
             cash_amount=quantize_amount(request.cash_amount) if request.cash_amount is not None else None,
             ratio_from=request.ratio_from,
             ratio_to=request.ratio_to,
+            share_change_subtype=(request.share_change_subtype or "").upper() or None,
+            tax_mode=(request.tax_mode or "").upper() or None,
+            bundle_ref_id=(request.bundle_ref_id or "").strip() or None,
             reinvest_price=quantize_price(request.reinvest_price) if request.reinvest_price is not None else None,
             rounding_policy=(request.rounding_policy or "").upper() or None,
         )
@@ -384,10 +424,15 @@ class CorporateActionService:
                 action_type=request.action_type,
                 effective_date=request.effective_date,
                 record_date=request.record_date,
+                ex_date=request.ex_date,
                 cash_base_unit=request.cash_base_unit,
+                cash_base_qty=request.cash_base_qty,
                 cash_amount=request.cash_amount,
                 ratio_from=request.ratio_from,
                 ratio_to=request.ratio_to,
+                share_change_subtype=request.share_change_subtype,
+                tax_mode=request.tax_mode,
+                bundle_ref_id=request.bundle_ref_id,
                 reinvest_price=request.reinvest_price,
                 rounding_policy=request.rounding_policy,
             )
@@ -398,10 +443,15 @@ class CorporateActionService:
             action_type=preview.action_type,
             effective_date=preview.effective_date,
             record_date=preview.record_date,
+            ex_date=preview.ex_date,
             cash_base_unit=preview.cash_base_unit,
+            cash_base_qty=preview.cash_base_qty,
             cash_amount=preview.cash_amount,
             ratio_from=preview.ratio_from,
             ratio_to=preview.ratio_to,
+            share_change_subtype=preview.share_change_subtype,
+            tax_mode=preview.tax_mode,
+            bundle_ref_id=preview.bundle_ref_id,
             reinvest_price=preview.reinvest_price,
             rounding_policy=preview.rounding_policy,
             remark=(request.remark or "").strip(),
@@ -415,10 +465,15 @@ class CorporateActionService:
                 action_type="",
                 effective_date=request.effective_date,
                 record_date=request.record_date,
+                ex_date=request.ex_date,
                 cash_base_unit=request.cash_base_unit,
+                cash_base_qty=request.cash_base_qty,
                 cash_amount=request.cash_amount,
                 ratio_from=request.ratio_from,
                 ratio_to=request.ratio_to,
+                share_change_subtype=request.share_change_subtype,
+                tax_mode=request.tax_mode,
+                bundle_ref_id=request.bundle_ref_id,
                 reinvest_price=request.reinvest_price,
                 rounding_policy=request.rounding_policy,
             )
@@ -428,10 +483,15 @@ class CorporateActionService:
             account_id=request.account_id,
             effective_date=preview.effective_date,
             record_date=preview.record_date,
+            ex_date=preview.ex_date,
             cash_base_unit=preview.cash_base_unit,
+            cash_base_qty=preview.cash_base_qty,
             cash_amount=preview.cash_amount,
             ratio_from=preview.ratio_from,
             ratio_to=preview.ratio_to,
+            share_change_subtype=preview.share_change_subtype,
+            tax_mode=preview.tax_mode,
+            bundle_ref_id=preview.bundle_ref_id,
             reinvest_price=preview.reinvest_price,
             rounding_policy=preview.rounding_policy,
             remark=(request.remark or "").strip(),
@@ -458,6 +518,17 @@ class CorporateActionService:
 
         if request.cash_base_unit not in self.VALID_CASH_BASE_UNITS:
             raise ValidationError("分红口径不合法")
+        if request.cash_base_unit == "PER_SHARE":
+            if request.cash_base_qty not in {None, 1}:
+                raise ValidationError("每份分红的分红基准数量只能为空或 1")
+        elif request.cash_base_unit == "PER_10_SHARES":
+            if request.cash_base_qty not in {None, 10}:
+                raise ValidationError("每 10 份分红的分红基准数量只能为空或 10")
+        elif request.cash_base_unit == "PER_N_SHARES":
+            if request.cash_base_qty is None or request.cash_base_qty <= 0:
+                raise ValidationError("每 N 份分红必须填写分红基准数量")
+            if request.cash_base_qty == 10:
+                raise ValidationError("每 10 份分红请使用 PER_10_SHARES 口径")
         if request.cash_amount is None or request.cash_amount <= 0:
             raise ValidationError("分红金额必须大于 0")
 
@@ -475,10 +546,15 @@ class CorporateActionService:
                 action_type=action.action_type,
                 effective_date=action.effective_date,
                 record_date=action.record_date,
+                ex_date=action.ex_date,
                 cash_base_unit=action.cash_base_unit,
+                cash_base_qty=action.cash_base_qty,
                 cash_amount=action.cash_amount,
                 ratio_from=action.ratio_from,
                 ratio_to=action.ratio_to,
+                share_change_subtype=action.share_change_subtype,
+                tax_mode=action.tax_mode,
+                bundle_ref_id=action.bundle_ref_id,
                 reinvest_price=action.reinvest_price,
                 rounding_policy=action.rounding_policy,
             )

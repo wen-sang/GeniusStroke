@@ -59,6 +59,11 @@ const corporateActionState = {
     assetCodeLocked: false,
 };
 
+const stockCorporateActionState = {
+    mode: 'create',
+    bundleRefId: null,
+};
+
 
 function createPaginationState() {
     return {

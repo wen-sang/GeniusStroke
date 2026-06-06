@@ -131,6 +131,10 @@
                         <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></svg>
                         <span>出金</span>
                     </button>
+                    <button type="button" class="dropdown-item" data-action="open-modal" data-modal="dividendTaxModal">
+                        <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M7 11h10"/><path d="M9 15h6"/><path d="M12 3v18"/></svg>
+                        <span>红利税</span>
+                    </button>
                     <div class="dropdown-divider"></div>
                 </div>
             </div>
@@ -1208,6 +1212,143 @@
                 <button class="modal-btn-cancel" data-action="close-modal" data-modal="corporateActionModal">取消</button>
                 <button class="modal-btn-confirm" id="btn-preview-corporate-action" data-action="preview-ca">预览结果</button>
                 <button class="modal-btn-confirm" id="btn-save-corporate-action" data-action="submit-ca">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stockCorporateActionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="stockCorporateActionModalTitle">
+        <div class="modal-box" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="stockCorporateActionModalTitle">股票除权除息</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="stockCorporateActionModal" aria-label="关闭">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">事件类型 <span class="required-mark">*</span></label>
+                        <select class="form-select" id="sca-event-type">
+                            <option value="CASH_AND_SHARE_CHANGE">派现 + 股份变动</option>
+                            <option value="CASH_DIVIDEND">现金派息</option>
+                            <option value="SHARE_CHANGE">股份变动</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">股票代码 <span class="required-mark">*</span></label>
+                        <input type="text" class="form-input" id="sca-asset-code" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">股票名称</label>
+                        <input type="text" class="form-input" id="sca-asset-name" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">股权登记日 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="sca-record-date">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">除权除息日 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="sca-ex-date">
+                    </div>
+                    <div class="form-group" id="sca-cash-pay-date-group">
+                        <label class="form-label">现金到账日 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="sca-cash-pay-date">
+                    </div>
+
+                    <div class="form-group" id="sca-cash-base-unit-group">
+                        <label class="form-label">派息口径 <span class="required-mark">*</span></label>
+                        <select class="form-select" id="sca-cash-base-unit">
+                            <option value="PER_10_SHARES">每 10 股</option>
+                            <option value="PER_SHARE">每股</option>
+                            <option value="PER_N_SHARES">每 N 股</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="sca-cash-base-qty-group">
+                        <label class="form-label">基准股数</label>
+                        <input type="number" min="0" step="0.0001" class="form-input" id="sca-cash-base-qty" placeholder="每 N 股时必填">
+                    </div>
+                    <div class="form-group" id="sca-cash-amount-group">
+                        <label class="form-label">派现金额 <span class="required-mark">*</span></label>
+                        <input type="number" min="0" step="0.0001" class="form-input" id="sca-cash-amount" placeholder="如 2.5">
+                    </div>
+
+                    <div class="form-group" id="sca-ratio-from-group">
+                        <label class="form-label">变动前基数 <span class="required-mark">*</span></label>
+                        <input type="number" min="1" step="1" class="form-input" id="sca-ratio-from" placeholder="如 10">
+                    </div>
+                    <div class="form-group" id="sca-ratio-to-group">
+                        <label class="form-label">变动后基数 <span class="required-mark">*</span></label>
+                        <input type="number" min="1" step="1" class="form-input" id="sca-ratio-to" placeholder="如 14">
+                    </div>
+                    <div class="form-group" id="sca-share-subtype-group">
+                        <label class="form-label">股份变动类型</label>
+                        <select class="form-select" id="sca-share-subtype">
+                            <option value="CAPITAL_TRANSFER">转增</option>
+                            <option value="BONUS_SHARE">送股</option>
+                            <option value="BONUS_AND_TRANSFER">送股并转增</option>
+                            <option value="STOCK_SPLIT">拆股</option>
+                            <option value="MANUAL_ADJUST">手工调整</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group span-2">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-textarea textarea-min-60" id="sca-remark" maxlength="128" placeholder="选填备注..."></textarea>
+                    </div>
+
+                    <div class="form-group span-2">
+                        <div class="preview-panel" id="sca-preview-panel">
+                            <div class="preview-panel-title">预览结果</div>
+                            <div id="sca-preview-content" class="preview-placeholder-text">填写参数后点击“预览结果”查看影响。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="stockCorporateActionModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-preview-stock-corporate-action" data-action="preview-stock-ca">预览结果</button>
+                <button class="modal-btn-confirm" id="btn-save-stock-corporate-action" data-action="submit-stock-ca">确定保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 红利税弹窗 -->
+    <div id="dividendTaxModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="dividendTaxModalTitle">
+        <div class="modal-box modal-box-xs" data-prevent-close="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="dividendTaxModalTitle">红利税</h2>
+                <button class="modal-close" data-action="close-modal" data-modal="dividendTaxModal" aria-label="关闭">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">扣税日期 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="form-dividend-tax-date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">扣税金额 <span class="required-mark">*</span></label>
+                        <input type="number" step="0.01" class="form-input" placeholder="输入红利税金额" id="form-dividend-tax-amount">
+                        <span class="form-error hidden" id="err-dividend-tax-amount">金额必须大于0</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">关联企业事件 ID</label>
+                        <input type="number" step="1" min="1" class="form-input" placeholder="选填" id="form-dividend-tax-related-action-id">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">备注</label>
+                        <input type="text" class="form-input" placeholder="选填" id="form-dividend-tax-remark">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-cancel" data-action="close-modal" data-modal="dividendTaxModal">取消</button>
+                <button class="modal-btn-confirm" id="btn-save-dividend-tax" data-action="submit-dividend-tax">确定扣税</button>
             </div>
         </div>
     </div>
