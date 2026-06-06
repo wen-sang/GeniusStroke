@@ -7,6 +7,20 @@ const SOURCE_LIXINREN = 'lixinren';
 const SOURCE_TICKFLOW = 'tickflow';
 const DEFAULT_PAGE_SIZE = 60;
 
+function formatCorporateActionQuantity(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '--';
+    return Math.round(number).toLocaleString('zh-CN', {
+        maximumFractionDigits: 0,
+    });
+}
+
+function formatCorporateActionAmount(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '--';
+    return number.toFixed(2);
+}
+
 function isLixinrenSource(sourceId) {
     return sourceId === SOURCE_LIXINREN;
 }

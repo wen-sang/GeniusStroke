@@ -4,6 +4,7 @@ from typing import Any
 
 ZERO = Decimal("0")
 AMOUNT_QUANT = Decimal("0.0001")
+CASH_QUANT = Decimal("0.01")
 QTY_QUANT = Decimal("0.000001")
 COST_QUANT = Decimal("0.00000001")
 INTEGER_QUANT = Decimal("1")
@@ -23,12 +24,20 @@ def quantize_amount(value: Any) -> Decimal:
     return to_decimal(value).quantize(AMOUNT_QUANT, rounding=ROUND_HALF_UP)
 
 
+def quantize_cash(value: Any) -> Decimal:
+    return to_decimal(value).quantize(CASH_QUANT, rounding=ROUND_HALF_UP)
+
+
 def quantize_price(value: Any) -> Decimal:
     return quantize_amount(value)
 
 
 def quantize_qty(value: Any) -> Decimal:
     return to_decimal(value).quantize(QTY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def quantize_exchange_qty(value: Any) -> Decimal:
+    return to_decimal(value).quantize(INTEGER_QUANT, rounding=ROUND_HALF_UP)
 
 
 def quantize_cost(value: Any) -> Decimal:

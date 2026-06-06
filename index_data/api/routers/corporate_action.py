@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/corporate-actions", tags=["corporate_actions"])
 
 def _normalize_preview_data(payload: dict) -> CorporateActionPreviewData:
     return CorporateActionPreviewData(
+        exchange_traded=bool(payload.get("exchange_traded")),
         eligible_qty=str(payload.get("eligible_qty")),
         affected_lot_count=int(payload.get("affected_lot_count") or 0),
         split_ratio_text=payload.get("split_ratio_text"),

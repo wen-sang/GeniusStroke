@@ -608,22 +608,28 @@ function renderCorporateActionPreview(preview, actionType = corporateActionState
     const previewContainer = document.getElementById('ca-preview-content');
     if (!previewContainer || !preview) return;
 
+    const formatQuantity = preview.exchange_traded
+        ? formatCorporateActionQuantity
+        : (value) => String(value ?? '--');
+    const formatAmount = preview.exchange_traded
+        ? formatCorporateActionAmount
+        : (value) => String(value ?? '--');
     const rows = [
-        { label: '参与份额', value: preview.eligible_qty || '--' },
+        { label: '参与份额', value: formatQuantity(preview.eligible_qty) },
         { label: '影响批次', value: `${preview.affected_lot_count || 0}` }
     ];
 
     if (actionType === 'SPLIT') {
         rows.push({ label: '调整比例', value: preview.split_ratio_text || '--' });
     } else {
-        rows.push({ label: '分红现金', value: preview.dividend_cash || '--' });
+        rows.push({ label: '分红现金', value: formatAmount(preview.dividend_cash) });
     }
 
     if (actionType === 'DIVIDEND_REINVEST') {
         rows.push(
-            { label: '再投份额', value: preview.reinvest_volume || '--' },
-            { label: '已用现金', value: preview.dividend_cash_used || '--' },
-            { label: '残余现金', value: preview.cash_residual || '--' }
+            { label: '再投份额', value: formatQuantity(preview.reinvest_volume) },
+            { label: '已用现金', value: formatAmount(preview.dividend_cash_used) },
+            { label: '残余现金', value: formatAmount(preview.cash_residual) }
         );
     }
 

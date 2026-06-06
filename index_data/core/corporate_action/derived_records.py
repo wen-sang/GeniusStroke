@@ -13,7 +13,9 @@ from core.trade.rebuild_service import account_rebuild_service
 from dao.cash_flow_dao import cash_flow_dao
 
 from dao.corporate_action_dao import corporate_action_dao
+from utils.decimal_utils import quantize_cash, quantize_exchange_qty, to_decimal
 from .models import CorporateAction
+from .preview_helpers import is_exchange_traded_asset
 
 
 def clear_derived_records(action_id: int, conn) -> None:
@@ -34,10 +36,22 @@ def rebuild_derived_records(action: CorporateAction, preview: Dict, conn) -> Non
     if action.status != "CONFIRMED":
         return
 
+    exchange_traded = is_exchange_traded_asset(
+        trade_dao.get_asset_type(action.asset_code, conn=conn)
+    )
     if action.action_type == "SPLIT":
-        split_delta = float(preview["eligible_qty"]) * (
-            (float(action.ratio_to or 0) / float(action.ratio_from or 1)) - 1.0
-        )
+        if exchange_traded:
+            eligible_qty = quantize_exchange_qty(preview["eligible_qty"])
+            adjusted_qty = quantize_exchange_qty(
+                eligible_qty
+                * to_decimal(action.ratio_to or 0)
+                / to_decimal(action.ratio_from or 1)
+            )
+            split_delta = float(adjusted_qty - eligible_qty)
+        else:
+            split_delta = float(preview["eligible_qty"]) * (
+                (float(action.ratio_to or 0) / float(action.ratio_from or 1)) - 1.0
+            )
         order = Order(
             account_id=action.account_id,
             asset_code=action.asset_code,
@@ -60,12 +74,15 @@ def rebuild_derived_records(action: CorporateAction, preview: Dict, conn) -> Non
         trade_dao.insert_order(order=order, conn=conn)
         return
 
+    dividend_cash = preview["dividend_cash"]
+    if exchange_traded:
+        dividend_cash = quantize_cash(dividend_cash)
     cash_flow = CashFlow(
         account_id=action.account_id,
         biz_date=action.effective_date,
         flow_type="DIVIDEND",
         direction="IN",
-        amount=float(preview["dividend_cash"]),
+        amount=float(dividend_cash),
         status="ACTIVE",
         remark=f"企业事件派生: {action.action_type}",
         source_type="CORPORATE_ACTION",

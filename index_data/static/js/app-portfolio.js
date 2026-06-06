@@ -373,12 +373,12 @@ function renderStockCorporateActionPreview(data) {
     if (!content) return;
     const rows = [];
     if (data.cash) {
-        rows.push(`<div>登记日参与股数：${escapeHtml(String(data.cash.eligible_qty || '--'))}</div>`);
-        rows.push(`<div>现金分红：${escapeHtml(String(data.cash.dividend_cash || '--'))}</div>`);
+        rows.push(`<div>登记日参与股数：${escapeHtml(formatCorporateActionQuantity(data.cash.eligible_qty))}</div>`);
+        rows.push(`<div>现金分红：${escapeHtml(formatCorporateActionAmount(data.cash.dividend_cash))}</div>`);
     }
     if (data.share) {
-        rows.push(`<div>新增股份：${escapeHtml(String(data.share.share_delta || '--'))}</div>`);
-        rows.push(`<div>除权后持股：${escapeHtml(String(data.share.adjusted_qty || '--'))}</div>`);
+        rows.push(`<div>新增股份：${escapeHtml(formatCorporateActionQuantity(data.share.share_delta))}</div>`);
+        rows.push(`<div>除权后持股：${escapeHtml(formatCorporateActionQuantity(data.share.adjusted_qty))}</div>`);
         rows.push(`<div>股份比例：${escapeHtml(String(data.share.split_ratio_text || '--'))}</div>`);
     }
     content.innerHTML = rows.length ? rows.join('') : '暂无可预览影响。';

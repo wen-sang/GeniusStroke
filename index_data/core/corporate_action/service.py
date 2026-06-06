@@ -43,6 +43,7 @@ class CorporateActionService:
             return build_preview(
                 account_id=normalized.account_id,
                 asset_code=normalized.asset_code,
+                asset_type=self.trade_dao.get_asset_type(normalized.asset_code, conn=conn),
                 action_type=normalized.action_type,
                 effective_date=normalized.effective_date,
                 record_date=normalized.record_date,
@@ -91,6 +92,7 @@ class CorporateActionService:
         preview = build_preview(
             account_id=normalized.account_id,
             asset_code=normalized.asset_code,
+            asset_type=self.trade_dao.get_asset_type(normalized.asset_code, conn=conn),
             action_type=normalized.action_type,
             effective_date=normalized.effective_date,
             record_date=normalized.record_date,
@@ -175,6 +177,7 @@ class CorporateActionService:
             preview = build_preview(
                 account_id=updated.account_id,
                 asset_code=updated.asset_code,
+                asset_type=self.trade_dao.get_asset_type(updated.asset_code, conn=conn),
                 action_type=updated.action_type,
                 effective_date=updated.effective_date,
                 record_date=updated.record_date,

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Sequence
 
 from core.db_engine import db_engine
 from dao.market_dao import market_dao
+from dao.trade_dao import trade_dao
 from utils.logger import logger
 from utils.validators import ValidationError
 
@@ -82,6 +83,7 @@ class CorporateActionConfirmService:
                 preview = build_preview(
                     account_id=action.account_id,
                     asset_code=action.asset_code,
+                    asset_type=trade_dao.get_asset_type(action.asset_code, conn=conn),
                     action_type=action.action_type,
                     effective_date=action.effective_date,
                     record_date=action.record_date,

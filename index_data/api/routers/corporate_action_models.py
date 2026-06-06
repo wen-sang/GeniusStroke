@@ -55,6 +55,7 @@ class CorporateActionCancelRequestModel(BaseModel):
 
 
 class CorporateActionPreviewData(BaseModel):
+    exchange_traded: bool = False
     eligible_qty: str
     affected_lot_count: int
     split_ratio_text: Optional[str] = None

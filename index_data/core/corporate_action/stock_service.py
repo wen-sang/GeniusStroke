@@ -15,6 +15,7 @@ from core.corporate_action.service import corporate_action_service
 from core.db_engine import db_engine
 from dao.asset_dao import asset_dao
 from dao.corporate_action_dao import corporate_action_dao
+from utils.decimal_utils import quantize_exchange_qty
 from utils.validators import ValidationError
 
 
@@ -444,10 +445,10 @@ class StockCorporateActionService:
         request: CorporateActionCreateRequest,
         preview: Dict,
     ) -> Dict:
-        eligible_qty = preview["eligible_qty"]
+        eligible_qty = quantize_exchange_qty(preview["eligible_qty"])
         ratio_from = request.ratio_from or 1
         ratio_to = request.ratio_to or 1
-        adjusted_qty = eligible_qty * ratio_to / ratio_from
+        adjusted_qty = quantize_exchange_qty(eligible_qty * ratio_to / ratio_from)
         share_delta = adjusted_qty - eligible_qty
         return {
             **preview,
