@@ -55,6 +55,9 @@ class TradeService:
     def list_accounts_for_switch(self) -> List[Dict]:
         return self._account_ops.list_accounts_for_switch()
 
+    def account_exists(self, account_id: int) -> bool:
+        return self._account_ops.account_exists(account_id)
+
     def create_account(self, account_name: str) -> Dict:
         return self._account_ops.create_account(account_name)
 

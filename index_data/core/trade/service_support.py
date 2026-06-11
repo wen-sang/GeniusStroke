@@ -49,6 +49,9 @@ class TradeAccountOperations:
             for item in accounts
         ]
 
+    def account_exists(self, account_id: int) -> bool:
+        return bool(self.dao.get_account(account_id))
+
     def create_account(self, account_name: str) -> Dict:
         normalized = self._validate_account_name(account_name)
         with self.db_engine.get_connection() as conn:

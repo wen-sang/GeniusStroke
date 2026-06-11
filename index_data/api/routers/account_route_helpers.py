@@ -78,6 +78,33 @@ def resolve_account_validation_status(detail: str) -> int:
     return 404 if detail == "账户不存在" else 400
 
 
+def resolve_cash_flow_account_id(
+    query_account_id: Optional[int],
+    body_account_id: Optional[int],
+    *,
+    default_account_exists: bool,
+    endpoint: str,
+) -> int:
+    if (
+        query_account_id is not None
+        and body_account_id is not None
+        and query_account_id != body_account_id
+    ):
+        raise ValidationError("查询参数与请求体的账户ID不一致")
+    if query_account_id is not None:
+        return query_account_id
+    if body_account_id is not None:
+        logger.warning(
+            "资金接口使用请求体账户ID兼容路径 endpoint=%s account_id=%s source=body_compat",
+            endpoint,
+            body_account_id,
+        )
+        return body_account_id
+    if default_account_exists:
+        return 1
+    raise ValidationError("必须指定账户")
+
+
 def raise_validation_http_error(
     log_message: str,
     exc: ValidationError | FileNotFoundError,

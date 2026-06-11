@@ -20,12 +20,18 @@ class DatabaseEngine:
 
     def _open_connection(self, isolation_level="", check_same_thread=True):
         """创建 SQLite 连接。"""
-        return sqlite3.connect(
+        conn = sqlite3.connect(
             self.db_path,
             timeout=DB_TIMEOUT,
             isolation_level=isolation_level,
             check_same_thread=check_same_thread,
         )
+        try:
+            conn.execute("PRAGMA foreign_keys=ON;")
+            return conn
+        except Exception:
+            conn.close()
+            raise
 
     def _close_read_connection_if_needed(self):
         """关闭当前复用的只读连接。"""

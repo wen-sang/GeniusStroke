@@ -1505,6 +1505,14 @@ async function saveTransactionEdit() {
 
 // ==================== 页面逻辑: 指数分析 ====================
 
+function getRequiredCurrentAccountId() {
+    const accountId = Number(state.currentAccount);
+    if (!Number.isInteger(accountId) || accountId <= 0) {
+        throw new Error("请先选择账户");
+    }
+    return accountId;
+}
+
 function openDepositModal() {
     const modal = document.getElementById("depositModal");
     if (!modal) return;
@@ -1554,15 +1562,14 @@ async function submitDeposit() {
     btnSubmit.textContent = "提交中...";
 
     try {
+        const accountId = getRequiredCurrentAccountId();
         const payload = {
-            account_id: state.currentAccount,
             amount: amount,
             biz_date: dateInput.value,
-            remark: remarkInput.value || "入金",
-            source_type: "MANUAL"
+            remark: remarkInput.value || "入金"
         };
 
-        await fetchApiOrThrow('/account/deposit', {
+        await fetchApiOrThrow(`/account/deposit?account_id=${accountId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1632,15 +1639,14 @@ async function submitWithdraw() {
     btnSubmit.textContent = "提交中...";
 
     try {
+        const accountId = getRequiredCurrentAccountId();
         const payload = {
-            account_id: state.currentAccount,
             amount: amount,
             biz_date: dateInput.value,
-            remark: remarkInput.value || "出金",
-            source_type: "MANUAL"
+            remark: remarkInput.value || "出金"
         };
 
-        await fetchApiOrThrow('/account/withdraw', {
+        await fetchApiOrThrow(`/account/withdraw?account_id=${accountId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1712,8 +1718,8 @@ async function submitDividendTax() {
     btnSubmit.textContent = "提交中...";
 
     try {
+        const accountId = getRequiredCurrentAccountId();
         const payload = {
-            account_id: state.currentAccount,
             flow_type: "DIVIDEND_TAX",
             amount,
             biz_date: dateInput.value,
@@ -1724,7 +1730,7 @@ async function submitDividendTax() {
             payload.related_action_id = relatedActionId;
         }
 
-        await fetchApiOrThrow('/account/cash-flows', {
+        await fetchApiOrThrow(`/account/cash-flows?account_id=${accountId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1791,13 +1797,14 @@ async function saveCashAdjust() {
     btnSubmit.textContent = "提交中...";
 
     try {
+        const accountId = getRequiredCurrentAccountId();
         const payload = {
             amount: amount,
             direction: direction,
             remark: "前端手工校准可用现金"
         };
 
-        await fetchApi(`/account/adjust?account_id=${state.currentAccount || 1}`, {
+        await fetchApi(`/account/adjust?account_id=${accountId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)

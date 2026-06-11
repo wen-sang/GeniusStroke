@@ -64,6 +64,7 @@ class AccountPerformanceResponse(BaseModel):
 class DepositRequest(BaseModel):
     """入金请求"""
 
+    account_id: Optional[int] = Field(None, gt=0, description="账户ID（兼容旧版前端）")
     amount: float = Field(..., gt=0, description="入金金额")
     biz_date: str = Field(..., min_length=10, max_length=10, description="业务日期 YYYY-MM-DD")
     remark: str = Field("", description="备注")
@@ -72,6 +73,7 @@ class DepositRequest(BaseModel):
 class WithdrawRequest(BaseModel):
     """出金请求"""
 
+    account_id: Optional[int] = Field(None, gt=0, description="账户ID（兼容旧版前端）")
     amount: float = Field(..., gt=0, description="出金金额")
     biz_date: str = Field(..., min_length=10, max_length=10, description="业务日期 YYYY-MM-DD")
     remark: str = Field("", description="备注")
@@ -80,6 +82,7 @@ class WithdrawRequest(BaseModel):
 class AdjustRequest(BaseModel):
     """调账请求"""
 
+    account_id: Optional[int] = Field(None, gt=0, description="账户ID（兼容旧版前端）")
     amount: float = Field(..., gt=0, description="调账金额，始终传正值")
     direction: Literal["IN", "OUT"] = Field(..., description="调账方向：IN=增加现金，OUT=减少现金")
     remark: str = Field("", description="备注")
@@ -89,6 +92,7 @@ class AdjustRequest(BaseModel):
 class CashFlowCreateRequest(BaseModel):
     """资金流水新增请求"""
 
+    account_id: Optional[int] = Field(None, gt=0, description="账户ID（兼容旧版前端）")
     flow_type: Literal["DEPOSIT", "WITHDRAW", "ADJUST", "DIVIDEND_TAX"] = Field(..., description="资金流水类型")
     amount: float = Field(..., gt=0, description="金额，始终传正值")
     remark: str = Field("", description="备注")

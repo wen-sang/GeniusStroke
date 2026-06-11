@@ -65,7 +65,9 @@ class CashFlowService:
         )
 
         with db_engine.get_connection() as conn:
-            account = self.trade_dao.get_or_create_account(account_id, conn=conn)
+            account = self.trade_dao.get_account(account_id, conn=conn)
+            if not account:
+                raise ValidationError("账户不存在")
             before_cash = float(account.get("cash_balance", 0.0) or 0.0)
             after_cash = before_cash + cash_delta
             if after_cash < 0 and normalized_type != "DIVIDEND_TAX":

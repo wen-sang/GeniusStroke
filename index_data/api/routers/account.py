@@ -5,7 +5,7 @@ v2.4.5: 支持账户汇总、入金出金
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 
 from api.routers.account_models import (
     AccountDeleteResponse,
@@ -32,6 +32,7 @@ from api.routers.account_route_helpers import (
     extract_import_rebuild_payload,
     raise_internal_http_error,
     raise_validation_http_error,
+    resolve_cash_flow_account_id,
     resolve_account_validation_status,
 )
 from core.trade import (
@@ -147,47 +148,112 @@ async def delete_account(account_id: int):
 
 
 @router.post("/deposit", response_model=OperationResponse)
-async def deposit(req: DepositRequest, account_id: int = Query(1, description="账户ID")):
+async def deposit(
+    req: DepositRequest,
+    request: Request,
+    account_id: int = Query(1, ge=1, description="账户ID"),
+):
     """
     入金
     """
     try:
-        trade_service.deposit(account_id, req.amount, req.remark, biz_date=req.biz_date)
+        query_account_id = account_id if "account_id" in request.query_params else None
+        resolved_account_id = resolve_cash_flow_account_id(
+            query_account_id,
+            req.account_id,
+            default_account_exists=(
+                query_account_id is None
+                and req.account_id is None
+                and trade_service.account_exists(1)
+            ),
+            endpoint="/api/account/deposit",
+        )
+        trade_service.deposit(
+            resolved_account_id,
+            req.amount,
+            req.remark,
+            biz_date=req.biz_date,
+        )
         return OperationResponse(
             success=True,
             message=f"入金成功: {req.amount:.2f} 元"
         )
     except ValidationError as exc:
-        raise_validation_http_error("入金参数校验失败 account_id=%s detail=%s", exc, account_id)
+        raise_validation_http_error(
+            "入金参数校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
     except Exception as exc:
         raise_internal_http_error("入金失败 account_id=%s amount=%s", "入金失败", exc, account_id, req.amount)
 
 
 @router.post("/withdraw", response_model=OperationResponse)
-async def withdraw(req: WithdrawRequest, account_id: int = Query(1, description="账户ID")):
+async def withdraw(
+    req: WithdrawRequest,
+    request: Request,
+    account_id: int = Query(1, ge=1, description="账户ID"),
+):
     """
     出金
     """
     try:
-        trade_service.withdraw(account_id, req.amount, req.remark, biz_date=req.biz_date)
+        query_account_id = account_id if "account_id" in request.query_params else None
+        resolved_account_id = resolve_cash_flow_account_id(
+            query_account_id,
+            req.account_id,
+            default_account_exists=(
+                query_account_id is None
+                and req.account_id is None
+                and trade_service.account_exists(1)
+            ),
+            endpoint="/api/account/withdraw",
+        )
+        trade_service.withdraw(
+            resolved_account_id,
+            req.amount,
+            req.remark,
+            biz_date=req.biz_date,
+        )
         return OperationResponse(
             success=True,
             message=f"出金成功: {req.amount:.2f} 元"
         )
     except ValidationError as exc:
-        raise_validation_http_error("出金参数校验失败 account_id=%s detail=%s", exc, account_id)
+        raise_validation_http_error(
+            "出金参数校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
     except Exception as exc:
         raise_internal_http_error("出金失败 account_id=%s amount=%s", "出金失败", exc, account_id, req.amount)
 
 
 @router.post("/adjust", response_model=OperationResponse)
-async def adjust(req: AdjustRequest, account_id: int = Query(1, description="账户ID")):
+async def adjust(
+    req: AdjustRequest,
+    request: Request,
+    account_id: int = Query(1, ge=1, description="账户ID"),
+):
     """
     调账
     """
     try:
+        query_account_id = account_id if "account_id" in request.query_params else None
+        resolved_account_id = resolve_cash_flow_account_id(
+            query_account_id,
+            req.account_id,
+            default_account_exists=(
+                query_account_id is None
+                and req.account_id is None
+                and trade_service.account_exists(1)
+            ),
+            endpoint="/api/account/adjust",
+        )
         cash_flow_service.adjust(
-            account_id=account_id,
+            account_id=resolved_account_id,
             amount=req.amount,
             direction=req.direction,
             remark=req.remark,
@@ -198,7 +264,12 @@ async def adjust(req: AdjustRequest, account_id: int = Query(1, description="账
             message=f"调账成功: {req.direction} {req.amount:.2f} 元"
         )
     except ValidationError as exc:
-        raise_validation_http_error("调账参数校验失败 account_id=%s detail=%s", exc, account_id)
+        raise_validation_http_error(
+            "调账参数校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
     except Exception as exc:
         raise_internal_http_error("调账失败 account_id=%s amount=%s", "调账失败", exc, account_id, req.amount)
 
@@ -232,14 +303,26 @@ async def get_cash_flows(
 @router.post("/cash-flows", response_model=CashFlowResponse)
 async def create_cash_flow(
     req: CashFlowCreateRequest,
-    account_id: int = Query(1, description="账户ID"),
+    request: Request,
+    account_id: int = Query(1, ge=1, description="账户ID"),
 ):
     """
     新增资金流水
     """
     try:
+        query_account_id = account_id if "account_id" in request.query_params else None
+        resolved_account_id = resolve_cash_flow_account_id(
+            query_account_id,
+            req.account_id,
+            default_account_exists=(
+                query_account_id is None
+                and req.account_id is None
+                and trade_service.account_exists(1)
+            ),
+            endpoint="/api/account/cash-flows",
+        )
         cash_flow = cash_flow_service.create_cash_flow(
-            account_id=account_id,
+            account_id=resolved_account_id,
             flow_type=req.flow_type,
             amount=req.amount,
             remark=req.remark,
@@ -250,7 +333,12 @@ async def create_cash_flow(
         )
         return CashFlowResponse(**cash_flow.to_dict())
     except ValidationError as exc:
-        raise_validation_http_error("资金流水新增参数校验失败 account_id=%s detail=%s", exc, account_id)
+        raise_validation_http_error(
+            "资金流水新增参数校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
     except Exception as exc:
         raise_internal_http_error(
             "资金流水新增失败 account_id=%s flow_type=%s",
