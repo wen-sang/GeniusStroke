@@ -67,11 +67,11 @@ class TradeService:
     def get_account_summary(self, account_id: int = 1) -> AccountSummary:
         return self._account_ops.get_account_summary(account_id)
 
-    def deposit(self, account_id: int, amount: float, remark: str = "") -> None:
-        self._account_ops.deposit(account_id, amount, remark)
+    def deposit(self, account_id: int, amount: float, remark: str = "", biz_date: Optional[str] = None) -> None:
+        self._account_ops.deposit(account_id, amount, remark, biz_date)
 
-    def withdraw(self, account_id: int, amount: float, remark: str = "") -> None:
-        self._account_ops.withdraw(account_id, amount, remark)
+    def withdraw(self, account_id: int, amount: float, remark: str = "", biz_date: Optional[str] = None) -> None:
+        self._account_ops.withdraw(account_id, amount, remark, biz_date)
 
     def adjust_cash(self, account_id: int, amount: float, remark: str = "") -> None:
         self._account_ops.adjust_cash(account_id, amount, remark)

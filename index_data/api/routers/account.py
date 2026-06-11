@@ -152,7 +152,7 @@ async def deposit(req: DepositRequest, account_id: int = Query(1, description="�
     入金
     """
     try:
-        trade_service.deposit(account_id, req.amount, req.remark)
+        trade_service.deposit(account_id, req.amount, req.remark, biz_date=req.biz_date)
         return OperationResponse(
             success=True,
             message=f"入金成功: {req.amount:.2f} 元"
@@ -169,7 +169,7 @@ async def withdraw(req: WithdrawRequest, account_id: int = Query(1, description=
     出金
     """
     try:
-        trade_service.withdraw(account_id, req.amount, req.remark)
+        trade_service.withdraw(account_id, req.amount, req.remark, biz_date=req.biz_date)
         return OperationResponse(
             success=True,
             message=f"出金成功: {req.amount:.2f} 元"

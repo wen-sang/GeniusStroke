@@ -65,6 +65,7 @@ class DepositRequest(BaseModel):
     """入金请求"""
 
     amount: float = Field(..., gt=0, description="入金金额")
+    biz_date: str = Field(..., min_length=10, max_length=10, description="业务日期 YYYY-MM-DD")
     remark: str = Field("", description="备注")
 
 
@@ -72,6 +73,7 @@ class WithdrawRequest(BaseModel):
     """出金请求"""
 
     amount: float = Field(..., gt=0, description="出金金额")
+    biz_date: str = Field(..., min_length=10, max_length=10, description="业务日期 YYYY-MM-DD")
     remark: str = Field("", description="备注")
 
 

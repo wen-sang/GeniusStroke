@@ -150,18 +150,20 @@ class TradeAccountOperations:
 
         return summary
 
-    def deposit(self, account_id: int, amount: float, remark: str = "") -> None:
+    def deposit(self, account_id: int, amount: float, remark: str = "", biz_date: Optional[str] = None) -> None:
         self.cash_flow_service.deposit(
             account_id=account_id,
             amount=amount,
             remark=remark,
+            biz_date=biz_date,
         )
 
-    def withdraw(self, account_id: int, amount: float, remark: str = "") -> None:
+    def withdraw(self, account_id: int, amount: float, remark: str = "", biz_date: Optional[str] = None) -> None:
         self.cash_flow_service.withdraw(
             account_id=account_id,
             amount=amount,
             remark=remark,
+            biz_date=biz_date,
         )
 
     def adjust_cash(self, account_id: int, amount: float, remark: str = "") -> None:

@@ -1508,8 +1508,10 @@ async function saveTransactionEdit() {
 function openDepositModal() {
     const modal = document.getElementById("depositModal");
     if (!modal) return;
+    document.getElementById("form-deposit-date").value = getTodayDateString();
     document.getElementById("form-deposit-amount").value = "";
     document.getElementById("form-deposit-remark").value = "";
+    document.getElementById("err-deposit-date").classList.add("hidden");
     document.getElementById("err-deposit-amount").classList.add("hidden");
     modal.classList.add("active");
     setTimeout(() => {
@@ -1524,20 +1526,29 @@ function closeDepositModal() {
 }
 
 async function submitDeposit() {
+    const dateInput = document.getElementById("form-deposit-date");
     const amountInput = document.getElementById("form-deposit-amount");
     const remarkInput = document.getElementById("form-deposit-remark");
+    const errDateSpan = document.getElementById("err-deposit-date");
     const errSpan = document.getElementById("err-deposit-amount");
     const btnSubmit = document.getElementById("btn-save-deposit");
 
     const amount = parseFloat(amountInput.value);
 
+    errDateSpan.classList.add("hidden");
+    errSpan.classList.add("hidden");
+
+    if (!dateInput.value) {
+        errDateSpan.textContent = "请选择入金时间";
+        errDateSpan.classList.remove("hidden");
+        return;
+    }
     if (isNaN(amount) || amount <= 0) {
         errSpan.textContent = "金额必须大于0，请输入合法金额";
         errSpan.classList.remove("hidden");
         return;
     }
 
-    errSpan.classList.add("hidden");
     btnSubmit.disabled = true;
     const oldText = btnSubmit.textContent;
     btnSubmit.textContent = "提交中...";
@@ -1546,6 +1557,7 @@ async function submitDeposit() {
         const payload = {
             account_id: state.currentAccount,
             amount: amount,
+            biz_date: dateInput.value,
             remark: remarkInput.value || "入金",
             source_type: "MANUAL"
         };
@@ -1574,8 +1586,10 @@ async function submitDeposit() {
 function openWithdrawModal() {
     const modal = document.getElementById("withdrawModal");
     if (!modal) return;
+    document.getElementById("form-withdraw-date").value = getTodayDateString();
     document.getElementById("form-withdraw-amount").value = "";
     document.getElementById("form-withdraw-remark").value = "";
+    document.getElementById("err-withdraw-date").classList.add("hidden");
     document.getElementById("err-withdraw-amount").classList.add("hidden");
     modal.classList.add("active");
     setTimeout(() => {
@@ -1590,20 +1604,29 @@ function closeWithdrawModal() {
 }
 
 async function submitWithdraw() {
+    const dateInput = document.getElementById("form-withdraw-date");
     const amountInput = document.getElementById("form-withdraw-amount");
     const remarkInput = document.getElementById("form-withdraw-remark");
+    const errDateSpan = document.getElementById("err-withdraw-date");
     const errSpan = document.getElementById("err-withdraw-amount");
     const btnSubmit = document.getElementById("btn-save-withdraw");
 
     const amount = parseFloat(amountInput.value);
 
+    errDateSpan.classList.add("hidden");
+    errSpan.classList.add("hidden");
+
+    if (!dateInput.value) {
+        errDateSpan.textContent = "请选择出金时间";
+        errDateSpan.classList.remove("hidden");
+        return;
+    }
     if (isNaN(amount) || amount <= 0) {
         errSpan.textContent = "金额必须大于0，请输入合法金额";
         errSpan.classList.remove("hidden");
         return;
     }
 
-    errSpan.classList.add("hidden");
     btnSubmit.disabled = true;
     const oldText = btnSubmit.textContent;
     btnSubmit.textContent = "提交中...";
@@ -1612,6 +1635,7 @@ async function submitWithdraw() {
         const payload = {
             account_id: state.currentAccount,
             amount: amount,
+            biz_date: dateInput.value,
             remark: remarkInput.value || "出金",
             source_type: "MANUAL"
         };

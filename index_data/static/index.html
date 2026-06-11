@@ -1100,6 +1100,13 @@
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group form-group-full-width">
+                        <label class="form-label">入金时间 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="form-deposit-date">
+                        <span class="form-error hidden" id="err-deposit-date">请选择入金时间</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
                         <label class="form-label">入金金额 <span class="required-mark">*</span></label>
                         <input type="number" step="0.01" class="form-input" placeholder="输入入金金额" id="form-deposit-amount">
                         <span class="form-error hidden" id="err-deposit-amount">金额必须大于0</span>
@@ -1361,6 +1368,13 @@
                 <button class="modal-close" data-action="close-modal" data-modal="withdrawModal" aria-label="关闭">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group form-group-full-width">
+                        <label class="form-label">出金时间 <span class="required-mark">*</span></label>
+                        <input type="date" class="form-input" id="form-withdraw-date">
+                        <span class="form-error hidden" id="err-withdraw-date">请选择出金时间</span>
+                    </div>
+                </div>
                 <div class="form-row">
                     <div class="form-group form-group-full-width">
                         <label class="form-label">出金金额 <span class="required-mark">*</span></label>
