@@ -121,6 +121,7 @@ class SyncRunner:
 
         collection_result: dict[str, Any] = {}
         asset_refresh_summary: dict[str, Any] = {}
+        gap_fill_partial = False
 
         step = get_sync_step(1)
         self._start_step(step.number, callbacks)
@@ -147,13 +148,22 @@ class SyncRunner:
             catalog_sync_result = asset_catalog_service.sync_enabled_sources_with_timeout()
             collection_result = self._invoke_with_optional_progress(
                 self._collection_fn,
-                self._build_step_progress_callback(step.number, callbacks),
+                self._build_scaled_step_progress_callback(
+                    step.number,
+                    callbacks,
+                    0,
+                    80,
+                ),
             ) or {}
             collection_result["catalog_sync_result"] = catalog_sync_result
             collection_result["market_gap_fill_result"] = self._run_market_gap_fill(
                 collection_result=collection_result,
                 callbacks=callbacks,
                 step_number=step.number,
+            )
+            gap_fill_partial = (
+                collection_result["market_gap_fill_result"].get("status")
+                == "COMPLETED_WITH_ERRORS"
             )
         except Exception as exc:
             logger.critical(f"数据采集任务异常终止: {exc}", exc_info=True)
@@ -215,7 +225,11 @@ class SyncRunner:
         self._complete_step(step.number, callbacks)
 
         result.current_step = TOTAL_SYNC_STEPS
-        result.status = SyncTaskStatus.SUCCESS
+        result.status = (
+            SyncTaskStatus.PARTIAL_SUCCESS
+            if gap_fill_partial
+            else SyncTaskStatus.SUCCESS
+        )
         self._finalize_common(result, started_epoch)
         logger.info(f"所有任务执行完毕，总耗时: {result.elapsed_seconds:.2f} 秒")
         return result
@@ -234,17 +248,24 @@ class SyncRunner:
         try:
             return self._invoke_with_optional_progress(
                 self._gap_fill_fn,
-                self._build_step_progress_callback(step_number, callbacks),
+                self._build_scaled_step_progress_callback(
+                    step_number,
+                    callbacks,
+                    80,
+                    100,
+                ),
                 target_date,
             ) or {}
         except Exception as exc:
             logger.error("[MARKET_GAP_FILL] Step 2.5 failed: %s", exc, exc_info=True)
             return {
+                "status": "COMPLETED_WITH_ERRORS",
                 "filled_codes": [],
                 "min_filled_date_by_code": {},
                 "filled_task_count": 0,
                 "failed_task_count": 0,
                 "skipped_task_count": 0,
+                "deferred_task_count": 0,
                 "errors": [
                     {
                         "type": type(exc).__name__,
@@ -340,6 +361,33 @@ class SyncRunner:
         ) -> None:
             if callbacks.on_progress:
                 callbacks.on_progress(step_number, progress, sub_progress, detail)
+
+        return _callback
+
+    @staticmethod
+    def _build_scaled_step_progress_callback(
+        step_number: int,
+        callbacks: SyncCallbacks,
+        start: int,
+        end: int,
+    ) -> Callable[[Optional[int], Optional[str], Optional[str]], None]:
+        def _callback(
+            progress: Optional[int] = None,
+            sub_progress: Optional[str] = None,
+            detail: Optional[str] = None,
+        ) -> None:
+            if not callbacks.on_progress:
+                return
+            scaled = None
+            if progress is not None:
+                bounded = min(100, max(0, int(progress)))
+                scaled = start + round((end - start) * bounded / 100)
+            callbacks.on_progress(
+                step_number,
+                scaled,
+                sub_progress,
+                detail,
+            )
 
         return _callback
 

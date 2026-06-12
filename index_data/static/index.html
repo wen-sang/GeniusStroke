@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeniusStroke - 投资组合</title>
     <!-- 引入提取的 CSS -->
-    <link rel="stylesheet" href="/static/css/base.css?v=20260515-asset-catalog-v1">
-    <link rel="stylesheet" href="/static/css/layout.css?v=20260515-asset-catalog-v1">
-    <link rel="stylesheet" href="/static/css/components.css?v=20260515-asset-catalog-v1">
-    <link rel="stylesheet" href="/static/css/pages.css?v=20260515-asset-catalog-v1">
-    <link rel="stylesheet" href="/static/css/utilities.css?v=20260515-asset-catalog-v1">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260611-market-gap-fill-v12">
+    <link rel="stylesheet" href="/static/css/layout.css?v=20260611-market-gap-fill-v12">
+    <link rel="stylesheet" href="/static/css/components.css?v=20260611-market-gap-fill-v12">
+    <link rel="stylesheet" href="/static/css/pages.css?v=20260611-market-gap-fill-v12">
+    <link rel="stylesheet" href="/static/css/utilities.css?v=20260611-market-gap-fill-v12">
 </head>
 
 <body>
@@ -55,6 +55,11 @@
                 <span class="sync-card-elapsed" id="syncCardSuccessElapsed">--</span>
             </div>
             <p class="sync-card-desc" id="syncCardSuccessDesc">-- 个标的已更新</p>
+            <p class="sync-gap-summary" id="syncGapSuccessSummary" hidden></p>
+            <details class="sync-gap-detail" id="syncGapSuccessDetail" hidden>
+                <summary>查看补采详情</summary>
+                <div class="sync-gap-detail-body"></div>
+            </details>
         </div>
 
         <div class="sync-card-partial" id="syncCardPartial" hidden>
@@ -66,6 +71,11 @@
             <ul class="sync-asset-list" id="syncCardPartialList" aria-label="未更新标的列表"></ul>
             <div class="sync-card-divider"></div>
             <p class="sync-card-sub" id="syncCardPartialSub"></p>
+            <p class="sync-gap-summary" id="syncGapPartialSummary" hidden></p>
+            <details class="sync-gap-detail" id="syncGapPartialDetail" hidden>
+                <summary>查看补采详情</summary>
+                <div class="sync-gap-detail-body"></div>
+            </details>
             <div class="sync-card-divider"></div>
             <button class="sync-action-btn" id="syncRetryBtnPartial" type="button">重新执行</button>
         </div>
@@ -1435,7 +1445,7 @@
     <script src="/static/js/app-asset-catalog.js?v=20260515-asset-catalog-v1"></script>
     <script src="/static/js/app-analysis-assets.js?v=20260516-tickflow-v2"></script>
     <script src="/static/js/app-performance.js?v=20260602-performance-v1"></script>
-    <script src="/static/js/app-data-sync.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/app-data-sync.js?v=20260611-market-gap-fill-v12"></script>
     <script src="/static/js/app.js?v=20260422-f05-app-split-r1"></script>
 </body>
 

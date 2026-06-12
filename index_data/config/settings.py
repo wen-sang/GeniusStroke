@@ -53,148 +53,7 @@ for directory in [DATA_DIR, LOG_DIR]:
 # ==============================================================================
 ENV = os.getenv('ENV', 'development')
 APP_NAME = os.getenv('APP_NAME', 'GeniusStroke')
-VERSION = os.getenv('VERSION', '2.15.3').strip()
-DB_AUTO_SCHEMA = _get_bool_env('DB_AUTO_SCHEMA', ENV == 'development')
-
-# 服务器配置
-HOST = os.getenv('HOST', '0.0.0.0')
-PORT = int(os.getenv('PORT', '8001'))
-RELOAD = os.getenv('RELOAD', 'true').lower() == 'true'
-DASHBOARD_URL = os.getenv('DASHBOARD_URL', f'http://localhost:{PORT}')
-ENABLE_IMPORT_REBUILD_API = _get_bool_env('ENABLE_IMPORT_REBUILD_API', ENV == 'development')
-ENABLE_DATA_SYNC_API = _get_bool_env('ENABLE_DATA_SYNC_API', False)
-MANAGEMENT_API_TOKEN = os.getenv('MANAGEMENT_API_TOKEN', '').strip()
-
-# 日志配置
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
-
-# ==============================================================================
-# 3. 业务逻辑配置常量
-# ==============================================================================
-# 基本面数据同步配置
-FUNDAMENTAL_BATCH_MODE_THRESHOLD_DAYS = 5  # 批量模式vs范围模式的阈值（天）
-FUNDAMENTAL_RANGE_STEP_DAYS = 3000         # 范围模式每次拉取天数
-FUNDAMENTAL_BATCH_CHUNK_SIZE = 100         # 批量模式每批数量
-DATA_COLLECTION_DEFAULT_START_DATE = '2005-01-01'  # 行情/净值/基本面默认起始日期
-FUNDAMENTAL_DEFAULT_START_DATE = DATA_COLLECTION_DEFAULT_START_DATE
-TRADE_CALENDAR_START_YEAR = '2005'
-
-# 交易日历更新配置
-CALENDAR_UPDATE_THRESHOLD_DAYS = 5         # 日历过旧阈值（天）
-
-# 数据采集配置
-DEFAULT_SLEEP_INTERVAL = 2               # 默认API调用间隔（秒）
-ASSET_CATALOG_SYNC_ENABLED = _get_bool_env('ASSET_CATALOG_SYNC_ENABLED', False)
-ASSET_CATALOG_SYNC_TTL_SECONDS = int(os.getenv('ASSET_CATALOG_SYNC_TTL_SECONDS', '86400'))
-ASSET_CATALOG_SYNC_TIMEOUT_SECONDS = int(os.getenv('ASSET_CATALOG_SYNC_TIMEOUT_SECONDS', '10'))
-ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS = int(os.getenv('ASSET_CATALOG_REQUEST_TIMEOUT_SECONDS', '60'))
-ASSET_CATALOG_DEACTIVATE_MIN_FETCH_COUNT = int(os.getenv('ASSET_CATALOG_DEACTIVATE_MIN_FETCH_COUNT', '20'))
-
-# ==============================================================================
-# 4. 其他配置
-# ==============================================================================
-# 计算层独立日志文件名
-CALC_LOG_NAME = "calculation.log"
-
-# 爬虫策略配置
-MARKET_CLOSE_HOUR = 17
-SLEEP_MIN = 10
-SLEEP_MAX = 30
-MARKET_UPDATE_NON_AKSHARE_SLEEP_SECONDS = 0.5
-MARKET_UPDATE_ERROR_SLEEP_SECONDS = 1
-MAX_RETRIES = 3
-
-# 数据库配置
-DB_TIMEOUT = 30  # SQLite 等待锁的超时时间 (秒)
-
-# API Token 配置
-# 敏感凭据只允许通过环境变量注入，不允许代码内置默认值
-LIXINREN_MODE_GLOBAL = "global"
-LIXINREN_MODE_PERSONALIZED = "personalized"
-LIXINREN_MODE = _get_stripped_env("LIXINREN_MODE", LIXINREN_MODE_GLOBAL).lower()
-LIXINREN_TOKEN = _get_stripped_env("LIXINREN_TOKEN")
-LIXINREN_TOKEN_DAILY_BAR = _get_stripped_env("LIXINREN_TOKEN_DAILY_BAR")
-LIXINREN_TOKEN_FUNDAMENTAL = _get_stripped_env("LIXINREN_TOKEN_FUNDAMENTAL")
-LIXINREN_TOKEN_NET_VALUE = _get_stripped_env("LIXINREN_TOKEN_NET_VALUE")
-LIXINREN_TIMEOUT = 60
-
-
-def get_lixinren_mode() -> str:
-    """读取理杏仁运行模式，未配置时默认 global。"""
-    mode = _get_stripped_env("LIXINREN_MODE", LIXINREN_MODE_GLOBAL).lower()
-    if not mode:
-        return LIXINREN_MODE_GLOBAL
-    if mode not in {LIXINREN_MODE_GLOBAL, LIXINREN_MODE_PERSONALIZED}:
-        raise ValueError(
-            "LIXINREN_MODE 配置非法，仅允许 global 或 personalized"
-        )
-    return mode
-
-
-def get_lixinren_token_slot_name(interface_type: str, mode: str | None = None) -> str:
-    """根据运行模式与逻辑接口类型解析 token 配置槽位名称。"""
-    resolved_mode = mode or get_lixinren_mode()
-    if resolved_mode == LIXINREN_MODE_GLOBAL:
-        return "LIXINREN_TOKEN"
-
-    mapping = {
-        DataInterface.DAILY_BAR: "LIXINREN_TOKEN_DAILY_BAR",
-        DataInterface.FUNDAMENTAL: "LIXINREN_TOKEN_FUNDAMENTAL",
-        DataInterface.NET_VALUE: "LIXINREN_TOKEN_NET_VALUE",
-    }
-    slot_name = mapping.get(interface_type)
-    if not slot_name:
-        raise ValueError(f"未知的理杏仁接口类型: {interface_type}")
-    return slot_name
-
-
-def get_lixinren_token_by_slot(slot_name: str, required: bool = False) -> str:
-    """按槽位名称读取理杏仁 token。"""
-    token = _get_stripped_env(slot_name)
-    if required and not token:
-        raise ValueError(f"{slot_name} 未配置，无法初始化理杏仁数据源")
-    return token
-
-
-def get_lixinren_token(required: bool = False) -> str:
-    """兼容旧逻辑：读取全局理杏仁 Token。"""
-    return get_lixinren_token_by_slot("LIXINREN_TOKEN", required=required)
-
-# ==============================================================================
-# 5. 理杏仁流控配置 (Time Sleep Settings)
-# ==============================================================================
-# K线分页拉取时的间隔 (秒)
-LIXINREN_KLINE_PAGE_SLEEP = 5
-
-# 基本面初始化模式 (Init Mode) 每个时间段处理后的间隔 (秒)
-LIXINREN_FUND_INIT_SLEEP = 6
-
-# 基本面增量模式 (Batch Mode) 每批次(100个)处理后的间隔 (秒)
-LIXINREN_FUND_BATCH_SLEEP = 3
-
-# 基金净值分页拉取配置
-FUND_DAILY_MAX_DAYS_PER_REQUEST = 3650
-FUND_DAILY_REQUEST_SLEEP_SECONDS = 1
-
-# 接口请求失败重试等待时间 (秒)
-LIXINREN_RETRY_WAIT = 60
-
-# ==============================================================================
-# 6. efinance 实时行情配置
-# ==============================================================================
-# 行情缓存刷新 TTL (秒)
-EFINANCE_REFRESH_TTL_SECONDS = 600
-
-# 保留旧配置名兼容历史调用
-EFINANCE_POLL_INTERVAL = EFINANCE_REFRESH_TTL_SECONDS
-
-# 最大重试次数
-EFINANCE_MAX_RETRY = 2
-
-# 单次请求最大代码数
-EFINANCE_MAX_CODES_PER_REQUEST = 50
-
-# ==============================================================================
+VERSION = os.getenv('VERSION', '2.16.0').strip()
 DB_AUTO_SCHEMA = _get_bool_env('DB_AUTO_SCHEMA', ENV == 'development')
 
 # 服务器配置
@@ -381,3 +240,103 @@ TDX_VIPDOC_ROOT = pathlib.Path(
 )
 TDX_VIPDOC_STALE_DAYS = int(os.getenv("TDX_VIPDOC_STALE_DAYS", "1"))
 TDX_REFRESH_TIMEOUT_SECONDS = int(os.getenv("TDX_REFRESH_TIMEOUT_SECONDS", "1800"))
+
+MARKET_GAP_FILL_MAX_TASKS_PER_RUN = int(
+    os.getenv("MARKET_GAP_FILL_MAX_TASKS_PER_RUN", "5000")
+)
+MARKET_GAP_FILL_CLAIM_BATCH_SIZE = int(
+    os.getenv("MARKET_GAP_FILL_CLAIM_BATCH_SIZE", "200")
+)
+MARKET_GAP_FILL_REPAIR_BATCH_SIZE = int(
+    os.getenv("MARKET_GAP_FILL_REPAIR_BATCH_SIZE", "50")
+)
+
+TDX_GAP_FILL_LOCK_TIMEOUT_SECONDS = float(
+    os.getenv("TDX_GAP_FILL_LOCK_TIMEOUT_SECONDS", "10")
+)
+TDX_GAP_FILL_MIN_FILES_PER_EXCHANGE = int(
+    os.getenv("TDX_GAP_FILL_MIN_FILES_PER_EXCHANGE", "5000")
+)
+TDX_GAP_FILL_MIN_PREVIOUS_FILE_RATIO = float(
+    os.getenv("TDX_GAP_FILL_MIN_PREVIOUS_FILE_RATIO", "0.95")
+)
+TDX_GAP_FILL_HEALTH_MIN_ASSETS = int(
+    os.getenv("TDX_GAP_FILL_HEALTH_MIN_ASSETS", "20")
+)
+TDX_GAP_FILL_HEALTH_ERROR_RATIO = float(
+    os.getenv("TDX_GAP_FILL_HEALTH_ERROR_RATIO", "0.20")
+)
+
+TICKFLOW_GAP_FILL_ENABLED = _get_bool_env("TICKFLOW_GAP_FILL_ENABLED", True)
+TICKFLOW_GAP_FILL_MAX_SECONDS = float(
+    os.getenv("TICKFLOW_GAP_FILL_MAX_SECONDS", "300")
+)
+TICKFLOW_GAP_FILL_TIMEOUT_SECONDS = float(
+    os.getenv("TICKFLOW_GAP_FILL_TIMEOUT_SECONDS", "60")
+)
+TICKFLOW_GAP_FILL_MAX_RETRIES = int(
+    os.getenv("TICKFLOW_GAP_FILL_MAX_RETRIES", "0")
+)
+TICKFLOW_GAP_FILL_NO_DATA_COOLDOWN_DAYS = int(
+    os.getenv("TICKFLOW_GAP_FILL_NO_DATA_COOLDOWN_DAYS", "7")
+)
+TICKFLOW_GAP_FILL_BREAKER_CONSECUTIVE_ERRORS = int(
+    os.getenv("TICKFLOW_GAP_FILL_BREAKER_CONSECUTIVE_ERRORS", "3")
+)
+TICKFLOW_GAP_FILL_TRANSIENT_BREAKER_MINUTES = int(
+    os.getenv("TICKFLOW_GAP_FILL_TRANSIENT_BREAKER_MINUTES", "60")
+)
+TICKFLOW_GAP_FILL_AUTH_BREAKER_HOURS = int(
+    os.getenv("TICKFLOW_GAP_FILL_AUTH_BREAKER_HOURS", "24")
+)
+
+
+def validate_market_gap_fill_settings() -> None:
+    positive_values = {
+        "MARKET_GAP_FILL_MAX_NEW_TASKS_PER_RUN":
+            MARKET_GAP_FILL_MAX_NEW_TASKS_PER_RUN,
+        "MARKET_GAP_FILL_MAX_TASKS_PER_RUN":
+            MARKET_GAP_FILL_MAX_TASKS_PER_RUN,
+        "MARKET_GAP_FILL_CLAIM_BATCH_SIZE":
+            MARKET_GAP_FILL_CLAIM_BATCH_SIZE,
+        "MARKET_GAP_FILL_REPAIR_BATCH_SIZE":
+            MARKET_GAP_FILL_REPAIR_BATCH_SIZE,
+        "TICKFLOW_GAP_FILL_MAX_REQUESTS_PER_RUN":
+            TICKFLOW_GAP_FILL_MAX_REQUESTS_PER_RUN,
+        "TDX_GAP_FILL_MIN_FILES_PER_EXCHANGE":
+            TDX_GAP_FILL_MIN_FILES_PER_EXCHANGE,
+        "TDX_GAP_FILL_HEALTH_MIN_ASSETS":
+            TDX_GAP_FILL_HEALTH_MIN_ASSETS,
+    }
+    for name, value in positive_values.items():
+        if value <= 0:
+            raise ValueError(f"{name} must be greater than 0")
+
+    non_negative_values = {
+        "TDX_GAP_FILL_LOCK_TIMEOUT_SECONDS":
+            TDX_GAP_FILL_LOCK_TIMEOUT_SECONDS,
+        "TICKFLOW_GAP_FILL_SLEEP_SECONDS":
+            TICKFLOW_GAP_FILL_SLEEP_SECONDS,
+        "TICKFLOW_GAP_FILL_MAX_SECONDS":
+            TICKFLOW_GAP_FILL_MAX_SECONDS,
+        "TICKFLOW_GAP_FILL_TIMEOUT_SECONDS":
+            TICKFLOW_GAP_FILL_TIMEOUT_SECONDS,
+        "TICKFLOW_GAP_FILL_MAX_RETRIES":
+            TICKFLOW_GAP_FILL_MAX_RETRIES,
+    }
+    for name, value in non_negative_values.items():
+        if value < 0:
+            raise ValueError(f"{name} must not be negative")
+
+    ratios = {
+        "TDX_GAP_FILL_MIN_PREVIOUS_FILE_RATIO":
+            TDX_GAP_FILL_MIN_PREVIOUS_FILE_RATIO,
+        "TDX_GAP_FILL_HEALTH_ERROR_RATIO":
+            TDX_GAP_FILL_HEALTH_ERROR_RATIO,
+    }
+    for name, value in ratios.items():
+        if not 0 <= value <= 1:
+            raise ValueError(f"{name} must be between 0 and 1")
+
+
+validate_market_gap_fill_settings()

@@ -16,10 +16,51 @@ class TdxRefreshStatus:
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
     FAILED_SWITCH = "FAILED_SWITCH"
+    LOCKED = "LOCKED"
+
+
+class GapFillRunStatus:
+    COMPLETED = "COMPLETED"
+    COMPLETED_WITH_DEFERRED = "COMPLETED_WITH_DEFERRED"
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS"
+    SKIPPED_TDX_NOT_READY = "SKIPPED_TDX_NOT_READY"
+    SKIPPED_TDX_BUSY = "SKIPPED_TDX_BUSY"
+
+
+class TdxFileStatus:
+    READY = "ready"
+    MISSING = "missing"
+    INVALID = "invalid"
+
+
+class TdxDateStatus:
+    HIT = "hit"
+    EMPTY = "empty"
+    INVALID = "invalid"
+    ZERO = "zero"
+
+
+class TickFlowErrorCategory:
+    AUTH_ERROR = "AUTH_ERROR"
+    PERMISSION_ERROR = "PERMISSION_ERROR"
+    QUOTA_EXHAUSTED = "QUOTA_EXHAUSTED"
+    RATE_LIMITED = "RATE_LIMITED"
+    TIMEOUT = "TIMEOUT"
+    CONNECTION_ERROR = "CONNECTION_ERROR"
+    SERVER_ERROR = "SERVER_ERROR"
+    INVALID_RESPONSE = "INVALID_RESPONSE"
+    UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class RepairStage:
+    INDICATOR = "indicator"
+    SNAPSHOT = "snapshot"
+    ACCOUNT_HISTORY = "account_history"
 
 
 @dataclass
 class MarketGapFillResult:
+    status: str = GapFillRunStatus.COMPLETED
     filled_codes: set[str] = field(default_factory=set)
     min_filled_date_by_code: dict[str, str] = field(default_factory=dict)
     filled_task_count: int = 0
@@ -33,6 +74,62 @@ class MarketGapFillResult:
     dry_run: bool = False
     preview_task_count: int = 0
     preview_tasks: list[dict] = field(default_factory=list)
+    gate: dict = field(default_factory=lambda: {
+        "status": "NOT_RUN",
+        "package_id": None,
+        "target_date": None,
+        "max_trade_date": None,
+        "skip_reason": None,
+        "lock_wait_seconds": 0.0,
+    })
+    tdx: dict = field(default_factory=lambda: {
+        "processed_assets": 0,
+        "processed_tasks": 0,
+        "filled_tasks": 0,
+        "empty_tasks": 0,
+        "zero_tasks": 0,
+        "file_missing_assets": 0,
+        "file_invalid_assets": 0,
+        "health_breaker_triggered": False,
+    })
+    tickflow: dict = field(default_factory=lambda: {
+        "enabled": False,
+        "candidate_assets": 0,
+        "requested_assets": 0,
+        "filled_tasks": 0,
+        "no_data_tasks": 0,
+        "failed_tasks": 0,
+        "budget_total": 0,
+        "budget_remaining": 0,
+        "deadline_reached": False,
+        "breaker_triggered": False,
+        "breaker_reason": None,
+    })
+    tasks: dict = field(default_factory=lambda: {
+        "generated": 0,
+        "claimed": 0,
+        "processed": 0,
+        "filled": 0,
+        "failed": 0,
+        "skipped": 0,
+        "deferred": 0,
+        "lease_lost": 0,
+    })
+    downstream: dict = field(default_factory=lambda: {
+        "claimed_assets": 0,
+        "completed_assets": 0,
+        "failed_assets": 0,
+        "affected_accounts": 0,
+        "failure_details": [],
+    })
+    timing: dict = field(default_factory=lambda: {
+        "gate_seconds": 0.0,
+        "scan_seconds": 0.0,
+        "tdx_seconds": 0.0,
+        "tickflow_seconds": 0.0,
+        "downstream_seconds": 0.0,
+        "total_seconds": 0.0,
+    })
 
     def record_fill(self, asset_code: str, trade_date: str) -> None:
         self.filled_codes.add(asset_code)
@@ -43,6 +140,7 @@ class MarketGapFillResult:
 
     def to_dict(self) -> dict:
         return {
+            "status": self.status,
             "filled_codes": sorted(self.filled_codes),
             "min_filled_date_by_code": dict(sorted(self.min_filled_date_by_code.items())),
             "filled_task_count": self.filled_task_count,
@@ -56,6 +154,12 @@ class MarketGapFillResult:
             "dry_run": self.dry_run,
             "preview_task_count": self.preview_task_count,
             "preview_tasks": self.preview_tasks,
+            "gate": self.gate,
+            "tdx": self.tdx,
+            "tickflow": self.tickflow,
+            "tasks": self.tasks,
+            "downstream": self.downstream,
+            "timing": self.timing,
         }
 
 
@@ -67,6 +171,7 @@ class MarketGapFillRunOptions:
     limit: int | None = None
     dry_run: bool = False
     no_external: bool = False
+    force_tickflow_retry: bool = False
 
     def normalized_limit(self, default_limit: int) -> int:
         if self.limit is None:

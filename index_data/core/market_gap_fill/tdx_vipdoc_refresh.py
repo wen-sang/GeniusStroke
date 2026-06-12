@@ -16,6 +16,10 @@ from urllib.parse import urlunparse
 from config import settings
 from core.market_gap_fill.models import TdxRefreshStatus
 from core.market_gap_fill.tdx_day_parser import scan_max_trade_date
+from data_provider.tdx_vipdoc_provider import TdxPackageLockTimeout
+from data_provider.tdx_vipdoc_provider import TdxVipdocProvider
+from data_provider.tdx_vipdoc_provider import build_manifest
+from data_provider.tdx_vipdoc_provider import write_manifest
 from dao.market_dao import market_dao
 from utils.logger import logger
 
@@ -103,7 +107,26 @@ def refresh_tdx_vipdoc(
             archive.extractall(staging_dir)
         staging_max_date = scan_max_trade_date(staging_dir)
         _validate_staging(staging_dir, staging_max_date, current_max_date)
-        _switch_current(root_path, current_dir, staging_dir)
+        previous_manifest = _read_manifest_if_present(
+            current_dir / "manifest.json"
+        )
+        package_id = (
+            f"tdx-{staging_max_date}-"
+            f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        )
+        manifest = build_manifest(
+            package_dir=staging_dir,
+            package_id=package_id,
+            page_update_date=resolved_package.page_update_date,
+            resolved_zip_url=resolved_package.zip_url,
+            previous_manifest=previous_manifest,
+        )
+        write_manifest(staging_dir, manifest)
+        provider = TdxVipdocProvider(root=root_path)
+        with provider.package_lock(
+            timeout_seconds=settings.TDX_GAP_FILL_LOCK_TIMEOUT_SECONDS
+        ):
+            _switch_current(root_path, current_dir, staging_dir)
         result = {
             "status": TdxRefreshStatus.SUCCESS,
             "started_at": started_at,
@@ -114,7 +137,20 @@ def refresh_tdx_vipdoc(
             "resolved_zip_url": resolved_package.zip_url,
             "package_path": str(current_dir),
             "error_message": "",
+            "package_id": package_id,
         }
+        _write_status(status_path, result)
+        return result
+    except TdxPackageLockTimeout as exc:
+        logger.warning("[TDX_REFRESH] switch locked: %s", exc)
+        result = _failed_status(
+            started_at,
+            current_max_date,
+            current_dir,
+            str(exc),
+            status=TdxRefreshStatus.LOCKED,
+            package=resolved_package,
+        )
         _write_status(status_path, result)
         return result
     except OSError as exc:
@@ -308,6 +344,16 @@ def _write_status(status_path: Path, result: dict) -> None:
         json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+
+
+def _read_manifest_if_present(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
 def _failed_status(

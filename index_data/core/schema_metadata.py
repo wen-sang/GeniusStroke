@@ -359,6 +359,10 @@ dat_market_gap_fill_task = Table(
     Column("filled_at", Text),
     Column("last_error_code", Text),
     Column("last_error_message", Text),
+    Column("last_tdx_package_id", Text),
+    Column("last_tickflow_catalog_version", Text),
+    Column("last_tickflow_config_signature", Text),
+    Column("tickflow_retry_after", Text),
     Column("detail_json", Text, nullable=False, server_default=text("'{}'")),
     Column("created_at", Text, nullable=False, server_default=_LOCAL_NOW),
     Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
@@ -379,8 +383,10 @@ Index(
 )
 Index(
     "idx_market_gap_fill_task_asset_status",
+    dat_market_gap_fill_task.c.exchange,
     dat_market_gap_fill_task.c.asset_code,
     dat_market_gap_fill_task.c.status,
+    dat_market_gap_fill_task.c.missing_date,
 )
 Index(
     "idx_market_gap_fill_task_issue",
@@ -399,6 +405,63 @@ dat_market_gap_fill_asset_state = Table(
     Column("target_start_date", Text, nullable=False),
     Column("earliest_generated_date", Text),
     Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+)
+
+dat_market_gap_fill_repair_task = Table(
+    "dat_market_gap_fill_repair_task",
+    metadata,
+    Column("repair_id", Integer, primary_key=True, autoincrement=True),
+    Column("asset_code", Text, nullable=False, unique=True),
+    Column("from_date", Text, nullable=False),
+    Column("status", Text, nullable=False, server_default=text("'PENDING'")),
+    Column("generation", Integer, nullable=False, server_default=text("1")),
+    Column("attempt_count", Integer, nullable=False, server_default=text("0")),
+    Column("last_attempt_sync_id", Text),
+    Column("run_id", Text),
+    Column("claimed_at", Text),
+    Column("claim_expires_at", Text),
+    Column("last_failed_stage", Text),
+    Column("last_error_code", Text),
+    Column("last_error_message", Text),
+    Column("detail_json", Text, nullable=False, server_default=text("'{}'")),
+    Column("completed_at", Text),
+    Column("created_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    CheckConstraint(
+        "status IN ('PENDING', 'RUNNING', 'FAILED', 'COMPLETED')",
+        name="ck_market_gap_fill_repair_task_status",
+    ),
+)
+Index(
+    "idx_market_gap_fill_repair_status_sync",
+    dat_market_gap_fill_repair_task.c.status,
+    dat_market_gap_fill_repair_task.c.last_attempt_sync_id,
+)
+Index(
+    "idx_market_gap_fill_repair_claim",
+    dat_market_gap_fill_repair_task.c.run_id,
+    dat_market_gap_fill_repair_task.c.claim_expires_at,
+)
+
+dat_tickflow_gap_fill_runtime = Table(
+    "dat_tickflow_gap_fill_runtime",
+    metadata,
+    Column("runtime_id", Integer, primary_key=True),
+    Column("last_request_started_at", Text),
+    Column("breaker_state", Text, nullable=False, server_default=text("'CLOSED'")),
+    Column("breaker_reason", Text),
+    Column("breaker_until", Text),
+    Column("breaker_config_signature", Text),
+    Column("consecutive_error_count", Integer, nullable=False, server_default=text("0")),
+    Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    CheckConstraint(
+        "runtime_id = 1",
+        name="ck_tickflow_gap_fill_runtime_singleton",
+    ),
+    CheckConstraint(
+        "breaker_state IN ('CLOSED', 'OPEN')",
+        name="ck_tickflow_gap_fill_runtime_breaker_state",
+    ),
 )
 
 sys_algo_meta = Table(

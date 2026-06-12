@@ -5,10 +5,13 @@ import json
 from datetime import datetime
 
 from core.market_gap_fill.models import MarketGapFillRunOptions
+from core.market_gap_fill.repair_service import market_gap_fill_repair_service
 from core.market_gap_fill.service import market_gap_fill_service
 from core.market_gap_fill.source_coverage import check_gap_source_coverage
 from core.market_gap_fill.tdx_vipdoc_refresh import refresh_tdx_vipdoc
 from dao.market_dao import market_dao
+from dao.tickflow_gap_fill_runtime_dao import tickflow_gap_fill_runtime_dao
+from data_provider.tdx_vipdoc_provider import TdxVipdocProvider
 
 
 def _validate_date_args(
@@ -48,6 +51,17 @@ def main() -> None:
         action="store_true",
         help="Skip original route source and TickFlow; only existing rows and TDX are used.",
     )
+    run_parser.add_argument(
+        "--force-tickflow-retry",
+        action="store_true",
+    )
+
+    repair_parser = subparsers.add_parser("run-repair")
+    repair_parser.add_argument("--asset-code")
+    repair_parser.add_argument("--limit", type=int)
+    repair_parser.add_argument("--dry-run", action="store_true")
+
+    subparsers.add_parser("show-runtime")
 
     coverage_parser = subparsers.add_parser("check-gap-source-coverage")
     coverage_parser.add_argument("--target-date")
@@ -60,6 +74,8 @@ def main() -> None:
     if args.command == "refresh-tdx-vipdoc":
         result = refresh_tdx_vipdoc(target_date=args.target_date)
     elif args.command == "run-gap-fill":
+        if args.force_tickflow_retry and not args.asset_code:
+            parser.error("--force-tickflow-retry requires --asset-code")
         target_date = args.target_date or market_dao.get_latest_trade_date_global()
         if not target_date:
             result = {"status": "skipped", "message": "No target_date available"}
@@ -74,8 +90,26 @@ def main() -> None:
                     limit=args.limit,
                     dry_run=args.dry_run,
                     no_external=args.no_external,
+                    force_tickflow_retry=args.force_tickflow_retry,
                 ),
             )
+    elif args.command == "run-repair":
+        result = market_gap_fill_repair_service.run(
+            sync_id="manual_repair_" + datetime.now().strftime("%Y%m%d%H%M%S"),
+            asset_code=args.asset_code,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    elif args.command == "show-runtime":
+        provider = TdxVipdocProvider()
+        try:
+            manifest = provider.read_manifest()
+        except Exception as exc:
+            manifest = {"status": "NOT_READY", "reason": str(exc)[:200]}
+        result = {
+            "tdx": manifest,
+            "tickflow": tickflow_gap_fill_runtime_dao.get_runtime(),
+        }
     elif args.command == "check-gap-source-coverage":
         target_date = args.target_date or market_dao.get_latest_trade_date_global()
         if not target_date:

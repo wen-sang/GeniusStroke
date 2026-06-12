@@ -136,7 +136,8 @@
     right: 48px;
     width: 360px;
     max-height: 480px;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -209,6 +210,33 @@
 .sync-card-interrupt,
 .sync-card-list-label {
     font-size: 12px;
+}
+
+.sync-gap-summary {
+    margin: 8px 0 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.sync-gap-detail {
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.sync-gap-detail summary {
+    cursor: pointer;
+    color: var(--primary);
+}
+
+.sync-gap-detail-body {
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+}
+
+.sync-gap-detail-row + .sync-gap-detail-row {
+    margin-top: 6px;
 }
 
 .sync-card-list-label {

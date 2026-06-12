@@ -12,7 +12,6 @@ from core.market_gap_fill.models import MarketGapFillRunOptions
 from core.data_quality.models import EntityType, IssueGroup, IssueSeverity
 from core.data_quality.rules import calendar_rules
 from core.data_quality.rules.common import issue
-from core.router import router
 from dao.data_quality_dao import data_quality_dao
 from dao.market_gap_fill_dao import market_gap_fill_dao
 from dao.meta_dao import meta_dao
@@ -179,15 +178,6 @@ class MarketGapScanner:
             if not selected_dates:
                 continue
 
-            try:
-                route_source_id, route_source_code = router.get_best_source(
-                    asset_code,
-                    asset_type,
-                    "daily_bar",
-                )
-            except Exception:
-                route_source_id, route_source_code = None, None
-
             for missing_date in selected_dates:
                 issues.append(
                     issue(
@@ -206,8 +196,6 @@ class MarketGapScanner:
                             "calendar_date": missing_date,
                             "listing_date": asset.get("listing_date"),
                             "target_start_date": target_start,
-                            "route_source_id": route_source_id,
-                            "route_source_code": route_source_code,
                             "missing_reason": (
                                 "zero_or_front_history_without_market_row"
                             ),

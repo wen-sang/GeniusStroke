@@ -615,12 +615,18 @@ function renderSyncCardSuccess() {
         const date = result?.summary?.target_date || '--';
         desc.textContent = `${count} 个标的已更新 · ${date}`;
     }
+    renderGapFillResult('syncGapSuccessSummary', 'syncGapSuccessDetail');
 }
 
 function renderSyncCardPartial() {
     const failedAssets = getFailedAssets();
     const title = document.getElementById('syncCardPartialTitle');
-    if (title) title.textContent = `${failedAssets.length} 个标的未更新`;
+    const gapFill = getGapFillResult();
+    if (title) {
+        title.textContent = failedAssets.length
+            ? `${failedAssets.length} 个标的未更新`
+            : (gapFill ? '历史行情补采部分完成' : '数据更新部分完成');
+    }
 
     renderAssetList('syncCardPartialList', failedAssets);
 
@@ -630,6 +636,57 @@ function renderSyncCardPartial() {
         const totalSuccess = (col.market_success_codes || []).length + (col.fund_success_codes || []).length;
         sub.textContent = `其余 ${totalSuccess} 个标的已正常更新`;
     }
+    renderGapFillResult('syncGapPartialSummary', 'syncGapPartialDetail');
+}
+
+function getGapFillResult() {
+    return dataSyncState.lastResult?.summary?.collection_result
+        ?.market_gap_fill_result || null;
+}
+
+function renderGapFillResult(summaryId, detailId) {
+    const summary = document.getElementById(summaryId);
+    const detail = document.getElementById(detailId);
+    const gapFill = getGapFillResult();
+    if (!summary || !detail) return;
+    if (!gapFill?.gate || !gapFill?.tasks) {
+        summary.hidden = true;
+        detail.hidden = true;
+        return;
+    }
+
+    const tasks = gapFill.tasks || {};
+    const tickflow = gapFill.tickflow || {};
+    summary.textContent = [
+        `历史缺口补入 ${Number(tasks.filled || 0)} 条`,
+        `延期 ${Number(tasks.deferred || 0)} 条`,
+        `TickFlow 请求 ${Number(tickflow.requested_assets || 0)} 个标的`,
+    ].join(' · ');
+    summary.hidden = false;
+
+    const body = detail.querySelector('.sync-gap-detail-body');
+    if (body) {
+        const sections = [
+            ['门禁', gapFill.gate],
+            ['TDX', gapFill.tdx],
+            ['TickFlow', gapFill.tickflow],
+            ['任务', gapFill.tasks],
+            ['下游修复', gapFill.downstream],
+            ['耗时', gapFill.timing],
+        ];
+        body.textContent = '';
+        sections.forEach(([label, value]) => {
+            const row = document.createElement('div');
+            row.className = 'sync-gap-detail-row';
+            const heading = document.createElement('strong');
+            heading.textContent = `${label}: `;
+            const content = document.createElement('span');
+            content.textContent = JSON.stringify(value || {});
+            row.append(heading, content);
+            body.appendChild(row);
+        });
+    }
+    detail.hidden = false;
 }
 
 function renderSyncCardFailed() {

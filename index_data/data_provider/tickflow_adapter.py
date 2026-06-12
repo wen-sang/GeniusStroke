@@ -3,6 +3,7 @@ import importlib
 import time
 import threading
 import re
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -22,6 +23,21 @@ from utils.logger import logger
 from .base import BaseDataProvider
 
 TICKFLOW_SYMBOL_PATTERN = re.compile(r"^\d{6}\.(SH|SZ|BJ)$")
+
+
+@dataclass(frozen=True)
+class TickFlowCallConfig:
+    timeout_seconds: float
+    max_retries: int
+    adjust: str
+    count_limit: int
+
+
+class TickFlowGapFillError(RuntimeError):
+    def __init__(self, category: str, message: str):
+        super().__init__(message[:200])
+        self.category = category
+
 
 class TickFlowRealtimeLimiter:
     def __init__(self, interval_seconds, clock=time.monotonic, sleeper=time.sleep):
@@ -46,8 +62,18 @@ tickflow_limiter = TickFlowRealtimeLimiter(TICKFLOW_REALTIME_REQUEST_SLEEP_SECON
 class TickFlowAdapter(BaseDataProvider):
     """TickFlow 日线采集适配器。"""
 
-    def __init__(self, client: Any | None = None):
+    def __init__(
+        self,
+        client: Any | None = None,
+        call_config: TickFlowCallConfig | None = None,
+    ):
         self._client = client
+        self.call_config = call_config or TickFlowCallConfig(
+            timeout_seconds=TICKFLOW_TIMEOUT_SECONDS,
+            max_retries=TICKFLOW_MAX_RETRIES,
+            adjust=TICKFLOW_ADJUST,
+            count_limit=TICKFLOW_KLINE_COUNT_LIMIT,
+        )
 
     def fetch_realtime(
         self,
@@ -98,15 +124,23 @@ class TickFlowAdapter(BaseDataProvider):
                 )
             except Exception as exc:
                 if self._is_rate_limit_error(exc):
-                    raise DataFetchError(f"TickFlow rate limit while fetching realtime") from exc
+                    raise DataFetchError(
+                        "TickFlow rate limit while fetching realtime"
+                    ) from exc
                 if self._is_timeout_error(exc):
-                    raise DataFetchError(f"TickFlow timeout while fetching realtime") from exc
+                    raise DataFetchError(
+                        "TickFlow timeout while fetching realtime"
+                    ) from exc
                 if self._is_connection_error(exc):
-                    raise DataFetchError(f"TickFlow connection error while fetching realtime") from exc
+                    raise DataFetchError(
+                        "TickFlow connection error while fetching realtime"
+                    ) from exc
                 if exc.__class__.__name__ in ("AuthenticationError", "PermissionError", "QuotaExhaustedError"):
                     logger.error(f"TickFlow auth/permission error: {exc}")
-                    raise DataFetchError(f"TickFlow permission error") from exc
-                raise DataFetchError(f"Failed to fetch realtime data from TickFlow") from exc
+                    raise DataFetchError("TickFlow permission error") from exc
+                raise DataFetchError(
+                    "Failed to fetch realtime data from TickFlow"
+                ) from exc
 
             if isinstance(raw_data, pd.DataFrame):
                 items = [row.to_dict() for _, row in raw_data.iterrows()]
@@ -188,8 +222,8 @@ class TickFlowAdapter(BaseDataProvider):
                 period="1d",
                 start_time=self._to_epoch_ms(start_date),
                 end_time=self._to_epoch_ms(end_date),
-                count=TICKFLOW_KLINE_COUNT_LIMIT,
-                adjust=TICKFLOW_ADJUST,
+                count=self.call_config.count_limit,
+                adjust=self.call_config.adjust,
                 as_dataframe=True,
             )
         except Exception as exc:
@@ -208,6 +242,67 @@ class TickFlowAdapter(BaseDataProvider):
             raise DataFetchError(
                 f"Failed to fetch data from TickFlow for {asset_code}"
             ) from exc
+
+    def fetch_daily_range(
+        self,
+        asset_code: str,
+        exchange: str,
+        start_date: str,
+        end_date: str,
+    ) -> dict[str, dict]:
+        try:
+            raw_data = self._get_client().klines.get(
+                f"{asset_code}.{exchange}",
+                period="1d",
+                start_time=self._to_epoch_ms(start_date),
+                end_time=self._to_epoch_ms(end_date),
+                count=self.call_config.count_limit,
+                adjust=self.call_config.adjust,
+                as_dataframe=True,
+            )
+        except Exception as exc:
+            category = self.classify_gap_fill_error(exc)
+            raise TickFlowGapFillError(
+                category,
+                f"TickFlow gap fill request failed: {category}",
+            ) from exc
+
+        parsed = self.parse(
+            raw_data,
+            start_date=start_date,
+            end_date=end_date,
+            exchange=exchange,
+        )
+        if self._has_raw_rows(raw_data) and parsed.empty:
+            raise TickFlowGapFillError(
+                "INVALID_RESPONSE",
+                "TickFlow gap fill response is invalid",
+            )
+        result = {}
+        for row in parsed.to_dict("records"):
+            trade_date = str(row.get("trade_date") or "")[:10]
+            try:
+                self._validate_gap_fill_row(row)
+            except ValueError:
+                result[trade_date] = {
+                    "status": "invalid",
+                    "bar": None,
+                }
+                continue
+            row.update(
+                {
+                    "asset_code": asset_code,
+                    "source_id": "tickflow",
+                    "updated_at": datetime.datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                }
+            )
+            result[trade_date] = {
+                "status": "hit",
+                "bar": row,
+            }
+        return result
 
     def parse(self, raw_data: Any, **kwargs) -> pd.DataFrame:
         if raw_data is None:
@@ -248,8 +343,8 @@ class TickFlowAdapter(BaseDataProvider):
             tickflow = importlib.import_module("tickflow")
             tickflow_cls = getattr(tickflow, "TickFlow")
             client_kwargs = {
-                "timeout": TICKFLOW_TIMEOUT_SECONDS,
-                "max_retries": TICKFLOW_MAX_RETRIES,
+                "timeout": self.call_config.timeout_seconds,
+                "max_retries": self.call_config.max_retries,
             }
             if TICKFLOW_API_KEY:
                 self._client = tickflow_cls(
@@ -303,3 +398,71 @@ class TickFlowAdapter(BaseDataProvider):
     @staticmethod
     def _is_connection_error(exc: Exception) -> bool:
         return exc.__class__.__name__ == "ConnectionError"
+
+    @staticmethod
+    def classify_gap_fill_error(exc: Exception) -> str:
+        name = exc.__class__.__name__
+        status_code = getattr(exc, "status_code", None)
+        if status_code is None:
+            status_code = getattr(
+                getattr(exc, "response", None),
+                "status_code",
+                None,
+            )
+        if name in {"AuthenticationError", "InvalidApiKeyError"} or status_code == 401:
+            return "AUTH_ERROR"
+        if name in {"PermissionError", "PermissionDeniedError"} or status_code == 403:
+            return "PERMISSION_ERROR"
+        if name in {"QuotaExhaustedError", "QuotaError"}:
+            return "QUOTA_EXHAUSTED"
+        if name == "RateLimitError" or status_code == 429:
+            return "RATE_LIMITED"
+        if name in {"TimeoutError", "ReadTimeout", "ConnectTimeout"}:
+            return "TIMEOUT"
+        if name in {"ConnectionError", "ConnectError", "NetworkError"}:
+            return "CONNECTION_ERROR"
+        if isinstance(status_code, int) and status_code >= 500:
+            return "SERVER_ERROR"
+        return "UNKNOWN_ERROR"
+
+    @staticmethod
+    def _validate_gap_fill_row(row: dict) -> None:
+        required = (
+            "trade_date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+        )
+        if any(row.get(field) is None for field in required):
+            raise ValueError("missing field")
+        datetime.datetime.strptime(
+            str(row["trade_date"])[:10],
+            "%Y-%m-%d",
+        )
+        open_price = float(row["open"])
+        high_price = float(row["high"])
+        low_price = float(row["low"])
+        close_price = float(row["close"])
+        volume = float(row["volume"])
+        amount = float(row["amount"])
+        if min(open_price, high_price, low_price, close_price) <= 0:
+            raise ValueError("invalid price")
+        if high_price < max(open_price, close_price, low_price):
+            raise ValueError("invalid high")
+        if low_price > min(open_price, close_price):
+            raise ValueError("invalid low")
+        if volume < 0 or amount < 0:
+            raise ValueError("invalid volume or amount")
+
+    @staticmethod
+    def _has_raw_rows(raw_data: Any) -> bool:
+        if raw_data is None:
+            return False
+        if isinstance(raw_data, pd.DataFrame):
+            return not raw_data.empty
+        if isinstance(raw_data, (list, tuple, dict)):
+            return bool(raw_data)
+        return True

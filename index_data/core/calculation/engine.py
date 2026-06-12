@@ -1,7 +1,7 @@
 # 文件: core/calculation/engine.py
 import time
 import pandas as pd
-import pandas_ta as ta
+import pandas_ta as ta  # noqa: F401 - registers the pandas .ta accessor
 import orjson
 from collections import defaultdict
 from typing import Callable, Dict, List, Optional
@@ -74,7 +74,39 @@ class CalculationEngine:
             self.calc_logger.info(f"计算任务完成。共更新 {global_updated_count} 个标的指标，总耗时: {elapsed:.2f}s")
         self._report_progress(progress_callback, 100, f"{total}/{total}", "指标计算完成")
 
-    def _process_single_asset(self, asset_code: str, configs_map: Dict, prefix: str) -> int:
+    def rebuild_asset_from_date(
+        self,
+        asset_code: str,
+        from_date: str,
+    ) -> dict:
+        configs_map = config_loader.load_all_configs()
+        global_cfgs = configs_map.get("*", [])
+        asset_cfgs = configs_map.get(asset_code, [])
+        deleted_rows = indicator_dao.delete_asset_from_date(
+            asset_code,
+            from_date,
+        )
+        written_rows = self._process_single_asset(
+            asset_code,
+            configs_map,
+            f"[REBUILD] {asset_code}",
+            strict=True,
+        )
+        return {
+            "asset_code": asset_code,
+            "from_date": from_date,
+            "config_count": len(global_cfgs) + len(asset_cfgs),
+            "deleted_rows": deleted_rows,
+            "written_rows": written_rows,
+        }
+
+    def _process_single_asset(
+        self,
+        asset_code: str,
+        configs_map: Dict,
+        prefix: str,
+        strict: bool = False,
+    ) -> int:
         """
         处理单个标的
         :return: 插入的总行数 (0 表示无需更新)
@@ -106,9 +138,14 @@ class CalculationEngine:
             if period != '1d':
                 try:
                     df_calc = self._resample_data(df_calc, period)
-                    if df_calc.empty: continue
-                except Exception:
+                    if df_calc.empty:
+                        continue
+                except Exception as exc:
                     has_error = True
+                    if strict:
+                        raise RuntimeError(
+                            f"Indicator resample failed: {algo_name}"
+                        ) from exc
                     continue
 
             func_name = cfg['lib_func']
@@ -117,6 +154,10 @@ class CalculationEngine:
             try:
                 if not hasattr(df_calc.ta, func_name):
                     has_error = True
+                    if strict:
+                        raise RuntimeError(
+                            f"Indicator function missing: {func_name}"
+                        )
                     continue
                 method = getattr(df_calc.ta, func_name)
                 result = method(**params)
@@ -125,8 +166,12 @@ class CalculationEngine:
                 if isinstance(result, pd.Series):
                     result = result.to_frame()
                 executed_algos[algo_name].append(p_display)
-            except Exception:
+            except Exception as exc:
                 has_error = True
+                if strict:
+                    raise RuntimeError(
+                        f"Indicator calculation failed: {algo_name}"
+                    ) from exc
                 continue
 
             last_db_date = indicator_dao.get_last_indicator_date(asset_code, cfg['config_id'])
@@ -170,8 +215,8 @@ class CalculationEngine:
             for algo, p_list in executed_algos.items():
                 try:
                     p_list.sort(key=lambda x: float(x) if x.replace('.','',1).isdigit() else x)
-                except:
-                    pass 
+                except Exception:
+                    pass
                 p_str = ", ".join(p_list)
                 display_parts.append(f"{algo}({p_str})")
             
@@ -199,8 +244,10 @@ class CalculationEngine:
 
     def _resample_data(self, df: pd.DataFrame, period: str) -> pd.DataFrame:
         rule = period
-        if period == '1w': rule = 'W-FRI'
-        elif period == '1m': rule = 'M'
+        if period == '1w':
+            rule = 'W-FRI'
+        elif period == '1m':
+            rule = 'M'
         agg_dict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}
         df_res = df.resample(rule, closed='right', label='right').agg(agg_dict)
         df_res.dropna(inplace=True)
