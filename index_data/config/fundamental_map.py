@@ -1,4 +1,5 @@
 # config/fundamental_map.py
+from config.constants import AssetType
 
 # ==============================================================================
 # 1. 字段映射配置 (Database Column -> API JSON Path)
@@ -69,5 +70,20 @@ for m in _BASE_METRICS:
             key = f"{m}.{p}.mcw.{s}"
             REQUIRED_METRICS_LIST.append(key)
 
-# 打印一下数量，确保没超过 API 限制 (理杏仁通常不限制指标数量，只限制频率)
-# print(f"Load Metrics Config: {len(REQUIRED_METRICS_LIST)} items")
+STOCK_METRICS_MAPPING = {
+    db_column: api_key.replace(".mcw", "")
+    for db_column, api_key in METRICS_MAPPING.items()
+}
+STOCK_REQUIRED_METRICS_LIST = list(STOCK_METRICS_MAPPING.values())
+
+
+def get_metrics_mapping(asset_type: str) -> dict:
+    if asset_type == AssetType.STOCK:
+        return STOCK_METRICS_MAPPING
+    return METRICS_MAPPING
+
+
+def get_required_metrics_list(asset_type: str) -> list:
+    if asset_type == AssetType.STOCK:
+        return STOCK_REQUIRED_METRICS_LIST
+    return REQUIRED_METRICS_LIST

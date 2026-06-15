@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from config.constants import AssetType, DataInterface
 from config.lixinren_endpoints import (
     LIXINREN_ENDPOINT_CN_COMPANY_DAILY_BAR,
+    LIXINREN_ENDPOINT_CN_COMPANY_FUNDAMENTAL_NON_FINANCIAL,
     LIXINREN_ENDPOINT_CN_FUND_DAILY_BAR,
     LIXINREN_ENDPOINT_CN_FUND_NET_VALUE,
     LIXINREN_ENDPOINT_CN_FUND_TOTAL_NET_VALUE,
@@ -45,6 +46,13 @@ def _resolve_endpoint_keys(
         return [LIXINREN_ENDPOINT_CN_INDEX_DAILY_BAR]
 
     if interface_type == DataInterface.FUNDAMENTAL:
+        if (
+            normalized_asset_type == AssetType.STOCK
+            and normalized_exchange != "HK"
+        ):
+            return [
+                LIXINREN_ENDPOINT_CN_COMPANY_FUNDAMENTAL_NON_FINANCIAL
+            ]
         if normalized_exchange == "HK":
             return [LIXINREN_ENDPOINT_HK_INDEX_FUNDAMENTAL]
         return [LIXINREN_ENDPOINT_CN_INDEX_FUNDAMENTAL]

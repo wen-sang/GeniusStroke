@@ -18,7 +18,10 @@ from data_provider import get_data_provider
 from dao.fundamental_dao import fundamental_dao
 from dao.meta_dao import meta_dao
 from core.router import router
-from config.fundamental_map import METRICS_MAPPING, REQUIRED_METRICS_LIST
+from config.fundamental_map import (
+    get_metrics_mapping,
+    get_required_metrics_list,
+)
 from utils.logger import logger
 
 
@@ -30,6 +33,7 @@ class FundamentalManager:
 
     def __init__(self):
         self.exchange_map = {}
+        self.asset_type_map = {}
 
     def run(self, target_date: str):
         # 这里的日志可以保留，作为阶段开始的标记
@@ -42,6 +46,10 @@ class FundamentalManager:
 
         self.exchange_map = {
             a['asset_code']: a.get('exchange', 'SH')
+            for a in assets
+        }
+        self.asset_type_map = {
+            a['asset_code']: a.get('asset_type', AssetType.INDEX)
             for a in assets
         }
 
@@ -144,6 +152,8 @@ class FundamentalManager:
                           FUNDAMENTAL_DEFAULT_START_DATE)
             source_id = DataSource.LIXINREN
             asset_type = asset.get('asset_type', AssetType.INDEX)
+            metrics_list = get_required_metrics_list(asset_type)
+            metrics_mapping = get_metrics_mapping(asset_type)
 
             try:
                 adapter = get_data_provider(
@@ -167,14 +177,18 @@ class FundamentalManager:
                     try:
                         raw_list = adapter.fetch_fundamental(
                             stock_codes=[code],
-                            metrics_list=REQUIRED_METRICS_LIST,
+                            metrics_list=metrics_list,
                             start_date=s_str,
                             end_date=e_str,
                             exchange=exchange
                         )
 
                         if raw_list:
-                            clean_data = self._parse_and_transform(raw_list, source_id)
+                            clean_data = self._parse_and_transform(
+                                raw_list,
+                                source_id,
+                                metrics_mapping,
+                            )
                             fundamental_dao.upsert_batch(clean_data)
                             logger.info(f"         Upsert Success: {len(clean_data)} rows ({s_str} -> {e_str})")
                         else:
@@ -204,16 +218,22 @@ class FundamentalManager:
             groups = defaultdict(list)
             for code in codes_in_date:
                 exch = self.exchange_map.get(code, 'SH')
-                groups[exch].append(code)
+                asset_type = self.asset_type_map.get(
+                    code,
+                    AssetType.INDEX,
+                )
+                groups[(exch, asset_type)].append(code)
 
-            for exchange, code_list in groups.items():
+            for (exchange, asset_type), code_list in groups.items():
                 try:
                     adapter = get_data_provider(
                         source_id,
                         interface_type=DataInterface.FUNDAMENTAL,
                         exchange=exchange,
-                        asset_type=AssetType.INDEX,
+                        asset_type=asset_type,
                     )
+                    metrics_list = get_required_metrics_list(asset_type)
+                    metrics_mapping = get_metrics_mapping(asset_type)
                     preview = ",".join(code_list[:3])
                     if len(code_list) > 3: preview += "..."
 
@@ -226,13 +246,17 @@ class FundamentalManager:
 
                         raw_list = adapter.fetch_fundamental(
                             stock_codes=sub_codes,
-                            metrics_list=REQUIRED_METRICS_LIST,
+                            metrics_list=metrics_list,
                             date=d,
                             exchange=exchange
                         )
 
                         if raw_list:
-                            clean_data = self._parse_and_transform(raw_list, source_id)
+                            clean_data = self._parse_and_transform(
+                                raw_list,
+                                source_id,
+                                metrics_mapping,
+                            )
                             fundamental_dao.upsert_batch(clean_data)
                             logger.info(f"         Upsert: {len(clean_data)} rows")
 
@@ -240,9 +264,14 @@ class FundamentalManager:
                 except Exception as e:
                     logger.error(f"         [Fund-Batch] {d} Failed: {e}")
 
-    def _parse_and_transform(self, raw_list: List[Dict], source_id: str) -> List[Dict]:
+    def _parse_and_transform(
+        self,
+        raw_list: List[Dict],
+        source_id: str,
+        metrics_mapping: Dict[str, str],
+    ) -> List[Dict]:
         result = []
-        mapped_api_keys = set(METRICS_MAPPING.values())
+        mapped_api_keys = set(metrics_mapping.values())
         for item in raw_list:
             if 'stockCode' not in item or 'date' not in item:
                 continue
@@ -252,7 +281,7 @@ class FundamentalManager:
                 'trade_date': item['date'][:10],
                 'source_id': source_id
             }
-            for db_col, api_key in METRICS_MAPPING.items():
+            for db_col, api_key in metrics_mapping.items():
                 val = item.get(api_key)
                 row[db_col] = val
             stats_subset = {}
