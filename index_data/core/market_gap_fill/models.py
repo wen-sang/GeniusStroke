@@ -7,6 +7,7 @@ class GapFillTaskStatus:
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     FILLED = "FILLED"
+    CONFIRMED = "CONFIRMED"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"
 
@@ -50,6 +51,19 @@ class TickFlowErrorCategory:
     SERVER_ERROR = "SERVER_ERROR"
     INVALID_RESPONSE = "INVALID_RESPONSE"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class TickFlowDiscoveryStatus:
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class GapFillConfirmationCode:
+    OUTSIDE_SOURCE_COVERAGE = "CONFIRMED_OUTSIDE_SOURCE_COVERAGE"
+    NO_SOURCE_BAR = "CONFIRMED_NO_SOURCE_BAR"
+    ZERO_VOLUME_PLACEHOLDER = "CONFIRMED_ZERO_VOLUME_PLACEHOLDER"
 
 
 class RepairStage:
@@ -110,10 +124,22 @@ class MarketGapFillResult:
         "claimed": 0,
         "processed": 0,
         "filled": 0,
+        "confirmed": 0,
         "failed": 0,
         "skipped": 0,
         "deferred": 0,
         "lease_lost": 0,
+    })
+    history_discovery: dict = field(default_factory=lambda: {
+        "tdx_processed_assets": 0,
+        "tickflow_pending_assets": 0,
+        "tickflow_completed_assets": 0,
+        "tickflow_failed_assets": 0,
+    })
+    metadata_reconciliation: dict = field(default_factory=lambda: {
+        "corrected_assets": 0,
+        "conflict_assets": 0,
+        "details": [],
     })
     downstream: dict = field(default_factory=lambda: {
         "claimed_assets": 0,
@@ -158,6 +184,8 @@ class MarketGapFillResult:
             "tdx": self.tdx,
             "tickflow": self.tickflow,
             "tasks": self.tasks,
+            "history_discovery": self.history_discovery,
+            "metadata_reconciliation": self.metadata_reconciliation,
             "downstream": self.downstream,
             "timing": self.timing,
         }

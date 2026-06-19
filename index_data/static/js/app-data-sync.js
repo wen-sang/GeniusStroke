@@ -657,10 +657,15 @@ function renderGapFillResult(summaryId, detailId) {
 
     const tasks = gapFill.tasks || {};
     const tickflow = gapFill.tickflow || {};
+    const discovery = gapFill.history_discovery || {};
+    const reconciliation = gapFill.metadata_reconciliation || {};
     summary.textContent = [
         `历史缺口补入 ${Number(tasks.filled || 0)} 条`,
         `延期 ${Number(tasks.deferred || 0)} 条`,
+        `确认 ${Number(tasks.confirmed || 0)} 条`,
         `TickFlow 请求 ${Number(tickflow.requested_assets || 0)} 个标的`,
+        `发现完成/待处理/失败 ${Number(discovery.tickflow_completed_assets || 0)}/${Number(discovery.tickflow_pending_assets || 0)}/${Number(discovery.tickflow_failed_assets || 0)} 个标的`,
+        `元数据纠正/冲突 ${Number(reconciliation.corrected_assets || 0)}/${Number(reconciliation.conflict_assets || 0)} 个标的`,
     ].join(' · ');
     summary.hidden = false;
 
@@ -671,6 +676,8 @@ function renderGapFillResult(summaryId, detailId) {
             ['TDX', gapFill.tdx],
             ['TickFlow', gapFill.tickflow],
             ['任务', gapFill.tasks],
+            ['历史发现', gapFill.history_discovery],
+            ['元数据治理', gapFill.metadata_reconciliation],
             ['下游修复', gapFill.downstream],
             ['耗时', gapFill.timing],
         ];

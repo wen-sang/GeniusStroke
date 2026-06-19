@@ -5,6 +5,10 @@ import json
 from datetime import datetime
 
 from core.market_gap_fill.models import MarketGapFillRunOptions
+from core.market_gap_fill.history_loop import (
+    run_history_discovery_until_complete,
+)
+from core.market_gap_fill.legacy_audit import legacy_gap_fill_audit_service
 from core.market_gap_fill.repair_service import market_gap_fill_repair_service
 from core.market_gap_fill.service import market_gap_fill_service
 from core.market_gap_fill.source_coverage import check_gap_source_coverage
@@ -70,7 +74,19 @@ def main() -> None:
     coverage_parser.add_argument("--end-date")
     coverage_parser.add_argument("--limit", type=int)
 
+    audit_parser = subparsers.add_parser("audit-legacy-tasks")
+    audit_parser.add_argument("--output", required=True)
+
+    apply_parser = subparsers.add_parser("apply-legacy-audit")
+    apply_parser.add_argument("--input", required=True)
+    apply_parser.add_argument("--apply", action="store_true")
+
+    history_parser = subparsers.add_parser("run-history-discovery")
+    history_parser.add_argument("--target-date")
+    history_parser.add_argument("--until-complete", action="store_true")
+
     args = parser.parse_args()
+    exit_code = 0
     if args.command == "refresh-tdx-vipdoc":
         result = refresh_tdx_vipdoc(target_date=args.target_date)
     elif args.command == "run-gap-fill":
@@ -125,10 +141,33 @@ def main() -> None:
                     limit=args.limit,
                 ),
             )
+    elif args.command == "audit-legacy-tasks":
+        result = legacy_gap_fill_audit_service.audit(args.output)
+        if not result["applicable"]:
+            exit_code = 1
+    elif args.command == "apply-legacy-audit":
+        result = legacy_gap_fill_audit_service.apply(
+            args.input,
+            apply=args.apply,
+        )
+    elif args.command == "run-history-discovery":
+        target_date = args.target_date or market_dao.get_latest_trade_date_global()
+        if not target_date:
+            result = {"status": "skipped", "message": "No target_date available"}
+            exit_code = 1
+        else:
+            result = run_history_discovery_until_complete(
+                service=market_gap_fill_service,
+                target_date=target_date,
+                until_complete=args.until_complete,
+            )
+            exit_code = int(result["exit_code"])
     else:
         raise ValueError(f"Unsupported command: {args.command}")
 
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    if exit_code:
+        raise SystemExit(exit_code)
 
 
 if __name__ == "__main__":

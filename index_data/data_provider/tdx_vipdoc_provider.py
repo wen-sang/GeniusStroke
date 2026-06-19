@@ -206,6 +206,61 @@ class TdxVipdocProvider:
                 }
         return result
 
+    def read_asset_history(
+        self,
+        exchange: str,
+        asset_code: str,
+        asset_type: str,
+        target_date: str,
+    ) -> dict:
+        file_path = find_tdx_day_file(
+            self.current_dir,
+            exchange,
+            asset_code,
+        )
+        if file_path is None:
+            return {
+                "exchange": exchange,
+                "asset_code": asset_code,
+                "file_path": None,
+                "file_status": "missing",
+                "file_error_code": "TDX_FILE_MISSING",
+                "file_error_message": None,
+                "valid": {},
+                "zero_dates": [],
+                "invalid_dates": [],
+                "first_valid_date": None,
+            }
+        try:
+            classified = parse_tdx_day_file_classified(
+                file_path=file_path,
+                asset_code=asset_code,
+                asset_type=asset_type,
+                target_date=target_date,
+            )
+        except Exception as exc:
+            return {
+                "exchange": exchange,
+                "asset_code": asset_code,
+                "file_path": str(file_path),
+                "file_status": "invalid",
+                "file_error_code": "TDX_FILE_INVALID",
+                "file_error_message": str(exc)[:200],
+                "valid": {},
+                "zero_dates": [],
+                "invalid_dates": [],
+                "first_valid_date": None,
+            }
+        return {
+            "exchange": exchange,
+            "asset_code": asset_code,
+            "file_path": str(file_path),
+            "file_status": "ready",
+            "file_error_code": None,
+            "file_error_message": None,
+            **classified,
+        }
+
     def _validate_manifest(self, manifest: dict, target_date: str) -> None:
         if manifest.get("schema_version") != TDX_MANIFEST_SCHEMA_VERSION:
             raise ValidationError("TDX_MANIFEST_SCHEMA_UNSUPPORTED")
@@ -358,6 +413,49 @@ def parse_tdx_day_file_for_dates(
         except ValidationError:
             result[trade_date] = "invalid"
     return result
+
+
+def parse_tdx_day_file_classified(
+    file_path: str | Path,
+    asset_code: str,
+    asset_type: str,
+    target_date: str,
+) -> dict:
+    raw = Path(file_path).read_bytes()
+    if len(raw) % TDX_DAY_RECORD_SIZE != 0:
+        raise ValidationError(f"Invalid TDX day file size: {file_path}")
+    scale = resolve_price_scale(asset_code, asset_type)
+    valid: dict[str, dict] = {}
+    zero_dates = []
+    invalid_dates = []
+    for offset in range(0, len(raw), TDX_DAY_RECORD_SIZE):
+        record = raw[offset: offset + TDX_DAY_RECORD_SIZE]
+        raw_date = _RECORD_STRUCT.unpack(record)[0]
+        try:
+            trade_date = _format_tdx_date(raw_date)
+            datetime.strptime(trade_date, "%Y-%m-%d")
+        except (ValidationError, ValueError) as exc:
+            raise ValidationError(
+                f"Invalid TDX record date at offset {offset}: {raw_date}"
+            ) from exc
+        if trade_date > target_date:
+            continue
+        try:
+            bar = _parse_tdx_day_record(record, asset_code, scale)
+        except ValidationError:
+            invalid_dates.append(trade_date)
+            continue
+        if bar.volume == 0 and bar.amount == 0:
+            zero_dates.append(trade_date)
+        else:
+            valid[trade_date] = bar.to_market_row()
+    dates = sorted(valid)
+    return {
+        "valid": valid,
+        "zero_dates": sorted(zero_dates),
+        "invalid_dates": sorted(invalid_dates),
+        "first_valid_date": dates[0] if dates else None,
+    }
 
 
 def get_bar_for_date(

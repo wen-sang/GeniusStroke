@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from dao.base_dao import BaseDAO
 
@@ -283,6 +283,37 @@ class AssetCatalogDAO(BaseDAO):
             cursor = conn.cursor()
             cursor.execute(sql, params)
             return self._row_to_dict(cursor, cursor.fetchone())
+
+    def get_strict_active_matches(
+        self,
+        source_id: str,
+        asset_code: str,
+        asset_type: str,
+    ) -> list[dict]:
+        sql = """
+        SELECT
+            external_symbol,
+            asset_code,
+            asset_type,
+            exchange,
+            market_category,
+            is_active
+        FROM dat_external_asset_catalog
+        WHERE source_id = ?
+          AND asset_code = ?
+          AND asset_type = ?
+          AND market_category = 'EXCHANGE'
+          AND is_active = 1
+        ORDER BY
+            external_symbol,
+            asset_type,
+            exchange,
+            is_active
+        """
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (source_id, asset_code, asset_type))
+            return self._rows_to_dicts(cursor, cursor.fetchall())
 
     @staticmethod
     def _build_catalog_row(source_id: str, item: dict, sync_time: str) -> tuple:

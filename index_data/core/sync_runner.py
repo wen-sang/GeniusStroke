@@ -266,6 +266,28 @@ class SyncRunner:
                 "failed_task_count": 0,
                 "skipped_task_count": 0,
                 "deferred_task_count": 0,
+                "tasks": {
+                    "generated": 0,
+                    "claimed": 0,
+                    "processed": 0,
+                    "filled": 0,
+                    "confirmed": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "deferred": 0,
+                    "lease_lost": 0,
+                },
+                "history_discovery": {
+                    "tdx_processed_assets": 0,
+                    "tickflow_pending_assets": 0,
+                    "tickflow_completed_assets": 0,
+                    "tickflow_failed_assets": 0,
+                },
+                "metadata_reconciliation": {
+                    "corrected_assets": 0,
+                    "conflict_assets": 0,
+                    "details": [],
+                },
                 "errors": [
                     {
                         "type": type(exc).__name__,

@@ -82,6 +82,81 @@ class TickFlowGapFillRuntimeDAO(BaseDAO):
                 "wait_seconds": 0.0,
             }
 
+    def claim_discovery_lease(
+        self,
+        run_id: str,
+        now_text: str,
+        ttl_seconds: float,
+    ) -> bool:
+        expires_at = (
+            _parse_datetime(now_text) + timedelta(seconds=ttl_seconds)
+        ).isoformat(sep=" ", timespec="microseconds")
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("BEGIN IMMEDIATE")
+            cursor.execute(
+                """
+                UPDATE dat_tickflow_gap_fill_runtime
+                SET
+                    discovery_run_id = ?,
+                    discovery_claimed_at = ?,
+                    discovery_expires_at = ?,
+                    updated_at = datetime('now', 'localtime')
+                WHERE runtime_id = 1
+                  AND (
+                    discovery_run_id IS NULL
+                    OR discovery_run_id = ?
+                    OR discovery_expires_at IS NULL
+                    OR discovery_expires_at <= ?
+                  )
+                """,
+                (run_id, now_text, expires_at, run_id, now_text),
+            )
+            return cursor.rowcount == 1
+
+    def renew_discovery_lease(
+        self,
+        run_id: str,
+        now_text: str,
+        ttl_seconds: float,
+    ) -> bool:
+        expires_at = (
+            _parse_datetime(now_text) + timedelta(seconds=ttl_seconds)
+        ).isoformat(sep=" ", timespec="microseconds")
+        return (
+            self._execute_update(
+                """
+                UPDATE dat_tickflow_gap_fill_runtime
+                SET
+                    discovery_expires_at = ?,
+                    updated_at = datetime('now', 'localtime')
+                WHERE runtime_id = 1
+                  AND discovery_run_id = ?
+                  AND discovery_expires_at > ?
+                """,
+                (expires_at, run_id, now_text),
+            )
+            == 1
+        )
+
+    def release_discovery_lease(self, run_id: str) -> bool:
+        return (
+            self._execute_update(
+                """
+                UPDATE dat_tickflow_gap_fill_runtime
+                SET
+                    discovery_run_id = NULL,
+                    discovery_claimed_at = NULL,
+                    discovery_expires_at = NULL,
+                    updated_at = datetime('now', 'localtime')
+                WHERE runtime_id = 1
+                  AND discovery_run_id = ?
+                """,
+                (run_id,),
+            )
+            == 1
+        )
+
     def record_success(self) -> None:
         self._execute_update(
             """

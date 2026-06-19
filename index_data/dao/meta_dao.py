@@ -1,7 +1,7 @@
+import json
 from typing import List, Optional
 from dao.base_dao import BaseDAO
 from utils.types import AssetMeta, RouterRule, DataSourceConfig
-from utils.logger import logger
 
 
 class MetaDAO(BaseDAO):
@@ -155,6 +155,128 @@ class MetaDAO(BaseDAO):
                 if code not in result:
                     result[code] = row_dict
         return result
+
+    def reconcile_asset_exchange(
+        self,
+        run_id: str,
+        asset_code: str,
+        expected_old_exchange: str,
+        new_exchange: str,
+        evidence_code: str,
+        tdx_package_id: str | None,
+        tickflow_catalog_signature: str | None,
+        detail: dict,
+    ) -> bool:
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("BEGIN IMMEDIATE")
+            cursor.execute(
+                """
+                SELECT exchange
+                FROM sys_asset_meta
+                WHERE asset_code = ?
+                """,
+                (asset_code,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return False
+            current = row[0]
+            if current == new_exchange:
+                return True
+            if current != expected_old_exchange:
+                return False
+            cursor.execute(
+                """
+                UPDATE sys_asset_meta
+                SET exchange = ?
+                WHERE asset_code = ?
+                  AND exchange = ?
+                """,
+                (new_exchange, asset_code, expected_old_exchange),
+            )
+            if cursor.rowcount != 1:
+                return False
+            cursor.execute(
+                """
+                UPDATE dat_market_gap_fill_task
+                SET exchange = ?,
+                    updated_at = datetime('now', 'localtime')
+                WHERE asset_code = ?
+                  AND status != 'FILLED'
+                """,
+                (new_exchange, asset_code),
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO dat_asset_meta_reconcile_log (
+                    run_id,
+                    asset_code,
+                    field_name,
+                    old_value,
+                    new_value,
+                    evidence_code,
+                    tdx_package_id,
+                    tickflow_catalog_signature,
+                    detail_json
+                )
+                VALUES (?, ?, 'exchange', ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id,
+                    asset_code,
+                    expected_old_exchange,
+                    new_exchange,
+                    evidence_code,
+                    tdx_package_id,
+                    tickflow_catalog_signature,
+                    json.dumps(
+                        detail,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                ),
+            )
+            return True
+
+    def record_asset_reconcile_conflict(
+        self,
+        run_id: str,
+        asset_code: str,
+        field_name: str,
+        current_value: str | None,
+        evidence_code: str,
+        tdx_package_id: str | None,
+        tickflow_catalog_signature: str | None,
+        detail: dict,
+    ) -> None:
+        self._execute_update(
+            """
+            INSERT OR IGNORE INTO dat_asset_meta_reconcile_log (
+                run_id,
+                asset_code,
+                field_name,
+                old_value,
+                new_value,
+                evidence_code,
+                tdx_package_id,
+                tickflow_catalog_signature,
+                detail_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                asset_code,
+                field_name,
+                current_value,
+                current_value,
+                evidence_code,
+                tdx_package_id,
+                tickflow_catalog_signature,
+                json.dumps(detail, ensure_ascii=False, sort_keys=True),
+            ),
+        )
 
 
 meta_dao = MetaDAO()

@@ -241,6 +241,13 @@ dat_data_quality_scan_batch = Table(
     Column("finished_at", Text),
     Column("scanned_rows", Integer, nullable=False, server_default=text("0")),
     Column("issue_count", Integer, nullable=False, server_default=text("0")),
+    Column("open_issue_count", Integer, nullable=False, server_default=text("0")),
+    Column(
+        "confirmed_issue_count",
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    ),
     Column("report_path", Text),
     Column("error_message", Text),
     CheckConstraint(
@@ -367,7 +374,9 @@ dat_market_gap_fill_task = Table(
     Column("created_at", Text, nullable=False, server_default=_LOCAL_NOW),
     Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
     CheckConstraint(
-        "status IN ('PENDING', 'RUNNING', 'FILLED', 'FAILED', 'SKIPPED')",
+        "status IN ("
+        "'PENDING', 'RUNNING', 'FILLED', 'CONFIRMED', 'FAILED', 'SKIPPED'"
+        ")",
         name="ck_market_gap_fill_task_status",
     ),
     UniqueConstraint(
@@ -402,9 +411,37 @@ dat_market_gap_fill_asset_state = Table(
     "dat_market_gap_fill_asset_state",
     metadata,
     Column("asset_code", Text, primary_key=True),
-    Column("target_start_date", Text, nullable=False),
+    Column("target_start_date", Text),
     Column("earliest_generated_date", Text),
+    Column("tdx_package_id", Text),
+    Column("tdx_exchange", Text),
+    Column("tdx_first_valid_date", Text),
+    Column("tdx_discovery_cursor_date", Text),
+    Column("tdx_discovery_completed_at", Text),
+    Column("tickflow_catalog_signature", Text),
+    Column("tickflow_first_valid_date", Text),
+    Column(
+        "tickflow_discovery_status",
+        Text,
+        nullable=False,
+        server_default=text("'PENDING'"),
+    ),
+    Column("tickflow_discovery_completed_at", Text),
+    Column("last_discovery_error_code", Text),
+    Column("last_discovery_error_message", Text),
     Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    CheckConstraint(
+        "tickflow_discovery_status IN ("
+        "'NOT_APPLICABLE', 'PENDING', 'COMPLETED', 'FAILED'"
+        ")",
+        name="ck_market_gap_fill_asset_state_tickflow_status",
+    ),
+)
+Index(
+    "idx_market_gap_fill_asset_discovery",
+    dat_market_gap_fill_asset_state.c.tickflow_discovery_status,
+    dat_market_gap_fill_asset_state.c.tdx_discovery_completed_at,
+    dat_market_gap_fill_asset_state.c.asset_code,
 )
 
 dat_market_gap_fill_repair_task = Table(
@@ -453,6 +490,9 @@ dat_tickflow_gap_fill_runtime = Table(
     Column("breaker_until", Text),
     Column("breaker_config_signature", Text),
     Column("consecutive_error_count", Integer, nullable=False, server_default=text("0")),
+    Column("discovery_run_id", Text),
+    Column("discovery_claimed_at", Text),
+    Column("discovery_expires_at", Text),
     Column("updated_at", Text, nullable=False, server_default=_LOCAL_NOW),
     CheckConstraint(
         "runtime_id = 1",
@@ -461,6 +501,52 @@ dat_tickflow_gap_fill_runtime = Table(
     CheckConstraint(
         "breaker_state IN ('CLOSED', 'OPEN')",
         name="ck_tickflow_gap_fill_runtime_breaker_state",
+    ),
+)
+
+dat_asset_meta_reconcile_log = Table(
+    "dat_asset_meta_reconcile_log",
+    metadata,
+    Column("reconcile_id", Integer, primary_key=True, autoincrement=True),
+    Column("run_id", Text, nullable=False),
+    Column("asset_code", Text, nullable=False),
+    Column("field_name", Text, nullable=False),
+    Column("old_value", Text),
+    Column("new_value", Text),
+    Column("evidence_code", Text, nullable=False),
+    Column("tdx_package_id", Text),
+    Column("tickflow_catalog_signature", Text),
+    Column("detail_json", Text, nullable=False, server_default=text("'{}'")),
+    Column("created_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    UniqueConstraint(
+        "run_id",
+        "asset_code",
+        "field_name",
+        "old_value",
+        "new_value",
+        name="uq_asset_meta_reconcile_change",
+    ),
+)
+Index(
+    "idx_asset_meta_reconcile_asset_created",
+    dat_asset_meta_reconcile_log.c.asset_code,
+    dat_asset_meta_reconcile_log.c.created_at,
+)
+
+dat_market_gap_fill_audit_apply = Table(
+    "dat_market_gap_fill_audit_apply",
+    metadata,
+    Column("apply_id", Integer, primary_key=True, autoincrement=True),
+    Column("audit_id", Text, nullable=False),
+    Column("report_schema_version", Integer, nullable=False),
+    Column("report_hash", Text, nullable=False),
+    Column("scope_fingerprint", Text, nullable=False),
+    Column("applied_at", Text, nullable=False, server_default=_LOCAL_NOW),
+    Column("summary_json", Text, nullable=False, server_default=text("'{}'")),
+    UniqueConstraint(
+        "audit_id",
+        "report_hash",
+        name="uq_market_gap_fill_audit_apply",
     ),
 )
 

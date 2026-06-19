@@ -196,7 +196,7 @@ def _scan_missing_trading_day_bar(
         first_row = asset_rows[0]
         exchange = first_row.get("exchange")
         listing_date = first_row.get("listing_date")
-        if not valid_exchange(exchange) or not is_valid_date(listing_date):
+        if not valid_exchange(exchange):
             continue
 
         trade_dates = {
@@ -209,7 +209,7 @@ def _scan_missing_trading_day_bar(
 
         asset_min_trade_date = min(trade_dates)
         asset_max_trade_date = max(trade_dates)
-        effective_start_date = max(listing_date, asset_min_trade_date)
+        effective_start_date = asset_min_trade_date
         if effective_start_date > asset_max_trade_date:
             continue
 

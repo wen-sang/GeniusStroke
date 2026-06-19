@@ -64,16 +64,11 @@ class MarketGapFillDAO(BaseDAO):
                 UPDATE dat_data_quality_issue
                 SET issue_status = CASE
                     WHEN (
-                        SELECT task.last_error_code
+                        SELECT task.status
                         FROM dat_market_gap_fill_task task
                         WHERE task.latest_issue_id =
                             dat_data_quality_issue.id
-                    ) IN (
-                        'NO_SOURCE_DATA',
-                        'SKIPPED_UNSUPPORTED_LOF',
-                        'SKIPPED_NOT_IN_CATALOG',
-                        'SKIPPED_INACTIVE_CATALOG'
-                    )
+                    ) = 'CONFIRMED'
                     THEN 'CONFIRMED'
                     ELSE 'OPEN'
                 END
@@ -83,7 +78,7 @@ class MarketGapFillDAO(BaseDAO):
                     FROM dat_market_gap_fill_task task
                     WHERE task.latest_issue_id =
                         dat_data_quality_issue.id
-                      AND task.status = 'SKIPPED'
+                      AND task.status IN ('CONFIRMED', 'SKIPPED')
                   )
                 """,
                 issue_ids,
@@ -261,6 +256,71 @@ class MarketGapFillDAO(BaseDAO):
             (source_id, _json(detail), task_id, run_id),
         )
 
+    def mark_confirmed(
+        self,
+        task_id: int,
+        run_id: str,
+        confirmation_code: str,
+        detail: dict[str, Any] | None = None,
+        last_tdx_package_id: str | None = None,
+        last_tickflow_catalog_version: str | None = None,
+    ) -> int:
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT asset_code, missing_date, detail_json
+                FROM dat_market_gap_fill_task
+                WHERE task_id = ?
+                  AND run_id = ?
+                  AND status = 'RUNNING'
+                """,
+                (task_id, run_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return 0
+            merged_detail = _merge_detail_json(row[2], detail)
+            cursor.execute(
+                """
+                UPDATE dat_market_gap_fill_task
+                SET
+                    status = 'CONFIRMED',
+                    next_retry_at = NULL,
+                    run_id = NULL,
+                    claimed_at = NULL,
+                    claim_expires_at = NULL,
+                    last_error_code = ?,
+                    last_error_message = NULL,
+                    last_tdx_package_id = COALESCE(?, last_tdx_package_id),
+                    last_tickflow_catalog_version = COALESCE(
+                        ?, last_tickflow_catalog_version
+                    ),
+                    detail_json = ?,
+                    updated_at = datetime('now', 'localtime')
+                WHERE task_id = ?
+                  AND run_id = ?
+                  AND status = 'RUNNING'
+                """,
+                (
+                    confirmation_code,
+                    last_tdx_package_id,
+                    last_tickflow_catalog_version,
+                    merged_detail,
+                    task_id,
+                    run_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                return 0
+            self._update_gap_issue_status_with_cursor(
+                cursor,
+                asset_code=row[0],
+                trade_date=row[1],
+                issue_status="CONFIRMED",
+            )
+            return 1
+
     def mark_skipped(
         self,
         task_id: int,
@@ -337,7 +397,13 @@ class MarketGapFillDAO(BaseDAO):
             run_id = NULL,
             claimed_at = NULL,
             claim_expires_at = NULL,
-            detail_json = ?,
+            detail_json = json_patch(
+                CASE
+                    WHEN json_valid(detail_json) THEN detail_json
+                    ELSE '{}'
+                END,
+                json(?)
+            ),
             updated_at = datetime('now', 'localtime')
         WHERE task_id = ?
           AND run_id = ?
@@ -354,6 +420,47 @@ class MarketGapFillDAO(BaseDAO):
                 run_id,
             ),
         )
+
+    def merge_source_result(
+        self,
+        task_id: int,
+        source_id: str,
+        source_result: dict[str, Any],
+        run_id: str | None = None,
+    ) -> int:
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            filters = ["task_id = ?"]
+            params: list[Any] = [task_id]
+            if run_id is not None:
+                filters.extend(["run_id = ?", "status = 'RUNNING'"])
+                params.append(run_id)
+            cursor.execute(
+                f"""
+                SELECT detail_json
+                FROM dat_market_gap_fill_task
+                WHERE {' AND '.join(filters)}
+                """,
+                params,
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return 0
+            merged = _merge_source_result_json(
+                row[0],
+                source_id,
+                source_result,
+            )
+            cursor.execute(
+                f"""
+                UPDATE dat_market_gap_fill_task
+                SET detail_json = ?,
+                    updated_at = datetime('now', 'localtime')
+                WHERE {' AND '.join(filters)}
+                """,
+                (merged, *params),
+            )
+            return cursor.rowcount
 
     def defer_task(
         self,
@@ -374,7 +481,13 @@ class MarketGapFillDAO(BaseDAO):
             run_id = NULL,
             claimed_at = NULL,
             claim_expires_at = NULL,
-            detail_json = ?,
+            detail_json = json_patch(
+                CASE
+                    WHEN json_valid(detail_json) THEN detail_json
+                    ELSE '{}'
+                END,
+                json(?)
+            ),
             updated_at = datetime('now', 'localtime')
         WHERE task_id = ?
           AND run_id = ?
@@ -537,26 +650,51 @@ class MarketGapFillDAO(BaseDAO):
     def upsert_asset_state(
         self,
         asset_code: str,
-        target_start_date: str,
-        earliest_generated_date: str | None,
+        target_start_date: str | None,
+        earliest_generated_date: str | None = None,
+        **fields: Any,
     ) -> None:
-        sql = """
+        allowed_fields = {
+            "tdx_package_id",
+            "tdx_exchange",
+            "tdx_first_valid_date",
+            "tdx_discovery_cursor_date",
+            "tdx_discovery_completed_at",
+            "tickflow_catalog_signature",
+            "tickflow_first_valid_date",
+            "tickflow_discovery_status",
+            "tickflow_discovery_completed_at",
+            "last_discovery_error_code",
+            "last_discovery_error_message",
+        }
+        invalid = set(fields) - allowed_fields
+        if invalid:
+            raise ValueError(f"Unsupported asset state fields: {sorted(invalid)}")
+        columns = [
+            "asset_code",
+            "target_start_date",
+            "earliest_generated_date",
+            *fields,
+        ]
+        values = [asset_code, target_start_date, earliest_generated_date]
+        values.extend(fields[name] for name in fields)
+        update_columns = columns[1:]
+        sql = f"""
         INSERT INTO dat_market_gap_fill_asset_state (
-            asset_code,
-            target_start_date,
-            earliest_generated_date,
+            {', '.join(columns)},
             updated_at
         )
-        VALUES (?, ?, ?, datetime('now', 'localtime'))
+        VALUES (
+            {', '.join('?' for _ in columns)},
+            datetime('now', 'localtime')
+        )
         ON CONFLICT(asset_code) DO UPDATE SET
-            target_start_date = excluded.target_start_date,
-            earliest_generated_date = excluded.earliest_generated_date,
+            {', '.join(
+                f'{name} = excluded.{name}' for name in update_columns
+            )},
             updated_at = datetime('now', 'localtime')
         """
-        self._execute_update(
-            sql,
-            (asset_code, target_start_date, earliest_generated_date),
-        )
+        self._execute_update(sql, tuple(values))
 
     def has_market_row(self, asset_code: str, trade_date: str) -> bool:
         sql = """
@@ -708,6 +846,19 @@ class MarketGapFillDAO(BaseDAO):
             for task, final in zip(ordered_tasks, completed):
                 cursor.execute(
                     """
+                    SELECT detail_json
+                    FROM dat_market_gap_fill_task
+                    WHERE task_id = ?
+                    """,
+                    (task["task_id"],),
+                )
+                existing_detail = cursor.fetchone()
+                merged_detail = _merge_detail_json(
+                    existing_detail[0] if existing_detail else None,
+                    detail_by_date.get(final["trade_date"]),
+                )
+                cursor.execute(
+                    """
                     UPDATE dat_market_gap_fill_task
                     SET
                         status = 'FILLED',
@@ -727,7 +878,7 @@ class MarketGapFillDAO(BaseDAO):
                     """,
                     (
                         final["source_id"],
-                        _json(detail_by_date.get(final["trade_date"])),
+                        merged_detail,
                         task["task_id"],
                         run_id,
                     ),
@@ -736,17 +887,449 @@ class MarketGapFillDAO(BaseDAO):
                     raise ValidationError(
                         f"LEASE_LOST task_id={task['task_id']}"
                     )
-                issue_id = task.get("latest_issue_id")
-                if issue_id:
-                    cursor.execute(
-                        """
-                        UPDATE dat_data_quality_issue
-                        SET issue_status = 'FIXED'
-                        WHERE id = ?
-                        """,
-                        (issue_id,),
-                    )
+                self._update_gap_issue_status_with_cursor(
+                    cursor,
+                    asset_code=asset_code,
+                    trade_date=final["trade_date"],
+                    issue_status="FIXED",
+                )
         return completed
+
+    def reconcile_existing_market_rows(
+        self,
+        asset_code: str | None = None,
+    ) -> list[dict]:
+        params: tuple[Any, ...] = ()
+        asset_filter = ""
+        if asset_code:
+            asset_filter = "AND task.asset_code = ?"
+            params = (asset_code,)
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("BEGIN IMMEDIATE")
+            cursor.execute(
+                f"""
+                SELECT
+                    task.task_id,
+                    task.asset_code,
+                    task.missing_date,
+                    market.source_id
+                FROM dat_market_gap_fill_task task
+                JOIN dat_market_daily market
+                  ON market.asset_code = task.asset_code
+                 AND market.trade_date = task.missing_date
+                WHERE task.status != 'FILLED'
+                  {asset_filter}
+                ORDER BY task.asset_code, task.missing_date
+                """,
+                params,
+            )
+            rows = self._rows_to_dicts(cursor, cursor.fetchall())
+            for row in rows:
+                cursor.execute(
+                    """
+                    UPDATE dat_market_gap_fill_task
+                    SET
+                        status = 'FILLED',
+                        filled_source_id = ?,
+                        filled_at = datetime('now', 'localtime'),
+                        next_retry_at = NULL,
+                        run_id = NULL,
+                        claimed_at = NULL,
+                        claim_expires_at = NULL,
+                        last_error_code = NULL,
+                        last_error_message = NULL,
+                        updated_at = datetime('now', 'localtime')
+                    WHERE task_id = ?
+                      AND status != 'FILLED'
+                    """,
+                    (row["source_id"], row["task_id"]),
+                )
+                self._update_gap_issue_status_with_cursor(
+                    cursor,
+                    asset_code=row["asset_code"],
+                    trade_date=row["missing_date"],
+                    issue_status="FIXED",
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO dat_market_gap_fill_repair_task (
+                        asset_code,
+                        from_date,
+                        status,
+                        generation
+                    )
+                    VALUES (?, ?, 'PENDING', 1)
+                    ON CONFLICT(asset_code) DO UPDATE SET
+                        from_date = MIN(
+                            dat_market_gap_fill_repair_task.from_date,
+                            excluded.from_date
+                        ),
+                        status = 'PENDING',
+                        generation =
+                            dat_market_gap_fill_repair_task.generation + 1,
+                        run_id = NULL,
+                        claimed_at = NULL,
+                        claim_expires_at = NULL,
+                        completed_at = NULL,
+                        updated_at = datetime('now', 'localtime')
+                    """,
+                    (row["asset_code"], row["missing_date"]),
+                )
+            return rows
+
+    def commit_discovered_rows(
+        self,
+        scan_batch_id: str,
+        detected_at: str,
+        asset_code: str,
+        exchange: str,
+        asset_type: str,
+        rows_by_date: dict[str, dict],
+        source_id: str,
+        evidence_by_date: dict[str, dict],
+    ) -> list[str]:
+        if not rows_by_date:
+            return []
+        filled_dates = []
+        with self.db_engine.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("BEGIN IMMEDIATE")
+            for trade_date in sorted(rows_by_date):
+                row = rows_by_date[trade_date]
+                _validate_market_row(row)
+                detail = {
+                    "exchange": exchange,
+                    "calendar_date": trade_date,
+                    "missing_reason": "source_discovered_market_bar",
+                    "source_results": {
+                        source_id: evidence_by_date.get(trade_date, {})
+                    },
+                }
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO dat_data_quality_issue (
+                        scan_batch_id,
+                        asset_code,
+                        trade_date,
+                        source_table,
+                        source_id,
+                        entity_type,
+                        entity_id,
+                        rule_code,
+                        severity,
+                        issue_group,
+                        field_name,
+                        actual_value,
+                        expected_value,
+                        detail_json,
+                        issue_status,
+                        detected_at
+                    )
+                    VALUES (
+                        ?, ?, ?, 'dat_market_daily', ?, 'ASSET', ?,
+                        'MISSING_TRADING_DAY_BAR', 'WARN', 'CONTINUITY',
+                        'trade_date', 'missing bar',
+                        'market bar discovered by source', ?, 'OPEN', ?
+                    )
+                    """,
+                    (
+                        scan_batch_id,
+                        asset_code,
+                        trade_date,
+                        source_id,
+                        asset_code,
+                        _json(detail),
+                        detected_at,
+                    ),
+                )
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM dat_data_quality_issue
+                    WHERE scan_batch_id = ?
+                      AND asset_code = ?
+                      AND trade_date = ?
+                      AND rule_code = 'MISSING_TRADING_DAY_BAR'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (scan_batch_id, asset_code, trade_date),
+                )
+                issue_id = cursor.fetchone()[0]
+                cursor.execute(
+                    """
+                    INSERT INTO dat_market_gap_fill_task (
+                        asset_code,
+                        missing_date,
+                        exchange,
+                        asset_type,
+                        latest_issue_id,
+                        max_attempts,
+                        detail_json
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(asset_code, missing_date) DO UPDATE SET
+                        exchange = excluded.exchange,
+                        asset_type = excluded.asset_type,
+                        latest_issue_id = excluded.latest_issue_id,
+                        updated_at = datetime('now', 'localtime')
+                    WHERE dat_market_gap_fill_task.status != 'FILLED'
+                    """,
+                    (
+                        asset_code,
+                        trade_date,
+                        exchange,
+                        asset_type,
+                        issue_id,
+                        MARKET_GAP_FILL_MAX_RETRIES,
+                        _json(detail),
+                    ),
+                )
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO dat_market_daily (
+                        asset_code,
+                        trade_date,
+                        open,
+                        high,
+                        low,
+                        close,
+                        volume,
+                        amount,
+                        source_id,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row["asset_code"],
+                        row["trade_date"],
+                        row["open"],
+                        row["high"],
+                        row["low"],
+                        row["close"],
+                        row["volume"],
+                        row["amount"],
+                        DataSource.validate_market_daily_source(
+                            row["source_id"]
+                        ),
+                        row["updated_at"],
+                    ),
+                )
+                cursor.execute(
+                    """
+                    SELECT source_id
+                    FROM dat_market_daily
+                    WHERE asset_code = ?
+                      AND trade_date = ?
+                    """,
+                    (asset_code, trade_date),
+                )
+                market_source = cursor.fetchone()[0]
+                cursor.execute(
+                    """
+                    SELECT detail_json
+                    FROM dat_market_gap_fill_task
+                    WHERE asset_code = ?
+                      AND missing_date = ?
+                    """,
+                    (asset_code, trade_date),
+                )
+                task_detail = cursor.fetchone()
+                merged_detail = _merge_detail_json(
+                    task_detail[0] if task_detail else None,
+                    detail,
+                )
+                cursor.execute(
+                    """
+                    UPDATE dat_market_gap_fill_task
+                    SET
+                        status = 'FILLED',
+                        filled_source_id = ?,
+                        filled_at = datetime('now', 'localtime'),
+                        next_retry_at = NULL,
+                        run_id = NULL,
+                        claimed_at = NULL,
+                        claim_expires_at = NULL,
+                        last_error_code = NULL,
+                        last_error_message = NULL,
+                        detail_json = ?,
+                        updated_at = datetime('now', 'localtime')
+                    WHERE asset_code = ?
+                      AND missing_date = ?
+                    """,
+                    (
+                        market_source,
+                        merged_detail,
+                        asset_code,
+                        trade_date,
+                    ),
+                )
+                self._update_gap_issue_status_with_cursor(
+                    cursor,
+                    asset_code=asset_code,
+                    trade_date=trade_date,
+                    issue_status="FIXED",
+                )
+                filled_dates.append(trade_date)
+
+            cursor.execute(
+                """
+                INSERT INTO dat_market_gap_fill_repair_task (
+                    asset_code,
+                    from_date,
+                    status,
+                    generation
+                )
+                VALUES (?, ?, 'PENDING', 1)
+                ON CONFLICT(asset_code) DO UPDATE SET
+                    from_date = MIN(
+                        dat_market_gap_fill_repair_task.from_date,
+                        excluded.from_date
+                    ),
+                    status = 'PENDING',
+                    generation =
+                        dat_market_gap_fill_repair_task.generation + 1,
+                    run_id = NULL,
+                    claimed_at = NULL,
+                    claim_expires_at = NULL,
+                    completed_at = NULL,
+                    updated_at = datetime('now', 'localtime')
+                """,
+                (asset_code, min(filled_dates)),
+            )
+        return filled_dates
+
+    def get_market_dates(self, asset_code: str) -> set[str]:
+        with self.db_engine.get_connection(readonly=True) as conn:
+            rows = conn.execute(
+                """
+                SELECT trade_date
+                FROM dat_market_daily
+                WHERE asset_code = ?
+                """,
+                (asset_code,),
+            ).fetchall()
+        return {str(row[0]) for row in rows}
+
+    def get_market_date_bounds_by_asset(self) -> dict[str, dict]:
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    asset_code,
+                    MIN(trade_date) AS first_trade_date,
+                    MAX(trade_date) AS last_trade_date
+                FROM dat_market_daily
+                GROUP BY asset_code
+                """
+            )
+            rows = self._rows_to_dicts(cursor, cursor.fetchall())
+        return {row["asset_code"]: row for row in rows}
+
+    def list_tasks_for_asset(
+        self,
+        asset_code: str,
+        include_filled: bool = False,
+    ) -> list[dict]:
+        status_filter = "" if include_filled else "AND status != 'FILLED'"
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                SELECT *
+                FROM dat_market_gap_fill_task
+                WHERE asset_code = ?
+                  {status_filter}
+                ORDER BY missing_date, task_id
+                """,
+                (asset_code,),
+            )
+            return self._rows_to_dicts(cursor, cursor.fetchall())
+
+    def get_task(self, task_id: int) -> dict:
+        with self.db_engine.get_connection(readonly=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT *
+                FROM dat_market_gap_fill_task
+                WHERE task_id = ?
+                """,
+                (task_id,),
+            )
+            return self._row_to_dict(cursor, cursor.fetchone())
+
+    def get_governance_counts(self) -> dict:
+        with self.db_engine.get_connection(readonly=True) as conn:
+            task_rows = conn.execute(
+                """
+                SELECT status, COUNT(*)
+                FROM dat_market_gap_fill_task
+                GROUP BY status
+                """
+            ).fetchall()
+            discovery_rows = conn.execute(
+                """
+                SELECT tickflow_discovery_status, COUNT(*)
+                FROM dat_market_gap_fill_asset_state
+                GROUP BY tickflow_discovery_status
+                """
+            ).fetchall()
+        return {
+            "tasks": {str(row[0]): int(row[1]) for row in task_rows},
+            "tickflow_assets": {
+                str(row[0]): int(row[1]) for row in discovery_rows
+            },
+        }
+
+    @staticmethod
+    def _update_gap_issue_status_with_cursor(
+        cursor,
+        asset_code: str,
+        trade_date: str,
+        issue_status: str,
+    ) -> None:
+        cursor.execute(
+            """
+            UPDATE dat_data_quality_issue
+            SET issue_status = ?
+            WHERE asset_code = ?
+              AND trade_date = ?
+              AND rule_code = 'MISSING_TRADING_DAY_BAR'
+            """,
+            (issue_status, asset_code, trade_date),
+        )
+        cursor.execute(
+            """
+            UPDATE dat_data_quality_scan_batch
+            SET
+                open_issue_count = (
+                    SELECT COUNT(*)
+                    FROM dat_data_quality_issue issue
+                    WHERE issue.scan_batch_id =
+                        dat_data_quality_scan_batch.scan_batch_id
+                      AND issue.issue_status = 'OPEN'
+                ),
+                confirmed_issue_count = (
+                    SELECT COUNT(*)
+                    FROM dat_data_quality_issue issue
+                    WHERE issue.scan_batch_id =
+                        dat_data_quality_scan_batch.scan_batch_id
+                      AND issue.issue_status = 'CONFIRMED'
+                )
+            WHERE scan_batch_id IN (
+                SELECT DISTINCT scan_batch_id
+                FROM dat_data_quality_issue
+                WHERE asset_code = ?
+                  AND trade_date = ?
+                  AND rule_code = 'MISSING_TRADING_DAY_BAR'
+            )
+            """,
+            (asset_code, trade_date),
+        )
 
     def find_affected_accounts_by_asset_dates(
         self,
@@ -828,6 +1411,47 @@ class MarketGapFillDAO(BaseDAO):
 
 def _json(detail: dict[str, Any] | None) -> str:
     return json.dumps(detail or {}, ensure_ascii=False, sort_keys=True)
+
+
+def _merge_detail_json(
+    existing_json: str | None,
+    updates: dict[str, Any] | None,
+) -> str:
+    try:
+        detail = json.loads(existing_json or "{}")
+    except (TypeError, json.JSONDecodeError):
+        detail = {}
+    if not isinstance(detail, dict):
+        detail = {}
+    update_values = dict(updates or {})
+    incoming_sources = update_values.pop("source_results", None)
+    if isinstance(incoming_sources, dict):
+        existing_sources = detail.get("source_results")
+        if not isinstance(existing_sources, dict):
+            existing_sources = {}
+        existing_sources.update(incoming_sources)
+        detail["source_results"] = existing_sources
+    detail.update(update_values)
+    return _json(detail)
+
+
+def _merge_source_result_json(
+    existing_json: str | None,
+    source_id: str,
+    source_result: dict[str, Any],
+) -> str:
+    try:
+        detail = json.loads(existing_json or "{}")
+    except (TypeError, json.JSONDecodeError):
+        detail = {}
+    if not isinstance(detail, dict):
+        detail = {}
+    source_results = detail.get("source_results")
+    if not isinstance(source_results, dict):
+        source_results = {}
+    source_results[source_id] = source_result
+    detail["source_results"] = source_results
+    return _json(detail)
 
 
 def _now_text() -> str:

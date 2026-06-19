@@ -1,6 +1,6 @@
 ﻿{
-    "source_commit":  "ec8bb14c7082f4c501037dc27a8e7a44def98a7c",
-    "source_short_commit":  "ec8bb14",
-    "source_branch":  "codex/fix-stock-fundamental",
-    "generated_at":  "2026-06-15T14:53:56+08:00"
+    "source_commit":  "e7332ef94a140751a1f7fd19995acf5d4594b2f6",
+    "source_short_commit":  "e7332ef",
+    "source_branch":  "codex/market-gap-fill-v1.3",
+    "generated_at":  "2026-06-16T19:07:44+08:00"
 }

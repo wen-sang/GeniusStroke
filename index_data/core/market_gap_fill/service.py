@@ -8,11 +8,15 @@ from typing import Callable
 
 from config import settings
 from config.constants import AssetType
+from core.market_gap_fill.history_discovery import (
+    MarketHistoryDiscoveryService,
+)
 from core.market_gap_fill.models import GapFillRunStatus
 from core.market_gap_fill.models import MarketGapFillResult
 from core.market_gap_fill.models import MarketGapFillRunOptions
 from core.market_gap_fill.repair_service import market_gap_fill_repair_service
 from core.market_gap_fill.scanner import market_gap_scanner
+from core.market_gap_fill.governance import market_gap_fill_governance
 from dao.data_quality_dao import data_quality_dao
 from dao.market_gap_fill_dao import market_gap_fill_dao
 from dao.tickflow_gap_fill_runtime_dao import tickflow_gap_fill_runtime_dao
@@ -78,6 +82,7 @@ class MarketGapFillService:
             return result.to_dict()
 
         candidates = []
+        tdx_histories = {}
         gate_started = self.clock()
         try:
             with self.tdx_provider.package_lock() as lock_wait:
@@ -88,12 +93,52 @@ class MarketGapFillService:
                 if gate["status"] != "READY":
                     result.status = GapFillRunStatus.SKIPPED_TDX_NOT_READY
                 else:
+                    reconciled = (
+                        market_gap_fill_dao.reconcile_existing_market_rows(
+                            asset_code=options.asset_code
+                        )
+                    )
+                    for item in reconciled:
+                        result.record_fill(
+                            item["asset_code"],
+                            item["missing_date"],
+                        )
+                    result.tasks["filled"] += len(reconciled)
+                    discovery = MarketHistoryDiscoveryService(
+                        tdx_provider=self.tdx_provider,
+                        wall_clock=self.wall_clock,
+                    ).run_tdx(
+                        target_date=target_date,
+                        package_id=gate["package_id"],
+                        run_id=sync_id,
+                        options=options,
+                    )
+                    tdx_histories = discovery.pop("_histories")
+                    result.history_discovery["tdx_processed_assets"] = (
+                        discovery["processed_assets"]
+                    )
+                    result.metadata_reconciliation.update(
+                        {
+                            "corrected_assets":
+                                discovery["corrected_assets"],
+                            "conflict_assets":
+                                discovery["conflict_assets"],
+                            "details": discovery["details"],
+                        }
+                    )
+                    for asset_code, dates in discovery[
+                        "filled_dates_by_asset"
+                    ].items():
+                        for trade_date in dates:
+                            result.record_fill(asset_code, trade_date)
+                    result.tasks["filled"] += discovery["filled_tasks"]
                     candidates = self._run_tdx_phase(
                         target_date,
                         sync_id,
                         options,
                         result,
                         progress_callback,
+                        tdx_histories,
                     )
         except TdxPackageLockTimeout:
             result.gate.update(
@@ -107,14 +152,49 @@ class MarketGapFillService:
 
         if result.gate["status"] == "READY":
             tickflow_started = self.clock()
-            self._run_tickflow_phase(
-                candidates,
-                sync_id,
-                options,
-                result,
-                started,
-                progress_callback,
+            discovery = MarketHistoryDiscoveryService(
+                tdx_provider=self.tdx_provider,
+                wall_clock=self.wall_clock,
+                clock=self.clock,
+                sleeper=self.sleeper,
+                tickflow_adapter=self.tickflow_adapter,
+            ).run_tickflow(
+                target_date=target_date,
+                run_id=sync_id,
+                options=options,
             )
+            result.tickflow["requested_assets"] = discovery[
+                "requested_assets"
+            ]
+            result.tickflow["filled_tasks"] = discovery["filled_tasks"]
+            result.history_discovery.update(
+                {
+                    "tickflow_pending_assets":
+                        discovery["pending_assets"],
+                    "tickflow_completed_assets":
+                        discovery["completed_assets"],
+                    "tickflow_failed_assets":
+                        discovery["failed_assets"],
+                }
+            )
+            for asset_code, dates in discovery[
+                "filled_dates_by_asset"
+            ].items():
+                for trade_date in dates:
+                    result.record_fill(asset_code, trade_date)
+            result.tasks["filled"] += discovery["filled_tasks"]
+            governed = market_gap_fill_governance.classify_claimed_groups(
+                candidates,
+                run_id=sync_id,
+                no_external=options.no_external,
+            )
+            result.tasks["filled"] += governed["filled"]
+            result.tasks["confirmed"] += governed["confirmed"]
+            result.tasks["failed"] += governed["failed"]
+            result.tasks["deferred"] += governed["pending"]
+            result.tasks["lease_lost"] += governed["lease_lost"]
+            result.failed_task_count += governed["failed"]
+            result.deferred_task_count += governed["pending"]
             result.timing["tickflow_seconds"] = (
                 self.clock() - tickflow_started
             )
@@ -153,6 +233,7 @@ class MarketGapFillService:
         options: MarketGapFillRunOptions,
         result: MarketGapFillResult,
         progress_callback,
+        tdx_histories: dict[str, dict],
     ) -> list[dict]:
         scan_started = self.clock()
         _progress(progress_callback, 10, None, "扫描历史行情缺口")
@@ -162,14 +243,7 @@ class MarketGapFillService:
             scan_result["generated_task_count"] or 0
         )
         result.tasks["generated"] = result.generated_task_count
-        catalog_version = market_gap_fill_dao.get_tickflow_catalog_version()
         config_signature = self._tickflow_config_signature()
-        market_gap_fill_dao.reopen_tasks_for_sources(
-            tdx_package_id=result.gate["package_id"],
-            catalog_version=catalog_version,
-            config_signature=config_signature,
-            now_text=self._now_text(),
-        )
         if options.force_tickflow_retry and options.asset_code:
             market_gap_fill_dao.force_reopen_asset(
                 asset_code=options.asset_code,
@@ -223,14 +297,32 @@ class MarketGapFillService:
                     for task in existing
                 }
                 if pending:
-                    tdx_result = self.tdx_provider.read_asset_dates(
-                        exchange=group["exchange"],
-                        asset_code=group["asset_code"],
-                        asset_type=pending[0].get("asset_type") or "",
-                        target_dates=[
-                            task["missing_date"] for task in pending
-                        ],
+                    history = tdx_histories.get(group["asset_code"]) or {}
+                    valid = history.get("valid") or {}
+                    zero_dates = set(history.get("zero_dates") or [])
+                    invalid_dates = set(
+                        history.get("invalid_dates") or []
                     )
+                    tdx_result = {
+                        "file_status": history.get(
+                            "file_status", "missing"
+                        ),
+                        "date_results": {},
+                    }
+                    for task in pending:
+                        trade_date = task["missing_date"]
+                        if trade_date in valid:
+                            date_result = {
+                                "status": "hit",
+                                "bar": valid[trade_date],
+                            }
+                        elif trade_date in zero_dates:
+                            date_result = {"status": "zero", "bar": None}
+                        elif trade_date in invalid_dates:
+                            date_result = {"status": "invalid", "bar": None}
+                        else:
+                            date_result = {"status": "empty", "bar": None}
+                        tdx_result["date_results"][trade_date] = date_result
                     processed_assets += 1
                     result.tdx["processed_assets"] += 1
                     result.tdx["processed_tasks"] += len(pending)
@@ -668,25 +760,14 @@ class MarketGapFillService:
         for task in tasks:
             next_attempt = int(task.get("attempt_count") or 0) + 1
             max_attempts = int(task.get("max_attempts") or 3)
-            if next_attempt >= max_attempts:
-                updated = market_gap_fill_dao.mark_skipped(
-                    task_id=task["task_id"],
-                    run_id=run_id,
-                    error_code="RETRY_EXHAUSTED",
-                    error_message=error_message,
-                    detail={"last_failure": error_code},
-                    increment_attempt=True,
-                    last_tickflow_config_signature=config_signature,
-                )
-                if updated == 1:
-                    result.skipped_task_count += 1
-                    result.tasks["skipped"] += 1
-                    self._sync_issue(task, "OPEN")
-                continue
             updated = market_gap_fill_dao.mark_failed_retry(
                 task_id=task["task_id"],
                 run_id=run_id,
-                error_code=error_code,
+                error_code=(
+                    "RETRY_EXHAUSTED"
+                    if next_attempt >= max_attempts
+                    else error_code
+                ),
                 error_message=error_message,
                 retry_delay_minutes=
                     settings.MARKET_GAP_FILL_RETRY_DELAY_MINUTES,
@@ -740,6 +821,7 @@ class MarketGapFillService:
         if (
             result.failed_task_count
             or result.tdx["health_breaker_triggered"]
+            or result.history_discovery["tickflow_failed_assets"]
             or result.downstream["failed_assets"]
         ):
             result.status = GapFillRunStatus.COMPLETED_WITH_ERRORS

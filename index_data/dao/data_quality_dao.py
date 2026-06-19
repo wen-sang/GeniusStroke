@@ -138,6 +138,18 @@ class DataQualityDAO(BaseDAO):
             finished_at = ?,
             scanned_rows = ?,
             issue_count = ?,
+            open_issue_count = (
+                SELECT COUNT(*)
+                FROM dat_data_quality_issue issue
+                WHERE issue.scan_batch_id = ?
+                  AND issue.issue_status = 'OPEN'
+            ),
+            confirmed_issue_count = (
+                SELECT COUNT(*)
+                FROM dat_data_quality_issue issue
+                WHERE issue.scan_batch_id = ?
+                  AND issue.issue_status = 'CONFIRMED'
+            ),
             report_path = ?,
             error_message = NULL
         WHERE scan_batch_id = ?
@@ -159,6 +171,8 @@ class DataQualityDAO(BaseDAO):
                     finished_at,
                     scanned_rows,
                     inserted_count,
+                    scan_batch_id,
+                    scan_batch_id,
                     report_path,
                     scan_batch_id,
                 ),
@@ -202,6 +216,8 @@ class DataQualityDAO(BaseDAO):
             finished_at = ?,
             scanned_rows = ?,
             issue_count = 0,
+            open_issue_count = 0,
+            confirmed_issue_count = 0,
             report_path = NULL,
             error_message = ?
         WHERE scan_batch_id = ?
