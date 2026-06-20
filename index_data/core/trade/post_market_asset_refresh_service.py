@@ -56,6 +56,37 @@ def _get_daily_return(account_id: int, trade_date: str) -> Optional[float]:
     return None
 
 
+def _get_cumulative_total_pnl(
+    account_id: int,
+    trade_date: str,
+    current_summary: Dict[str, object],
+) -> float:
+    """取前端累收益口径；历史缺失时退回当前已实现盈亏 + 持仓浮盈。"""
+    try:
+        if trade_date:
+            history = account_history_dao.get_history_by_date(account_id, trade_date)
+            if (
+                history
+                and history.get("is_data_complete") == 1
+                and history.get("cum_total_pnl") is not None
+            ):
+                return float(history["cum_total_pnl"])
+
+        latest_history = account_history_dao.get_latest_complete_history(account_id)
+        if latest_history and latest_history.get("cum_total_pnl") is not None:
+            return float(latest_history["cum_total_pnl"])
+    except Exception:
+        pass
+
+    acc_profit = float(current_summary.get("acc_profit") or 0.0)
+    try:
+        positions = position_dao.get_positions_by_account(account_id)
+        floating_pnl = sum(float(item.get("unrealized_pnl") or 0.0) for item in positions)
+    except Exception:
+        floating_pnl = 0.0
+    return acc_profit + floating_pnl
+
+
 def _fmt_codes_with_names(codes: List[str], max_count: int = 3) -> str:
     """格式化显示代码及其名称，例如: 000001(平安银行), ..."""
     if not codes:
@@ -191,16 +222,27 @@ class PostMarketAssetRefreshService:
 
     def _emit_current_refresh_success(
         self,
+        account_id: int,
+        target_date: str,
         current_summary: Dict[str, object],
         daily_return: Optional[float],
     ) -> None:
+        cumulative_total_pnl = _get_cumulative_total_pnl(
+            account_id=account_id,
+            trade_date=target_date,
+            current_summary=current_summary,
+        )
         lines = [
             "   当日资产计算: 成功",
             f"      持仓标的总数: {int(current_summary.get('position_count', 0))} 只",
             f"      现金余留 (元): {_fmt_amount(current_summary.get('cash_balance', 0))}",
             f"      累计入金 (元): {_fmt_amount(current_summary.get('total_deposit', 0))}",
             f"      累计出金 (元): {_fmt_amount(current_summary.get('total_withdraw', 0))}",
-            f"      累计盈亏 (元): {_fmt_amount(current_summary.get('acc_profit', 0), show_sign=True)}",
+            f"      累计总盈亏 (元): {_fmt_amount(cumulative_total_pnl, show_sign=True)}",
+            (
+                f"      累计已实现盈亏 (元): "
+                f"{_fmt_amount(current_summary.get('acc_profit', 0), show_sign=True)}"
+            ),
         ]
         if daily_return is not None:
             lines.append(f"      当日盈亏 (元): {_fmt_amount(daily_return, show_sign=True)}")
@@ -377,7 +419,12 @@ class PostMarketAssetRefreshService:
                 if not from_date:
                     summary["history_refresh_skipped"] += 1
                     daily_return = _get_daily_return(account_id, target_date)
-                    self._emit_current_refresh_success(current_summary, daily_return)
+                    self._emit_current_refresh_success(
+                        account_id,
+                        target_date,
+                        current_summary,
+                        daily_return,
+                    )
                     self._emit_history_no_fact_date()
                     logger.debug(
                         "[POST_MARKET_ASSET_REFRESH][SKIP] account_id=%s history=no_fact_date matched_codes=%s",
@@ -391,7 +438,12 @@ class PostMarketAssetRefreshService:
                     from_date=from_date,
                 )
                 daily_return = _get_daily_return(account_id, target_date)
-                self._emit_current_refresh_success(current_summary, daily_return)
+                self._emit_current_refresh_success(
+                    account_id,
+                    target_date,
+                    current_summary,
+                    daily_return,
+                )
                 self._apply_history_result(summary, account_id, from_date, matched_codes, history_result)
             finally:
                 account_progress = min(100, 20 + round((index / total_accounts) * 80))
