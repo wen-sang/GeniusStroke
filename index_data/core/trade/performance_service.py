@@ -49,7 +49,10 @@ class AccountPerformanceService:
                 "win_rate": trade_quality["win_rate"],
                 "profit_loss_ratio": trade_quality["profit_loss_ratio"],
                 "profit_loss_ratio_is_infinite": trade_quality["profit_loss_ratio_is_infinite"],
+                "average_win_amount": trade_quality["average_win_amount"],
+                "average_loss_amount": trade_quality["average_loss_amount"],
                 "total_trade_count": total_trade_count,
+                "average_holding_days": trade_quality["average_holding_days"],
                 "expectancy": trade_quality["expectancy"],
                 "trading_days": 0,
                 "calendar_days": 0,
@@ -98,7 +101,10 @@ class AccountPerformanceService:
             "win_rate": trade_quality["win_rate"],
             "profit_loss_ratio": trade_quality["profit_loss_ratio"],
             "profit_loss_ratio_is_infinite": trade_quality["profit_loss_ratio_is_infinite"],
+            "average_win_amount": trade_quality["average_win_amount"],
+            "average_loss_amount": trade_quality["average_loss_amount"],
             "total_trade_count": total_trade_count,
+            "average_holding_days": trade_quality["average_holding_days"],
             "expectancy": trade_quality["expectancy"],
             "trading_days": trading_days,
             "calendar_days": calendar_days,
@@ -198,6 +204,9 @@ class AccountPerformanceService:
                 "win_rate": None,
                 "profit_loss_ratio": None,
                 "profit_loss_ratio_is_infinite": False,
+                "average_win_amount": None,
+                "average_loss_amount": None,
+                "average_holding_days": self._calculate_average_holding_days(sell_orders),
                 "expectancy": None,
             }
 
@@ -205,6 +214,8 @@ class AccountPerformanceService:
         losses = [abs(value) for value in realized_values if value < 0]
         win_rate = len(wins) / len(realized_values)
         expectancy = sum(realized_values) / len(realized_values)
+        average_win_amount = sum(wins) / len(wins) if wins else None
+        average_loss_amount = sum(losses) / len(losses) if losses else None
         if not wins:
             profit_loss_ratio = 0.0
             is_infinite = False
@@ -219,8 +230,26 @@ class AccountPerformanceService:
             "win_rate": win_rate,
             "profit_loss_ratio": profit_loss_ratio,
             "profit_loss_ratio_is_infinite": is_infinite,
+            "average_win_amount": average_win_amount,
+            "average_loss_amount": average_loss_amount,
+            "average_holding_days": self._calculate_average_holding_days(sell_orders),
             "expectancy": expectancy,
         }
+
+    def _calculate_average_holding_days(self, sell_orders: List[Dict]) -> Optional[float]:
+        holding_days = []
+        for order in sell_orders:
+            sell_date = self._parse_order_date(order.get("trade_time"))
+            buy_date = self._parse_order_date(order.get("buy_trade_time"))
+            if sell_date is None or buy_date is None:
+                continue
+            holding_days.append(max((sell_date - buy_date).days, 0))
+        return sum(holding_days) / len(holding_days) if holding_days else None
+
+    def _parse_order_date(self, value) -> Optional[datetime]:
+        if not value:
+            return None
+        return datetime.strptime(str(value)[:10], "%Y-%m-%d")
 
     def _calendar_days(self, start_date: str, end_date: str) -> int:
         start = datetime.strptime(start_date, "%Y-%m-%d")

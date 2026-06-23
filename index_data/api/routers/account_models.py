@@ -54,7 +54,10 @@ class AccountPerformanceResponse(BaseModel):
     win_rate: Optional[float] = None
     profit_loss_ratio: Optional[float] = None
     profit_loss_ratio_is_infinite: bool = False
+    average_win_amount: Optional[float] = None
+    average_loss_amount: Optional[float] = None
     total_trade_count: int = 0
+    average_holding_days: Optional[float] = None
     expectancy: Optional[float] = None
     trading_days: int = 0
     calendar_days: int = 0

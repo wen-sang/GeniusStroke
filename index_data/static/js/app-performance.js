@@ -40,13 +40,14 @@ function resetPerformanceView() {
         'performance-annualized-volatility',
         'performance-win-rate',
         'performance-profit-loss-ratio',
+        'performance-average-win-amount',
+        'performance-average-loss-amount',
         'performance-total-trade-count',
-        'performance-expectancy',
-        'performance-sample-days'
+        'performance-average-holding-days',
+        'performance-expectancy'
     ].forEach((id) => setText(id, '--'));
     setText('performance-data-updated-to', '数据更新至 --');
     setText('performance-drawdown-period', '--');
-    setText('performance-data-quality', '--');
 }
 
 async function loadPerformance(loadContext = null) {
@@ -86,11 +87,12 @@ function renderPerformance(data) {
         'performance-profit-loss-ratio',
         data.profit_loss_ratio_is_infinite ? '∞' : formatPerformanceNumber(data.profit_loss_ratio, 2)
     );
+    setPerformanceValue('performance-average-win-amount', formatPerformanceCurrency(data.average_win_amount));
+    setPerformanceValue('performance-average-loss-amount', formatPerformanceCurrency(data.average_loss_amount));
     setText('performance-total-trade-count', Number.isFinite(Number(data.total_trade_count)) ? String(data.total_trade_count) : '0');
+    setText('performance-average-holding-days', formatHoldingDays(data.average_holding_days));
     setPerformanceValue('performance-expectancy', formatPerformanceCurrency(data.expectancy), data.expectancy);
-    setText('performance-sample-days', `${data.trading_days || 0} / ${data.calendar_days || 0}`);
     setText('performance-drawdown-period', buildDrawdownPeriodText(data));
-    setText('performance-data-quality', buildDataQualityText(data.data_quality));
 }
 
 function buildDrawdownPeriodText(data) {
@@ -103,8 +105,7 @@ function buildDrawdownPeriodText(data) {
     return `${start} - ${end} / 修复 ${recovery}`;
 }
 
-function buildDataQualityText(dataQuality) {
-    const messages = Array.isArray(dataQuality?.messages) ? dataQuality.messages : [];
-    if (messages.length > 0) return messages.join('；');
-    return dataQuality?.is_complete ? '数据完整' : '--';
+function formatHoldingDays(value) {
+    if (value === null || value === undefined || isNaN(value)) return '--';
+    return `${formatPerformanceNumber(value, 1)} 天`;
 }

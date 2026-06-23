@@ -791,20 +791,25 @@ class TradeDAO(BaseDAO):
     ) -> List[Dict]:
         """获取绩效口径的有效普通卖单样本。"""
         sql = """
-        SELECT order_id, trade_time, realized_pnl
-        FROM trade_order
-        WHERE account_id = ?
-          AND side = 'SELL'
-          AND status = 1
-          AND COALESCE(volume, 0) > 0
-          AND link_order_id IS NOT NULL
-          AND COALESCE(source_type, 'MANUAL') != 'CORPORATE_ACTION'
-          AND COALESCE(order_type, '') != 'SPLIT_ADJUST'
-        ORDER BY trade_time ASC, order_id ASC
+        SELECT
+            sell.order_id,
+            sell.trade_time,
+            buy.trade_time AS buy_trade_time,
+            sell.realized_pnl
+        FROM trade_order sell
+        LEFT JOIN trade_order buy ON buy.order_id = sell.link_order_id
+        WHERE sell.account_id = ?
+          AND sell.side = 'SELL'
+          AND sell.status = 1
+          AND COALESCE(sell.volume, 0) > 0
+          AND sell.link_order_id IS NOT NULL
+          AND COALESCE(sell.source_type, 'MANUAL') != 'CORPORATE_ACTION'
+          AND COALESCE(sell.order_type, '') != 'SPLIT_ADJUST'
+        ORDER BY sell.trade_time ASC, sell.order_id ASC
         """
         params: list[object] = [account_id]
         if start_date:
-            sql = sql.replace("ORDER BY", "AND substr(trade_time, 1, 10) >= ?\n        ORDER BY")
+            sql = sql.replace("ORDER BY", "AND substr(sell.trade_time, 1, 10) >= ?\n        ORDER BY")
             params.append(start_date)
         if conn is not None:
             cursor = conn.cursor()
