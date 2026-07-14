@@ -11,7 +11,7 @@ async function loadPositions(loadContext = null, append = false) {
         resetPaginationState('positions');
         state.currentPositionCodes = [];
         setPositionsRefreshButtonState({ disabled: true, loading: false });
-        renderTableStatusRow(tbody, 13, '加载中...');
+        renderTableSkeletonRows(tbody, 13);
     } else {
         setPaginationLoading('positions', true);
     }
@@ -42,15 +42,15 @@ async function loadPositions(loadContext = null, append = false) {
         <tr data-code="${escapeHtmlAttr(p.asset_code)}" data-asset-type="${escapeHtmlAttr(p.asset_type || '')}" data-vol="${escapeHtmlAttr(p.total_volume)}" data-cost="${escapeHtmlAttr(p.cost_amount || 0)}" data-realized="${escapeHtmlAttr(p.realized_pnl || 0)}">
             <td class="stock-code">${escapeHtml(p.asset_code)}</td>
             <td class="stock-name center">${escapeHtml(p.asset_name)}</td>
-            <td class="price number center" style="font-weight:bold;">${formatNumber(p.current_price, 3)}</td>
-            <td class="change number center">--</td>
-            <td class="market-value number center">${formatCurrency(p.market_value)}</td>
-            <td class="holding-quantity number center">${formatNumber(p.total_volume, 0)}</td>
-            <td class="holding-pnl number center">${formatCurrency(p.holding_pnl)}</td>
-            <td class="holding-pnl-rate number center">${formatPercent(p.holding_pnl_rate)}</td>
-            <td class="history-total-pnl number center">${formatCurrency(p.history_total_pnl)}</td>
-            <td class="volume number center">--</td>
-            <td class="amount number center">--</td>
+            <td class="price number" style="font-weight:bold;">${formatNumber(p.current_price, 3)}</td>
+            <td class="change number">--</td>
+            <td class="market-value number">${formatCurrency(p.market_value)}</td>
+            <td class="holding-quantity number">${formatNumber(p.total_volume, 0)}</td>
+            <td class="holding-pnl number">${formatCurrency(p.holding_pnl)}</td>
+            <td class="holding-pnl-rate number">${formatPercent(p.holding_pnl_rate)}</td>
+            <td class="history-total-pnl number">${formatCurrency(p.history_total_pnl)}</td>
+            <td class="volume number">--</td>
+            <td class="amount number">--</td>
             <td class="quote-date center">${formatTimestampCell(p.updated_at)}</td>
             <td class="center row-action-cell">
                 <button

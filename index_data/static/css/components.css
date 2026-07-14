@@ -17,7 +17,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    margin-left: -12px; /* 借助内衬12px与左�?2px，强制文本起点归0对齐下方对象 */
+    margin-left: -12px; /* 借助内衬12px与左移12px，强制文本起点归0对齐下方对象 */
     border: 0;
     background: transparent;
     color: var(--text-primary);
@@ -52,7 +52,7 @@
     left: 0;
     min-width: 260px;
     padding: 6px;
-    border: 1px solid #E0E3EB;
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     background: #FFFFFF;
     box-shadow: var(--shadow-modal);
@@ -140,7 +140,7 @@
 
 .btn-split-main,
 .btn-split-arrow {
-    background: #0F0F0F; /* TradingView dark button */
+    background: var(--ink); /* TradingView dark button */
     color: #FFFFFF;
     border: none;
     cursor: pointer;
@@ -165,7 +165,7 @@
 
 .btn-split-main:hover,
 .btn-split-arrow:hover {
-    background: #2A2E39;
+    background: var(--ink-hover);
 }
 
 .transaction-dropdown-menu {
@@ -174,7 +174,7 @@
     right: 0;
     min-width: 180px;
     padding: 8px 6px;
-    border: 1px solid #E0E3EB;
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     background: #FFFFFF;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -207,7 +207,7 @@
 }
 
 .dropdown-item:hover .item-icon {
-    color: #2962FF;
+    color: var(--primary);
 }
 
 .dropdown-item:hover {
@@ -235,7 +235,7 @@
     left: 0;
     width: 100%;
     height: 4px; /* Matches slider height perfectly */
-    background-color: #F2F2F2; /* TV exact track color */
+    background-color: var(--surface-muted); /* TV exact track color */
     z-index: 0; /* Let slider sit above */
 }
 
@@ -246,6 +246,11 @@
 }
 
 .main-tab-item {
+    /* 语义化为 button 后重置默认外观，保持原 div 视觉 */
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    line-height: inherit;
     padding: 16px 0;
     color: var(--tv-text-muted);
     /* TV Inactive grey */
@@ -261,107 +266,90 @@
 }
 
 .main-tab-item:hover {
-    color: #0F0F0F;
+    color: var(--ink);
     /* TV Hover Black */
 }
 
 .main-tab-item.active {
-    color: #0F0F0F;
+    color: var(--ink);
     /* TV Black */
 }
 
-/* Custom slider using ::after */
-.main-tab-item.active::after {
-    content: '';
+/* 主 Tab 滑动指示条：由 JS 按 active 项的 offsetLeft/offsetWidth 定位 */
+.main-tab-slider {
     position: absolute;
     bottom: 0; /* Sit exactly on the same baseline as the track */
     left: 0;
-    width: 100%;
+    width: 0;
     height: 4px; /* Exact match with the background track height */
-    background-color: #0F0F0F;
-    /* TV Black */
+    background-color: var(--ink);
     border-radius: 2px 2px 0 0;
-    /* TV exactly uses 2px radius */
     z-index: 10;
+    transition: transform 0.25s ease, width 0.25s ease;
+    will-change: transform;
+}
+
+.main-tab-slider.no-transition {
+    transition: none;
 }
 
 /* ==================== 二级Tab (TradingView Round Pill Style) ==================== */
 .sub-tabs {
     height: 28px;
     border-radius: 0;
-    background: transparent !important;
+    background: transparent;
     padding: 0;
-    display: flex !important;
+    display: flex;
     align-items: center;
     position: relative;
-    border: none !important;
+    border: none;
     user-select: none;
     margin-top: 20px;
     margin-bottom: 24px;
-    gap: 4px !important; /* 100% 物理间距 */
+    gap: 4px; /* 100% 物理间距 */
     width: auto;
 }
 
 .sub-tab-item {
-    height: 28px !important;
-    padding: 0 11px !important; /* 100% 物理内边距 */
-    font-size: 14px !important; /* 100% 物理字号 */
-    font-weight: 400 !important; /* 100% 物理字重，极致纤细 */
-    font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif !important;
-    color: #0f0f0f !important; /* 100% 物理文字色 */
-    background-color: #f2f2f2 !important; /* 100% 物理背景色 */
-    border: 0.8px solid #f2f2f2 !important; /* 100% 物理同色微型抗锯齿边框 */
-    border-radius: 14px !important; /* 100% 完美椭圆药丸 */
+    height: 28px;
+    padding: 0 11px; /* 100% 物理内边距 */
+    font-size: 14px; /* 100% 物理字号 */
+    font-weight: 400; /* 100% 物理字重，极致纤细 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Trebuchet MS", Roboto, sans-serif;
+    color: var(--ink); /* 100% 物理文字色 */
+    background-color: var(--surface-muted); /* 100% 物理背景色 */
+    border: 0.8px solid var(--surface-muted); /* 100% 物理同色微型抗锯齿边框 */
+    border-radius: 14px; /* 100% 完美椭圆药丸 */
     cursor: pointer;
     position: relative;
     z-index: 2;
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 150ms cubic-bezier(0.25, 1, 0.5, 1), 
+    transition: background-color 150ms cubic-bezier(0.25, 1, 0.5, 1),
                 border-color 150ms cubic-bezier(0.25, 1, 0.5, 1),
                 color 150ms cubic-bezier(0.25, 1, 0.5, 1);
     outline: none;
     white-space: nowrap;
     margin-bottom: 0;
-    box-shadow: none !important;
+    box-shadow: none;
 }
 
 .sub-tab-item:hover {
-    background-color: #e5e5e5 !important;
-    border-color: #e5e5e5 !important;
-    color: #0f0f0f !important;
+    background-color: var(--surface-muted-hover);
+    border-color: var(--surface-muted-hover);
+    color: var(--ink);
 }
 
 .sub-tab-item.active {
-    background-color: #2e2e2e !important;
-    border-color: #2e2e2e !important;
-    color: #ffffff !important;
-    font-weight: 400 !important;
+    background-color: var(--ink-soft);
+    border-color: var(--ink-soft);
+    color: #ffffff;
 }
 
-[data-theme="dark"] .sub-tab-item {
-    background-color: #2a2e39 !important;
-    border-color: #2a2e39 !important;
-    color: #d1d4dc !important;
-}
-
-[data-theme="dark"] .sub-tab-item:hover {
-    background-color: #363a45 !important;
-    border-color: #363a45 !important;
-    color: #ffffff !important;
-}
-
-[data-theme="dark"] .sub-tab-item.active {
-    background-color: #f0f3fa !important;
-    border-color: #f0f3fa !important;
-    color: #131722 !important;
-    font-weight: 400 !important;
-}
-
-/* 特异性重塑：二级Tab底部的活动滑块 - 物理隐藏以实现视觉药丸分离与零逻辑侵入 */
+/* JS 会向 .sub-tabs 注入 .gs-capsule-slider 滑块元素，药丸样式下不展示，需保持隐藏 */
 .sub-tabs .gs-capsule-slider {
-    display: none !important;
+    display: none;
 }
 
 /* 键盘焦点样式 */
@@ -410,7 +398,7 @@
     transition: background-color 0.15s ease;
 }
 .data-table tbody tr:hover {
-    background-color: #f8f9fa; /* 仅作为悬停标�?*/
+    background-color: #f8f9fa; /* 仅作为悬停标识 */
 }
 .data-table tbody tr.active-row {
     position: relative;
@@ -420,7 +408,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    border: 1.6px solid #2e2e2e;
+    border: 1.6px solid var(--ink-soft);
     border-radius: 10px;
     pointer-events: none;
     z-index: 2;
@@ -480,6 +468,35 @@
     text-align: left;
 }
 
+/* 表格首屏加载骨架屏 */
+.skeleton-row td {
+    padding: 14px 8px;
+}
+
+.skeleton-bar {
+    display: inline-block;
+    width: 70%;
+    max-width: 96px;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-subtle) 25%, var(--surface-muted-hover) 50%, var(--surface-subtle) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+/* 数字列右对齐：td.number 与其表头 th.num-col 同侧 */
+#view-positions .data-table th.num-col,
+#view-positions .data-table td.number,
+#view-transactions .data-table th.num-col,
+#view-transactions .data-table td.number {
+    text-align: right;
+}
+
 #transactions-orders-panel .transaction-remark-cell {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -537,7 +554,7 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     background: var(--bg-card);
-    color: #111827;
+    color: var(--ink-deep);
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -547,7 +564,7 @@
 
 .list-pagination-button:hover {
     border-color: rgba(43, 122, 120, 0.38);
-    background: #F3F4F6;
+    background: var(--surface-subtle);
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
     transform: translateY(-1px);
 }
@@ -612,7 +629,7 @@
     text-align: center !important;
 }
 
-/* 代码和名�?*/
+/* 代码和名称 */
 .stock-code {
     font-family: 'SF Mono', 'Consolas', monospace;
     font-weight: 700;
@@ -647,6 +664,7 @@
     width: 14px;
     height: 14px;
     cursor: pointer;
+    color: var(--text-secondary);
     opacity: 0.6;
     transition: all 0.2s ease;
     margin-top: 1px;
@@ -654,7 +672,7 @@
 
 .edit-icon:hover {
     opacity: 1;
-    filter: brightness(0) saturate(100%) invert(34%) sepia(35%) saturate(735%) hue-rotate(130deg) brightness(96%) contrast(85%); /* Var primary roughly #2B7A78 */
+    color: var(--primary);
 }
 
 .edit-icon:active {
@@ -671,7 +689,7 @@
     height: 38px;
     border: 0;
     border-radius: var(--radius-sm);
-    background: #F3F4F6;
+    background: var(--surface-subtle);
     color: #3B3B3B;
     font-size: 22px;
     line-height: 1;
@@ -738,7 +756,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 13px;
-    font-weight: 500;   /* TV 对标�?00�?00 */
+    font-weight: 500;   /* TV 对标：400→500 */
     cursor: pointer;
     transition: all 0.2s ease;
     background: var(--bg-card);
@@ -839,15 +857,15 @@
     font-weight: 500;
     cursor: pointer;
     height: 38px;
-    background: #0F0F0F;
+    background: var(--ink);
     color: #FFFFFF;
-    border: 1px solid #0F0F0F;
+    border: 1px solid var(--ink);
     margin-bottom: 0;
 }
 
 .btn-add:hover {
-    background: #2A2A2A;
-    border-color: #2A2A2A;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
     color: #FFFFFF;
 }
 
@@ -872,12 +890,12 @@
 
 /* ==================== 弹窗系统 ==================== */
 
-/* 遮罩�?*/
+/* 遮罩层 */
 .modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);       /* v2.3: 更透气 */
-    backdrop-filter: blur(4px);             /* v2.3: 毛玻璃效�?*/
+    backdrop-filter: blur(4px);             /* v2.3: 毛玻璃效果 */
     -webkit-backdrop-filter: blur(4px);     /* Safari 兼容 */
     z-index: 1001;
     display: flex;
@@ -920,7 +938,7 @@
     width: 320px;
 }
 
-/* 小弹窗内表单强制单列，让输入框撑�?*/
+/* 小弹窗内表单强制单列，让输入框撑满 */
 .modal-box-xs .form-row {
     grid-template-columns: 1fr;
 }
@@ -1010,8 +1028,8 @@
 }
 
 .modal-btn-confirm:hover {
-    background: #2a2e39;
-    border-color: #2a2e39;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
 }
 
 .modal-btn-confirm:focus-visible,
@@ -1027,8 +1045,8 @@
 }
 
 .modal-btn-danger:hover {
-    background: #2a2e39;
-    border-color: #2a2e39;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
 }
 
 .modal-btn-danger:focus-visible {
@@ -1036,7 +1054,7 @@
     outline-offset: 2px;
 }
 
-/* 弹窗加载状�?*/
+/* 弹窗加载状态 */
 .modal-btn-confirm.is-loading,
 .modal-btn-danger.is-loading {
     opacity: 0.6;
@@ -1152,6 +1170,27 @@
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* 退场：先加 is-leaving 类播放滑出过渡，结束后再由 JS remove() */
+.toast.is-leaving {
+    animation: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    transform: translateX(24px);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toast-icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.toast-icon svg {
+    width: 15px;
+    height: 15px;
+    display: block;
 }
 
 .toast-success .toast-icon {

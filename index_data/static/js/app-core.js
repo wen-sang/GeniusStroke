@@ -225,6 +225,25 @@ async function loadMoreList(key) {
 
 window.loadMoreList = loadMoreList;
 
+// 滚动接近分页容器时自动加载下一页；按钮保留为降级入口（观察器不可用或 JS 异常时仍可点击）
+function initListPaginationAutoLoad() {
+    if (!('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const key = entry.target.getAttribute('data-list-pagination');
+            const pagination = listPaginationState[key];
+            const { button } = getPaginationElements(key);
+            if (!pagination || pagination.loading) return;
+            if (!button || button.classList.contains('hidden')) return;
+            loadMoreList(key);
+        });
+    }, { rootMargin: '200px 0px' });
+    document.querySelectorAll('[data-list-pagination]').forEach((el) => observer.observe(el));
+}
+
+document.addEventListener('DOMContentLoaded', initListPaginationAutoLoad);
+
 // ==================== API 交互 ====================
 
 function createRequestSignal(externalSignal, timeoutMs = API_TIMEOUT_MS) {
@@ -319,6 +338,13 @@ function renderTableStatusRow(tbody, colspan, message, { padded = false } = {}) 
         ? 'text-align:center; padding: 20px;'
         : 'text-align:center;';
     tbody.innerHTML = `<tr><td colspan="${colspan}" style="${style}">${message}</td></tr>`;
+}
+
+// 首屏加载骨架屏：生成 rows 行灰条占位（shimmer 动画见 components.css .skeleton-bar）
+function renderTableSkeletonRows(tbody, columns, rows = 6) {
+    if (!tbody) return;
+    const cells = Array.from({ length: columns }, () => '<td><span class="skeleton-bar"></span></td>').join('');
+    tbody.innerHTML = Array.from({ length: rows }, () => `<tr class="skeleton-row">${cells}</tr>`).join('');
 }
 
 function renderTableRows(tbody, rowsHtml, append = false) {

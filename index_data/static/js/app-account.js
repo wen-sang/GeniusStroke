@@ -354,26 +354,125 @@ async function confirmDeleteAccount() {
 
 // ==================== 页面逻辑: Tab 切换 ====================
 
+function updateMainTabSlider(skipTransition = false) {
+    const slider = document.querySelector('.main-tab-slider');
+    const active = document.querySelector('.main-tab-item.active');
+    if (!slider || !active) return;
+    if (skipTransition) slider.classList.add('no-transition');
+    slider.style.transform = `translateX(${active.offsetLeft}px)`;
+    slider.style.width = `${active.offsetWidth}px`;
+    if (skipTransition) {
+        void slider.offsetWidth; // 强制回流，确保无过渡定位立即生效
+        slider.classList.remove('no-transition');
+    }
+}
+
+// roving tabindex：active 项 tabindex=0 可聚焦，其余 -1
+function updateMainTabAria() {
+    document.querySelectorAll('.main-tab-item').forEach((tab) => {
+        const isActive = tab.classList.contains('active');
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.tabIndex = isActive ? 0 : -1;
+    });
+}
+
 function initTabs() {
     document.querySelectorAll('.main-tab-item').forEach(tab => {
         tab.addEventListener('click', function () {
             // Update Active State
             document.querySelectorAll('.main-tab-item').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
+            updateMainTabAria();
+            updateMainTabSlider();
 
             const tabName = this.dataset.tab;
             switchMainTab(tabName);
         });
     });
+
+    // 左右方向键 / Home / End 切换主 Tab
+    const nav = document.querySelector('.main-tab-nav');
+    if (nav) {
+        nav.addEventListener('keydown', (e) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+            const tabs = Array.from(nav.querySelectorAll('.main-tab-item'));
+            const current = tabs.indexOf(document.activeElement);
+            if (current === -1) return;
+            e.preventDefault();
+            let next = current;
+            if (e.key === 'ArrowLeft') next = (current - 1 + tabs.length) % tabs.length;
+            if (e.key === 'ArrowRight') next = (current + 1) % tabs.length;
+            if (e.key === 'Home') next = 0;
+            if (e.key === 'End') next = tabs.length - 1;
+            tabs[next].focus();
+            tabs[next].click();
+        });
+    }
+
+    // 初始化定位到默认 Tab（首帧无过渡），窗口变化时重算
+    updateMainTabAria();
+    updateMainTabSlider(true);
+    window.addEventListener('resize', () => updateMainTabSlider(true));
+
+    // 深链：按 URL hash 决定初始 Tab；支持浏览器前进/后退
+    applyTabFromHash();
+    window.addEventListener('hashchange', applyTabFromHash);
 }
 
 function switchMainTab(tabName) {
     state.currentTab = tabName;
 
+    syncTabHash();
     updateAccountPageState();
 
     if (state.isEmptyAccountState) return;
     loadCurrentTabData();
+}
+
+// ==================== Tab 状态与 URL hash 同步（深链） ====================
+
+const MAIN_TAB_NAMES = ['positions', 'transactions', 'analysis', 'performance'];
+const TRANSACTION_SUB_TAB_NAMES = ['trade_orders', 'corporate_actions'];
+
+function parseTabHash() {
+    const match = window.location.hash.match(/^#\/([a-z_]+)(?:\/([a-z_]+))?$/);
+    if (!match || !MAIN_TAB_NAMES.includes(match[1])) return { tab: 'positions', subTab: null };
+    const subTab = (match[1] === 'transactions' && TRANSACTION_SUB_TAB_NAMES.includes(match[2]))
+        ? match[2]
+        : null;
+    return { tab: match[1], subTab };
+}
+
+function syncTabHash() {
+    let hash = `#/${state.currentTab}`;
+    if (state.currentTab === 'transactions') hash += `/${state.transactionSubTab}`;
+    if (window.location.hash !== hash) {
+        history.replaceState(null, '', hash);
+    }
+}
+
+function applyTabFromHash() {
+    const { tab, subTab } = parseTabHash();
+    if (subTab) state.transactionSubTab = subTab;
+    const target = document.querySelector(`.main-tab-item[data-tab="${tab}"]`);
+    if (target && !target.classList.contains('active')) {
+        // click 会走 switchMainTab，按当前 state 加载正确面板数据
+        target.click();
+        if (subTab && typeof switchTransactionTab === 'function') {
+            switchTransactionTab(subTab, null, { reload: false });
+        }
+        return;
+    }
+    if (tab === 'transactions' && subTab && subTab !== getActiveTransactionSubTabName()
+        && typeof switchTransactionTab === 'function') {
+        switchTransactionTab(subTab);
+    }
+}
+
+function getActiveTransactionSubTabName() {
+    const active = document.querySelector('#view-transactions .sub-tab-item.active');
+    if (!active) return state.transactionSubTab;
+    return active.innerText === '企业事件' ? 'corporate_actions' : 'trade_orders';
 }
 
 // ==================== 页面逻辑: 账户概览 ====================

@@ -45,6 +45,12 @@
     flex-shrink: 0;
 }
 
+.sync-btn-icon svg {
+    width: 13px;
+    height: 13px;
+    display: block;
+}
+
 .sync-btn-label {
     font-variant-numeric: tabular-nums;
 }
@@ -285,8 +291,18 @@
 .sync-icon-success,
 .sync-icon-warning,
 .sync-icon-danger {
+    display: inline-flex;
+    align-items: center;
     font-size: 14px;
     flex-shrink: 0;
+}
+
+.sync-icon-success svg,
+.sync-icon-warning svg,
+.sync-icon-danger svg {
+    width: 14px;
+    height: 14px;
+    display: block;
 }
 
 .sync-icon-success {
@@ -451,7 +467,7 @@
 
 /* ==================== 核心指标卡片 ==================== */
 .metrics-section {
-    padding: 32px 0 32px;  /* v2.4: 增加上下留白，对�?TV */
+    padding: 32px 0 32px;  /* v2.4: 增加上下留白，对标 TV */
 }
 
 .external-update-date {
@@ -464,19 +480,19 @@
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 24px;  /* v2.4: 卡片间距 16�?4 */
+    gap: 24px;  /* v2.4: 卡片间距 16→24 */
 }
 
 .metric-card { position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     background: transparent;
     /* TradingView style is very clean, often no border or very subtle */
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);  /* v2.4: 8�?2px */
-    padding: 20px 24px;  /* v2.4: x轴拉开�?4px */
+    border-radius: var(--radius-md);  /* v2.4: 8→12px */
+    padding: 20px 24px;  /* v2.4: x轴拉开至24px */
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 116px;  /* v2.4: 降低卡片过长�?*/
+    min-height: 116px;  /* v2.4: 降低卡片过长感 */
 }
 
 .metric-card-wide {
@@ -485,26 +501,26 @@
 
 .metric-label {
     font-size: 14px;
-    /* v2.4 TV: 16�?4px 降级标题存在�?*/
+    /* v2.4 TV: 16→14px 降级标题存在感 */
     font-weight: 400;
-    /* v2.4 TV: 500�?00 */
+    /* v2.4 TV: 500→400 */
     color: var(--tv-text-strong);
-    /* v2.4 TV: #0F0F0F�?131722 */
+    /* v2.4 TV: #0F0F0F→#131722 */
     line-height: 20px;
-    /* v2.4 TV: 24�?0px */
+    /* v2.4 TV: 24→20px */
     margin-bottom: 8px;
-    /* v2.4 TV: 拉大和数值的间距 4�?px */
+    /* v2.4 TV: 拉大和数值的间距 4→8px */
 }
 
 .metric-value {
     font-size: 28px;
-    /* v2.4 TV: 24�?8px 放大核心数字�?*/
+    /* v2.4 TV: 24→28px 放大核心数字 */
     font-weight: 700;
-    /* v2.4 TV: 600�?00 加粗 */
+    /* v2.4 TV: 600→700 加粗 */
     color: var(--tv-text-strong);
-    /* v2.4 TV: #0F0F0F�?131722 */
+    /* v2.4 TV: #0F0F0F→#131722 */
     line-height: 36px;
-    /* v2.4 TV: 28�?6px */
+    /* v2.4 TV: 28→36px */
     margin-bottom: 0;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.5px;
@@ -519,13 +535,6 @@
     display: none;
     /* Hide USD as requested */
 }
-
-.metric-value.positive,
-.metric-value.negative {
-    color: var(--text-tv);
-}
-
-/* Override specific cards if needed in HTML logic, but base style is neutral */
 
 
 .metric-sub {
@@ -596,16 +605,23 @@
     background: var(--bg-card);
 }
 
+/* 伪元素扩大命中区至约 26px，视觉尺寸不变 */
+.tooltip-trigger::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+}
+
 .tooltip-bubble {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 8px);
     transform: translateX(-50%);
-    min-width: 220px;
-    max-width: 280px;
+    min-width: min(220px, calc(100vw - 32px));
+    max-width: min(280px, calc(100vw - 32px));
     padding: 8px 10px;
     border-radius: 8px;
-    background: #111827;
+    background: var(--ink-deep);
     color: #F9FAFB;
     font-size: 12px;
     line-height: 1.5;
@@ -618,7 +634,8 @@
 }
 
 .tooltip-trigger:hover .tooltip-bubble,
-.tooltip-trigger:focus-visible .tooltip-bubble {
+.tooltip-trigger:focus-visible .tooltip-bubble,
+.tooltip-trigger.is-open .tooltip-bubble {
     visibility: visible;
     opacity: 1;
 }
@@ -633,7 +650,7 @@
     font-weight: 500;
 }
 
-/* ==================== 总持有量大标�?==================== */
+/* ==================== 总持有量大标题 ==================== */
 .section-title {
     font-size: 32px;
     font-weight: 700;
@@ -869,13 +886,10 @@
     justify-content: flex-end;
 }
 
+/* 外观由 components.css 的 .sub-tabs 药丸体系接管，此处只保留布局 */
 .market-view-switcher {
     display: inline-flex;
     align-items: center;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--bg-page);
 }
 
 .mvs-btn {
@@ -906,7 +920,7 @@
 }
 
 .mvs-btn.active {
-    background: #0F0F0F;
+    background: var(--ink);
     color: #FFFFFF;
     font-weight: 600;
     cursor: default;
@@ -934,6 +948,16 @@
 #market-panel-fundamental .data-table th:first-child,
 #market-panel-fundamental .data-table td:first-child {
     text-align: left;
+}
+
+/* 数字列右对齐：td.number 与其表头 th.num-col 同侧 */
+#market-panel-market .data-table th.num-col,
+#market-panel-market .data-table td.number,
+#market-panel-technical .data-table th.num-col,
+#market-panel-technical .data-table td.number,
+#market-panel-fundamental .data-table th.num-col,
+#market-panel-fundamental .data-table td.number {
+    text-align: right;
 }
 
 .required-mark {
@@ -1436,7 +1460,7 @@
     color: #f23645;
 }
 
-/* 买入按钮 - 蓝色?*/
+/* 买入按钮 - 蓝色 */
 .tv-side-btn.buy {
     color: #2962ff;
 }
@@ -1487,8 +1511,8 @@
 }
 
 .trade-btn-save:hover {
-    background: #2a2e39;
-    border-color: #2a2e39;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
 }
 
 .trade-btn-save:disabled {
@@ -1631,7 +1655,7 @@
     color: #f23645;
 }
 
-/* 买入按钮 - 蓝色?*/
+/* 买入按钮 - 蓝色 */
 .tv-side-btn.buy {
     color: #2962ff;
 }
@@ -1682,8 +1706,8 @@
 }
 
 .trade-btn-save:hover {
-    background: #2a2e39;
-    border-color: #2a2e39;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
 }
 
 .trade-btn-save:disabled {
@@ -1788,12 +1812,6 @@
     z-index: 10;
 }
 
-/* 适配暗黑模式 */
-[data-theme="dark"] .market-panoramic-control-bar {
-    background: transparent !important;
-    border: none !important;
-}
-
 .flex-spacer {
     flex: 1;
 }
@@ -1815,10 +1833,10 @@
     border-radius: 14px !important;
     padding: 0 11px !important;
     background: transparent !important;
-    border: 0.8px solid #f2f2f2 !important;
+    border: 0.8px solid var(--surface-muted) !important;
     font-size: 14px !important;
     font-weight: 400 !important;
-    color: #0f0f0f !important;
+    color: var(--ink) !important;
     display: inline-flex !important;
     align-items: center;
     gap: 6px !important;
@@ -1833,21 +1851,9 @@
 }
 
 .market-manage-link:hover {
-    background: #e5e5e5 !important;
-    border-color: #e5e5e5 !important;
-    color: #0f0f0f !important;
-}
-
-[data-theme="dark"] .market-manage-link {
-    background: transparent !important;
-    border-color: #2a2e39 !important;
-    color: #d1d4dc !important;
-}
-
-[data-theme="dark"] .market-manage-link:hover {
-    background: #363a45 !important;
-    border-color: #363a45 !important;
-    color: #ffffff !important;
+    background: var(--surface-muted-hover) !important;
+    border-color: var(--surface-muted-hover) !important;
+    color: var(--ink) !important;
 }
 
 .market-manage-link:hover .gear-icon {

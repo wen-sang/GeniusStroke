@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeniusStroke - 投资组合</title>
     <!-- 引入提取的 CSS -->
-    <link rel="stylesheet" href="/static/css/base.css?v=20260611-market-gap-fill-v12">
-    <link rel="stylesheet" href="/static/css/layout.css?v=20260611-market-gap-fill-v12">
-    <link rel="stylesheet" href="/static/css/components.css?v=20260611-market-gap-fill-v12">
-    <link rel="stylesheet" href="/static/css/pages.css?v=20260611-market-gap-fill-v12">
-    <link rel="stylesheet" href="/static/css/utilities.css?v=20260611-market-gap-fill-v12">
+    <link rel="stylesheet" href="/static/css/base.css?v=20260714-ui-opt-r1">
+    <link rel="stylesheet" href="/static/css/layout.css?v=20260714-ui-opt-r1">
+    <link rel="stylesheet" href="/static/css/components.css?v=20260714-ui-opt-r1">
+    <link rel="stylesheet" href="/static/css/pages.css?v=20260714-ui-opt-r1">
+    <link rel="stylesheet" href="/static/css/utilities.css?v=20260714-ui-opt-r1">
 </head>
 
 <body>
@@ -20,7 +20,7 @@
             <a href="#" class="logo">GeniusStroke</a>
             <div class="navbar-actions">
                 <button id="navSyncButton" class="sync-btn" type="button" aria-label="数据更新" aria-expanded="false" aria-controls="syncCard" hidden>
-                    <span class="sync-btn-icon" id="navSyncBtnIcon" aria-hidden="true">⟳</span>
+                    <span class="sync-btn-icon" id="navSyncBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span>
                     <span class="sync-btn-label" id="navSyncBtnLabel">数据更新</span>
                     <span class="sync-btn-bar" id="navSyncBtnBar" aria-hidden="true">
                         <span class="sync-btn-bar-fill" id="navSyncBtnBarFill"></span>
@@ -49,7 +49,7 @@
         <div class="sync-card-success" id="syncCardSuccess" hidden>
             <div class="sync-card-header">
                 <div class="sync-card-title-row">
-                    <span class="sync-icon-success" aria-hidden="true">✓</span>
+                    <span class="sync-icon-success" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                     <span class="sync-card-title">更新完成</span>
                 </div>
                 <span class="sync-card-elapsed" id="syncCardSuccessElapsed">--</span>
@@ -64,7 +64,7 @@
 
         <div class="sync-card-partial" id="syncCardPartial" hidden>
             <div class="sync-card-header-warning">
-                <span class="sync-icon-warning" aria-hidden="true">⚠</span>
+                <span class="sync-icon-warning" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                 <span class="sync-card-title" id="syncCardPartialTitle">标的未更新</span>
             </div>
             <div class="sync-card-divider"></div>
@@ -82,7 +82,7 @@
 
         <div class="sync-card-failed" id="syncCardFailed" hidden>
             <div class="sync-card-header-danger">
-                <span class="sync-icon-danger" aria-hidden="true">⊗</span>
+                <span class="sync-icon-danger" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
                 <span class="sync-card-title">更新失败</span>
             </div>
             <p class="sync-card-interrupt" id="syncCardInterrupt"></p>
@@ -161,7 +161,7 @@
                         <div class="metric-sub-row">证券市值 <span id="summary-market-value">--</span></div>
                         <div class="metric-sub-row metric-sub-row-inline">
                             <span>可用现金 <span id="summary-cash">--</span></span>
-                            <img src="/static/icon/edit.png" class="edit-icon hidden" id="edit-cash-btn" alt="编辑" title="手工校准可用现金" data-action="open-modal" data-modal="cashAdjustModal" />
+                            <svg class="edit-icon hidden" id="edit-cash-btn" role="button" tabindex="0" aria-label="手工校准可用现金" data-action="open-modal" data-modal="cashAdjustModal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>手工校准可用现金</title><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                         </div>
                     </div>
                 </div>
@@ -206,12 +206,13 @@
 
         <!-- 主Tab导航 -->
         <div class="main-tabs">
-            <div class="main-tab-nav">
-                <div class="main-tab-item active" data-tab="positions">持仓</div>
-                <div class="main-tab-item" data-tab="transactions">交易</div>
-                <div class="main-tab-item" data-tab="analysis">行情</div>
-                <div class="main-tab-item" data-tab="performance">绩效</div>
+            <div class="main-tab-nav" role="tablist" aria-label="主导航">
+                <button class="main-tab-item active" id="main-tab-positions" type="button" role="tab" aria-selected="true" aria-controls="view-positions" data-tab="positions">持仓</button>
+                <button class="main-tab-item" id="main-tab-transactions" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="view-transactions" data-tab="transactions">交易</button>
+                <button class="main-tab-item" id="main-tab-analysis" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="view-analysis" data-tab="analysis">行情</button>
+                <button class="main-tab-item" id="main-tab-performance" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="view-performance" data-tab="performance">绩效</button>
             </div>
+            <span class="main-tab-slider" aria-hidden="true"></span>
         </div>
 
         <div id="accountEmptyState" class="empty-account-state hidden">
@@ -225,7 +226,7 @@
             <!-- App Views -->
             <section class="app-views" aria-label="主内容视图">
                 <!-- 1. 持仓管理 View -->
-                <div id="view-positions">
+                <div id="view-positions" role="tabpanel" aria-labelledby="main-tab-positions">
             <div class="section-header">
                 <h1 class="section-title">
                     <span class="section-title-main">
@@ -265,15 +266,15 @@
                     <tr>
                         <th>代码</th>
                         <th>名称</th>
-                        <th>最新价</th>
-                        <th>涨跌幅</th>
-                        <th>持仓市值</th>
-                        <th>持仓数量</th>
-                        <th>持仓收益</th>
-                        <th>持仓收益率</th>
-                        <th>历史累计收益</th>
-                        <th>成交量</th>
-                        <th>成交额</th>
+                        <th class="num-col">最新价</th>
+                        <th class="num-col">涨跌幅</th>
+                        <th class="num-col">持仓市值</th>
+                        <th class="num-col">持仓数量</th>
+                        <th class="num-col">持仓收益</th>
+                        <th class="num-col">持仓收益率</th>
+                        <th class="num-col">历史累计收益</th>
+                        <th class="num-col">成交量</th>
+                        <th class="num-col">成交额</th>
                         <th>更新日期</th>
                         <th>操作</th>
                     </tr>
@@ -285,17 +286,17 @@
             </div>
             <div class="list-pagination" data-list-pagination="positions">
                 <div class="list-pagination-loading hidden"></div>
-                <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="positions">了解更多</button>
-                <div class="list-pagination-end hidden">已经到底线了</div>
+                <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="positions">加载更多</button>
+                <div class="list-pagination-end hidden">已加载全部</div>
             </div>
                 </div>
 
                 <!-- 2. 交易记录 View -->
-                <div id="view-transactions" class="hidden">
+                <div id="view-transactions" class="hidden" role="tabpanel" aria-labelledby="main-tab-transactions">
             <h1 class="section-title">交易管理</h1>
-            <div class="sub-tabs">
-                <div class="sub-tab-item active" data-action="switch-tab" data-group="transaction" data-tab="trade_orders">交易记录</div>
-                <div class="sub-tab-item" data-action="switch-tab" data-group="transaction" data-tab="corporate_actions">企业事件</div>
+            <div class="sub-tabs" role="tablist" aria-label="交易管理子导航">
+                <button class="sub-tab-item active" type="button" role="tab" aria-selected="true" aria-controls="transactions-orders-panel" data-action="switch-tab" data-group="transaction" data-tab="trade_orders">交易记录</button>
+                <button class="sub-tab-item" type="button" role="tab" aria-selected="false" aria-controls="transactions-corporate-actions-panel" data-action="switch-tab" data-group="transaction" data-tab="corporate_actions">企业事件</button>
             </div>
             <div id="transactions-orders-panel">
                 <table class="data-table fixed-layout">
@@ -320,12 +321,12 @@
                             <th>代码</th>
                             <th>名称</th>
                             <th>类型</th>
-                            <th>价格</th>
-                            <th>数量</th>
-                            <th>成交额</th>
-                            <th>过户费</th>
-                            <th>收益金额</th>
-                            <th>收益率</th>
+                            <th class="num-col">价格</th>
+                            <th class="num-col">数量</th>
+                            <th class="num-col">成交额</th>
+                            <th class="num-col">过户费</th>
+                            <th class="num-col">收益金额</th>
+                            <th class="num-col">收益率</th>
                             <th>状态</th>
                             <th>备注</th>
                             <th>操作</th>
@@ -337,8 +338,8 @@
                 </table>
                 <div class="list-pagination" data-list-pagination="transaction_orders">
                     <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_orders">了解更多</button>
-                    <div class="list-pagination-end hidden">已经到底线了</div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_orders">加载更多</button>
+                    <div class="list-pagination-end hidden">已加载全部</div>
                 </div>
             </div>
             <div id="transactions-corporate-actions-panel" class="hidden">
@@ -373,14 +374,14 @@
                 </table>
                 <div class="list-pagination" data-list-pagination="transaction_actions">
                     <div class="list-pagination-loading hidden"></div>
-                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_actions">了解更多</button>
-                    <div class="list-pagination-end hidden">已经到底线了</div>
+                    <button class="list-pagination-button hidden" type="button" data-action="load-more" data-target="transaction_actions">加载更多</button>
+                    <div class="list-pagination-end hidden">已加载全部</div>
                 </div>
             </div>
                 </div>
 
                 <!-- 3. 行情 View -->
-                <div id="view-analysis" class="hidden">
+                <div id="view-analysis" class="hidden" role="tabpanel" aria-labelledby="main-tab-analysis">
             <div class="section-header">
                 <h1 class="section-title">
                     <span class="section-title-main">
@@ -391,9 +392,9 @@
             </div>
             <div class="market-panoramic-control-bar">
                 <!-- 左轨胶囊：标的品种/指数切换 -->
-                <div class="sub-tabs market-brand-switcher" id="marketBrandTabs">
-                    <button class="sub-tab-item gs-capsule-item active" data-action="switch-market-brand" data-brand="trading" type="button">交易品种</button>
-                    <button class="sub-tab-item gs-capsule-item" data-action="switch-market-brand" data-brand="index" type="button">指数</button>
+                <div class="sub-tabs market-brand-switcher" id="marketBrandTabs" role="tablist" aria-label="标的品种切换">
+                    <button class="sub-tab-item gs-capsule-item active" role="tab" aria-selected="true" data-action="switch-market-brand" data-brand="trading" type="button">交易品种</button>
+                    <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-action="switch-market-brand" data-brand="index" type="button">指数</button>
                 </div>
                 
                 <!-- 弹性占位，将右侧推过去 -->
@@ -401,10 +402,10 @@
 
                 <!-- 右侧组合：指标视图切换 + 管理档案齿轮按钮 -->
                 <div class="market-control-right-group">
-                    <div class="sub-tabs market-view-switcher" id="marketViewSwitcher">
-                        <button class="sub-tab-item gs-capsule-item active" data-view="market" type="button">行情</button>
-                        <button class="sub-tab-item gs-capsule-item" data-view="technical" type="button">技术</button>
-                        <button class="sub-tab-item gs-capsule-item hidden" data-view="fundamental" id="mvsButtonFundamental" type="button">基本面</button>
+                    <div class="sub-tabs market-view-switcher" id="marketViewSwitcher" role="tablist" aria-label="指标视图切换">
+                        <button class="sub-tab-item gs-capsule-item active" role="tab" aria-selected="true" data-view="market" type="button">行情</button>
+                        <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-view="technical" type="button">技术</button>
+                        <button class="sub-tab-item gs-capsule-item hidden" role="tab" aria-selected="false" data-view="fundamental" id="mvsButtonFundamental" type="button">基本面</button>
                     </div>
                     
                     <!-- 齿轮图标现代管理按钮 -->
@@ -439,29 +440,29 @@
                                 <th>交易日期</th>
                                 <th>代码</th>
                                 <th>名称</th>
-                                <th>收盘价</th>
-                                <th>
+                                <th class="num-col">收盘价</th>
+                                <th class="num-col">
                                     <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_22d">
                                         <span>近22日涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
                                     </button>
                                 </th>
-                                <th>
+                                <th class="num-col">
                                     <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_60d">
                                         <span>近60日涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
                                     </button>
                                 </th>
-                                <th>
+                                <th class="num-col">
                                     <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_6m">
                                         <span>近6个月涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
                                     </button>
                                 </th>
-                                <th>
+                                <th class="num-col">
                                     <button class="table-sort-button" type="button" data-action="sort-market" data-sort-by="return_1y">
                                         <span>近一年涨幅</span><span class="sort-arrows" aria-hidden="true"></span>
                                     </button>
                                 </th>
-                                <th>成交量</th>
-                                <th>成交额</th>
+                                <th class="num-col">成交量</th>
+                                <th class="num-col">成交额</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -496,17 +497,17 @@
                                 <th>交易日期</th>
                                 <th>代码</th>
                                 <th>名称</th>
-                                <th>收盘价</th>
-                                <th>MA5</th>
-                                <th>MA10</th>
-                                <th>MA20</th>
-                                <th>RSI6</th>
-                                <th>RSI14</th>
-                                <th>DIF</th>
-                                <th>DEA</th>
-                                <th>MACD</th>
-                                <th>ATR14</th>
-                                <th>2.5倍ATR点位</th>
+                                <th class="num-col">收盘价</th>
+                                <th class="num-col">MA5</th>
+                                <th class="num-col">MA10</th>
+                                <th class="num-col">MA20</th>
+                                <th class="num-col">RSI6</th>
+                                <th class="num-col">RSI14</th>
+                                <th class="num-col">DIF</th>
+                                <th class="num-col">DEA</th>
+                                <th class="num-col">MACD</th>
+                                <th class="num-col">ATR14</th>
+                                <th class="num-col">2.5倍ATR点位</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -536,12 +537,12 @@
                                 <th>交易日期</th>
                                 <th>代码</th>
                                 <th>名称</th>
-                                <th>PE-TTM</th>
-                                <th>PB</th>
-                                <th>PE 5年分位</th>
-                                <th>PE低估(20%)</th>
-                                <th>PE中位(50%)</th>
-                                <th>PE高估(80%)</th>
+                                <th class="num-col">PE-TTM</th>
+                                <th class="num-col">PB</th>
+                                <th class="num-col">PE 5年分位</th>
+                                <th class="num-col">PE低估(20%)</th>
+                                <th class="num-col">PE中位(50%)</th>
+                                <th class="num-col">PE高估(80%)</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -556,7 +557,7 @@
                 </div>
 
                 <!-- 4. 绩效 View -->
-                <div id="view-performance" class="hidden">
+                <div id="view-performance" class="hidden" role="tabpanel" aria-labelledby="main-tab-performance">
                     <div class="section-header performance-header">
                         <h1 class="section-title">
                             <span class="section-title-main">
@@ -1445,18 +1446,18 @@
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Scripts -->
-    <script src="/static/js/utils.js?v=20260328-corpaction"></script>
-    <script src="/static/js/quote-service.js?v=20260328-corpaction"></script>
-    <script src="/static/js/app-core.js?v=20260516-tickflow-v2"></script>
-    <script src="/static/js/app-ui.js?v=20260422-f05-app-split-r1"></script>
-    <script src="/static/js/app-account.js?v=20260422-f05-app-split-r1"></script>
-    <script src="/static/js/app-portfolio.js?v=20260422-f05-app-split-r1"></script>
-    <script src="/static/js/app-transactions.js?v=20260611-account-cashflow-fix-r1"></script>
-    <script src="/static/js/app-asset-catalog.js?v=20260515-asset-catalog-v1"></script>
-    <script src="/static/js/app-analysis-assets.js?v=20260516-tickflow-v2"></script>
-    <script src="/static/js/app-performance.js?v=20260602-performance-v1"></script>
-    <script src="/static/js/app-data-sync.js?v=20260611-market-gap-fill-v12"></script>
-    <script src="/static/js/app.js?v=20260422-f05-app-split-r1"></script>
+    <script src="/static/js/utils.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/quote-service.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-core.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-ui.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-account.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-portfolio.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-transactions.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-asset-catalog.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-analysis-assets.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-performance.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app-data-sync.js?v=20260714-ui-opt-r1"></script>
+    <script src="/static/js/app.js?v=20260714-ui-opt-r1"></script>
 </body>
 
 </html>

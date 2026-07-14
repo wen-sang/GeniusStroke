@@ -139,7 +139,9 @@ function switchMarketBrand(brand) {
     marketState.currentBrand = brand;
 
     document.querySelectorAll('#marketBrandTabs [data-brand]').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.brand === brand);
+        const isTarget = tab.dataset.brand === brand;
+        tab.classList.toggle('active', isTarget);
+        tab.setAttribute('aria-selected', isTarget ? 'true' : 'false');
     });
     
     // 同步左轨胶囊滑块
@@ -180,7 +182,9 @@ function switchMarketView(view, loadContext = null, append = false) {
     marketState.currentView = view;
 
     document.querySelectorAll('#marketViewSwitcher .gs-capsule-item').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === view);
+        const isTarget = btn.dataset.view === view;
+        btn.classList.toggle('active', isTarget);
+        btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
     });
     
     // 同步右轨胶囊滑块
@@ -221,11 +225,11 @@ async function loadMarketRows(loadContext = null, append = false) {
     updateMarketSortHeaders();
     if (!append) {
         resetPaginationState(key);
-        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]') && !tbody.querySelector('.skeleton-row');
         if (hasDataRows) {
             document.getElementById('market-table-market')?.classList.add('table-fade-loading');
         } else {
-            renderTableStatusRow(tbody, 10, '数据加载中...');
+            renderTableSkeletonRows(tbody, 10);
         }
     } else {
         setPaginationLoading(key, true);
@@ -261,13 +265,13 @@ async function loadMarketRows(loadContext = null, append = false) {
             <td>${escapeHtml(item.trade_date)}</td>
             <td class="stock-code center">${escapeHtml(item.code)}</td>
             <td class="stock-name center">${escapeHtml(item.name)}</td>
-            <td class="number center">${formatNumber(item.close)}</td>
-            <td class="number center ${getColorClass(item.return_22d)}">${formatPercent(item.return_22d)}</td>
-            <td class="number center ${getColorClass(item.return_60d)}">${formatPercent(item.return_60d)}</td>
-            <td class="number center ${getColorClass(item.return_6m)}">${formatPercent(item.return_6m)}</td>
-            <td class="number center ${getColorClass(item.return_1y)}">${formatPercent(item.return_1y)}</td>
-            <td class="number center">${formatVolume(item.volume)}</td>
-            <td class="number center">${formatAmount(item.amount)}</td>
+            <td class="number">${formatNumber(item.close)}</td>
+            <td class="number ${getColorClass(item.return_22d)}">${formatPercent(item.return_22d)}</td>
+            <td class="number ${getColorClass(item.return_60d)}">${formatPercent(item.return_60d)}</td>
+            <td class="number ${getColorClass(item.return_6m)}">${formatPercent(item.return_6m)}</td>
+            <td class="number ${getColorClass(item.return_1y)}">${formatPercent(item.return_1y)}</td>
+            <td class="number">${formatVolume(item.volume)}</td>
+            <td class="number">${formatAmount(item.amount)}</td>
         </tr>
     `).join('');
     renderTableRows(tbody, rowsHtml, append);
@@ -305,11 +309,11 @@ async function loadTechnicalRows(loadContext = null, append = false) {
     const page = append ? (listPaginationState[key].page + 1) : 1;
     if (!append) {
         resetPaginationState(key);
-        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]') && !tbody.querySelector('.skeleton-row');
         if (hasDataRows) {
             document.getElementById('market-table-technical')?.classList.add('table-fade-loading');
         } else {
-            renderTableStatusRow(tbody, 14, '数据加载中...');
+            renderTableSkeletonRows(tbody, 14);
         }
     } else {
         setPaginationLoading(key, true);
@@ -338,17 +342,17 @@ async function loadTechnicalRows(loadContext = null, append = false) {
             <td>${escapeHtml(item.trade_date)}</td>
             <td class="stock-code center">${escapeHtml(item.code)}</td>
             <td class="stock-name center">${escapeHtml(item.name)}</td>
-            <td class="number center">${formatNumber(item.close)}</td>
-            <td class="number center">${formatNumber(item.ma5)}</td>
-            <td class="number center">${formatNumber(item.ma10)}</td>
-            <td class="number center">${formatNumber(item.ma20)}</td>
-            <td class="number center">${formatNumber(item.rsi_6)}</td>
-            <td class="number center">${formatNumber(item.rsi_14)}</td>
-            <td class="number center">${formatNumber(item.dif)}</td>
-            <td class="number center">${formatNumber(item.dea)}</td>
-            <td class="number center ${getColorClass(item.macd)}">${formatNumber(item.macd)}</td>
-            <td class="number center">${formatNumber(item.atr14)}</td>
-            <td class="number center">${formatNumber(item.atr_stop_loss)}</td>
+            <td class="number">${formatNumber(item.close)}</td>
+            <td class="number">${formatNumber(item.ma5)}</td>
+            <td class="number">${formatNumber(item.ma10)}</td>
+            <td class="number">${formatNumber(item.ma20)}</td>
+            <td class="number">${formatNumber(item.rsi_6)}</td>
+            <td class="number">${formatNumber(item.rsi_14)}</td>
+            <td class="number">${formatNumber(item.dif)}</td>
+            <td class="number">${formatNumber(item.dea)}</td>
+            <td class="number ${getColorClass(item.macd)}">${formatNumber(item.macd)}</td>
+            <td class="number">${formatNumber(item.atr14)}</td>
+            <td class="number">${formatNumber(item.atr_stop_loss)}</td>
         </tr>
     `).join('');
     renderTableRows(tbody, rowsHtml, append);
@@ -363,11 +367,11 @@ async function loadFundamentalRows(loadContext = null, append = false) {
     const page = append ? (listPaginationState[key].page + 1) : 1;
     if (!append) {
         resetPaginationState(key);
-        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]');
+        const hasDataRows = tbody.children.length > 0 && !tbody.querySelector('td[colspan]') && !tbody.querySelector('.skeleton-row');
         if (hasDataRows) {
             document.getElementById('market-table-fundamental')?.classList.add('table-fade-loading');
         } else {
-            renderTableStatusRow(tbody, 9, '数据加载中...');
+            renderTableSkeletonRows(tbody, 9);
         }
     } else {
         setPaginationLoading(key, true);
@@ -409,12 +413,12 @@ async function loadFundamentalRows(loadContext = null, append = false) {
             <td>${escapeHtml(item.trade_date)}</td>
             <td class="stock-code center">${escapeHtml(item.code)}</td>
             <td class="stock-name center">${escapeHtml(item.name)}</td>
-            <td class="number center ${peClass}">${formatNumber(item.pe_ttm)}</td>
-            <td class="number center">${formatNumber(item.pb)}</td>
-            <td class="number center ${posClass}">${formatPercent(item.pe_pos_5y)}</td>
-            <td class="number center">${formatNumber(item.pe_low_20)}</td>
-            <td class="number center">${formatNumber(item.pe_mid_50)}</td>
-            <td class="number center">${formatNumber(item.pe_high_80)}</td>
+            <td class="number ${peClass}">${formatNumber(item.pe_ttm)}</td>
+            <td class="number">${formatNumber(item.pb)}</td>
+            <td class="number ${posClass}">${formatPercent(item.pe_pos_5y)}</td>
+            <td class="number">${formatNumber(item.pe_low_20)}</td>
+            <td class="number">${formatNumber(item.pe_mid_50)}</td>
+            <td class="number">${formatNumber(item.pe_high_80)}</td>
         </tr>
     `}).join('');
     renderTableRows(tbody, rowsHtml, append);

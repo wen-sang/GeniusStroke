@@ -1250,15 +1250,18 @@ function loadTransactions(loadContext = null) {
     return loadTradeOrders(loadContext, false);
 }
 
-function switchTransactionTab(tabName, loadContext = null) {
+function switchTransactionTab(tabName, loadContext = null, { reload = true } = {}) {
     state.transactionSubTab = tabName;
+    if (typeof syncTabHash === 'function') syncTabHash();
     document.querySelectorAll('#view-transactions .sub-tab-item').forEach((tab) => {
         const isTarget = (tab.innerText === '交易记录' && tabName === 'trade_orders')
             || (tab.innerText === '企业事件' && tabName === 'corporate_actions');
         tab.classList.toggle('active', isTarget);
+        if (tab.hasAttribute('role')) tab.setAttribute('aria-selected', isTarget ? 'true' : 'false');
     });
     document.getElementById('transactions-orders-panel')?.classList.toggle('hidden', tabName !== 'trade_orders');
     document.getElementById('transactions-corporate-actions-panel')?.classList.toggle('hidden', tabName !== 'corporate_actions');
+    if (!reload) return;
     if (!state.currentAccount) return;
     if (tabName === 'corporate_actions') {
         loadCorporateActionRows(loadContext, false);
@@ -1279,7 +1282,7 @@ async function loadTradeOrders(loadContext = null, append = false) {
     if (!append) {
         resetPaginationState('transaction_orders');
         state.tradeOrders = [];
-        renderTableStatusRow(tbody, 13, '加载中...');
+        renderTableSkeletonRows(tbody, 13);
     } else {
         setPaginationLoading('transaction_orders', true);
     }
@@ -1334,7 +1337,7 @@ async function loadCorporateActionRows(loadContext = null, append = false) {
     if (!append) {
         resetPaginationState('transaction_actions');
         state.corporateActions = [];
-        renderTableStatusRow(tbody, 9, '加载中...');
+        renderTableSkeletonRows(tbody, 9);
     } else {
         setPaginationLoading('transaction_actions', true);
     }

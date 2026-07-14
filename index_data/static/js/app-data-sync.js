@@ -467,7 +467,7 @@ function renderDataSyncButton() {
 
     if (dataSyncState.statusKind === 'success') {
         button.classList.add('is-success');
-        icon.textContent = '✓';
+        icon.innerHTML = GS_ICONS.check;
         label.textContent = '更新完成';
         if (barFill) barFill.style.width = '0%';
         return;
@@ -475,7 +475,7 @@ function renderDataSyncButton() {
 
     if (dataSyncState.statusKind === 'partial') {
         button.classList.add('is-partial');
-        icon.textContent = '⚠';
+        icon.innerHTML = GS_ICONS.warning;
         label.textContent = `${getFailedAssets().length}个标的未更新`;
         if (barFill) barFill.style.width = '0%';
         return;
@@ -483,13 +483,13 @@ function renderDataSyncButton() {
 
     if (dataSyncState.statusKind === 'failed') {
         button.classList.add('is-failed');
-        icon.textContent = '⊗';
+        icon.innerHTML = GS_ICONS.crossCircle;
         label.textContent = '更新失败';
         if (barFill) barFill.style.width = '0%';
         return;
     }
 
-    icon.textContent = '⟳';
+    icon.innerHTML = GS_ICONS.refresh;
     label.textContent = '数据更新';
     if (barFill) barFill.style.width = '0%';
 }

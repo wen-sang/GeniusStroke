@@ -3,7 +3,7 @@
  * Allowed: responsive helpers, hidden/display helpers, small utility classes, F01 extraction helpers.
  * Forbidden: full component systems, primary page layout, page feature ownership.
  */
-/* ==================== 响应�?==================== */
+/* ==================== 响应式 ==================== */
 @media (max-width: 1400px) {
     .metrics-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -23,8 +23,31 @@
 
 }
 
-/* ==================== 隐藏�?==================== */
-/* ==================== 隐藏�?==================== */
+/* 窄屏表格横向滚动。
+ * 约束：overflow 容器内 position: sticky 表头的视口吸顶（components.css .data-table thead th）
+ * 会失效，故仅在窄屏媒体查询内启用横向滚动，宽屏行为不变。 */
+@media (max-width: 1100px) {
+    .table-container,
+    .market-table-wrapper,
+    #transactions-orders-panel,
+    #transactions-corporate-actions-panel {
+        overflow-x: auto;
+    }
+
+    .table-container .data-table,
+    #transactions-orders-panel .data-table,
+    #transactions-corporate-actions-panel .data-table,
+    #market-panel-market .data-table,
+    #market-panel-fundamental .data-table {
+        min-width: 960px;
+    }
+
+    #market-panel-technical .data-table {
+        min-width: 1080px;
+    }
+}
+
+/* ==================== 隐藏类 ==================== */
 .hidden {
     display: none;
 }

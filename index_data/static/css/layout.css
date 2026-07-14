@@ -9,7 +9,7 @@
     padding: 0 var(--space-2xl);
 }
 
-/* ==================== 导航�?==================== */
+/* ==================== 导航栏 ==================== */
 .navbar {
     background: var(--bg-card);
     height: var(--navbar-height);
