@@ -740,7 +740,7 @@
 }
 
 .row-action-item:hover {
-    background: #F9FAFB;
+    background: var(--bg-hover);
 }
 
 .row-action-symbol {

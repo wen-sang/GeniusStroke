@@ -82,7 +82,7 @@ async def create_corporate_action(req: CorporateActionCreateRequestModel):
             rebuild_from=action.effective_date,
         )
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise_validation_http_error("企业事件创建校验失败 detail=%s", exc)
 
 
 @router.put("/{action_id}", response_model=CorporateActionMutationResponse)

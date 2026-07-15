@@ -337,7 +337,13 @@ function renderTableStatusRow(tbody, colspan, message, { padded = false } = {}) 
     const style = padded
         ? 'text-align:center; padding: 20px;'
         : 'text-align:center;';
-    tbody.innerHTML = `<tr><td colspan="${colspan}" style="${style}">${message}</td></tr>`;
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = colspan;
+    cell.setAttribute('style', style);
+    cell.textContent = message;
+    row.appendChild(cell);
+    tbody.replaceChildren(row);
 }
 
 // 首屏加载骨架屏：生成 rows 行灰条占位（shimmer 动画见 components.css .skeleton-bar）

@@ -97,7 +97,7 @@ class IndicatorDAO(BaseDAO):
                 rows = cursor.fetchall()
                 return self._rows_to_dicts(cursor, rows)
         except Exception as e:
-            logger.error(f"Error loading indicator rows for date {trade_date}: {e}")
+            logger.error(f"Error loading indicator rows for date {trade_date} group={group}: {e}")
             return []
 
     def count_index_assets_by_date(self, trade_date: str) -> int:
@@ -136,7 +136,7 @@ class IndicatorDAO(BaseDAO):
                 row = cursor.fetchone()
                 return int(row[0]) if row and row[0] is not None else 0
         except Exception as e:
-            logger.error(f"Error counting indicator assets for date {trade_date}: {e}")
+            logger.error(f"Error counting indicator assets for date {trade_date} group={group}: {e}")
             return 0
 
     def get_index_asset_codes_page_by_date(self, trade_date: str, limit: int, offset: int) -> List[str]:
@@ -186,7 +186,7 @@ class IndicatorDAO(BaseDAO):
                 )
                 return [row[0] for row in cursor.fetchall() if row and row[0]]
         except Exception as e:
-            logger.error(f"Error loading indicator asset code page for date {trade_date}: {e}")
+            logger.error(f"Error loading indicator asset code page for date {trade_date} group={group}: {e}")
             return []
 
     def get_index_indicator_rows_by_date_and_codes(self, trade_date: str, asset_codes: List[str]) -> List[Dict]:
@@ -254,7 +254,7 @@ class IndicatorDAO(BaseDAO):
                 rows = cursor.fetchall()
                 return self._rows_to_dicts(cursor, rows)
         except Exception as e:
-            logger.error(f"Error loading indicator rows for date {trade_date} with paged codes: {e}")
+            logger.error(f"Error loading indicator rows for date {trade_date} group={group} with paged codes: {e}")
             return []
 
     @staticmethod
