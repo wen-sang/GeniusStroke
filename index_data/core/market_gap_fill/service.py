@@ -3,11 +3,10 @@ from __future__ import annotations
 import hashlib
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Callable
 
 from config import settings
-from config.constants import AssetType
 from core.market_gap_fill.history_discovery import (
     MarketHistoryDiscoveryService,
 )
@@ -19,12 +18,10 @@ from core.market_gap_fill.scanner import market_gap_scanner
 from core.market_gap_fill.governance import market_gap_fill_governance
 from dao.data_quality_dao import data_quality_dao
 from dao.market_gap_fill_dao import market_gap_fill_dao
-from dao.tickflow_gap_fill_runtime_dao import tickflow_gap_fill_runtime_dao
 from data_provider.tdx_vipdoc_provider import TdxPackageLockTimeout
 from data_provider.tdx_vipdoc_provider import TdxVipdocProvider
 from data_provider.tickflow_adapter import TickFlowAdapter
 from data_provider.tickflow_adapter import TickFlowCallConfig
-from data_provider.tickflow_adapter import TickFlowGapFillError
 from utils.logger import logger
 
 
@@ -235,23 +232,12 @@ class MarketGapFillService:
         progress_callback,
         tdx_histories: dict[str, dict],
     ) -> list[dict]:
-        scan_started = self.clock()
-        _progress(progress_callback, 10, None, "扫描历史行情缺口")
-        scan_result = market_gap_scanner.run(target_date, options=options)
-        result.scan_batch_id = scan_result["scan_batch_id"]
-        result.generated_task_count = int(
-            scan_result["generated_task_count"] or 0
+        config_signature = self._scan_gaps(
+            target_date,
+            options,
+            result,
+            progress_callback,
         )
-        result.tasks["generated"] = result.generated_task_count
-        config_signature = self._tickflow_config_signature()
-        if options.force_tickflow_retry and options.asset_code:
-            market_gap_fill_dao.force_reopen_asset(
-                asset_code=options.asset_code,
-                start_date=options.start_date,
-                end_date=options.end_date,
-            )
-        result.timing["scan_seconds"] = self.clock() - scan_started
-
         tdx_started = self.clock()
         candidates = []
         total_claimed = 0
@@ -277,122 +263,25 @@ class MarketGapFillService:
                 tasks = group["tasks"]
                 total_claimed += len(tasks)
                 result.tasks["claimed"] += len(tasks)
-                if not self._renew_group(tasks, run_id):
-                    result.tasks["lease_lost"] += len(tasks)
+                (
+                    processed_delta,
+                    file_error_delta,
+                    candidate,
+                    lease_lost,
+                ) = self._process_tdx_group(
+                    group,
+                    run_id,
+                    result,
+                    tdx_histories,
+                    package_id,
+                    config_signature,
+                )
+                processed_assets += processed_delta
+                file_error_assets += file_error_delta
+                if lease_lost:
                     continue
-                existing = [
-                    task for task in tasks
-                    if market_gap_fill_dao.has_market_row(
-                        task["asset_code"],
-                        task["missing_date"],
-                    )
-                ]
-                pending = [task for task in tasks if task not in existing]
-                filled = list(existing)
-                rows_by_date = {}
-                detail_by_date = {
-                    task["missing_date"]: {
-                        "final_reason": "existing_row",
-                    }
-                    for task in existing
-                }
-                if pending:
-                    history = tdx_histories.get(group["asset_code"]) or {}
-                    valid = history.get("valid") or {}
-                    zero_dates = set(history.get("zero_dates") or [])
-                    invalid_dates = set(
-                        history.get("invalid_dates") or []
-                    )
-                    tdx_result = {
-                        "file_status": history.get(
-                            "file_status", "missing"
-                        ),
-                        "date_results": {},
-                    }
-                    for task in pending:
-                        trade_date = task["missing_date"]
-                        if trade_date in valid:
-                            date_result = {
-                                "status": "hit",
-                                "bar": valid[trade_date],
-                            }
-                        elif trade_date in zero_dates:
-                            date_result = {"status": "zero", "bar": None}
-                        elif trade_date in invalid_dates:
-                            date_result = {"status": "invalid", "bar": None}
-                        else:
-                            date_result = {"status": "empty", "bar": None}
-                        tdx_result["date_results"][trade_date] = date_result
-                    processed_assets += 1
-                    result.tdx["processed_assets"] += 1
-                    result.tdx["processed_tasks"] += len(pending)
-                    if tdx_result["file_status"] == "missing":
-                        result.tdx["file_missing_assets"] += 1
-                        file_error_assets += 1
-                    elif tdx_result["file_status"] == "invalid":
-                        result.tdx["file_invalid_assets"] += 1
-                        file_error_assets += 1
-                    for task in pending:
-                        date_result = tdx_result["date_results"].get(
-                            task["missing_date"],
-                            {"status": "empty", "bar": None},
-                        )
-                        status = date_result["status"]
-                        if status == "hit":
-                            filled.append(task)
-                            rows_by_date[task["missing_date"]] = (
-                                date_result["bar"]
-                            )
-                            detail_by_date[task["missing_date"]] = {
-                                "final_reason": "tdx",
-                                "tdx_package_id": package_id,
-                            }
-                            result.tdx["filled_tasks"] += 1
-                        elif status == "zero":
-                            result.tdx["zero_tasks"] += 1
-                        else:
-                            result.tdx["empty_tasks"] += 1
-                if filled:
-                    if not self._renew_group(tasks, run_id):
-                        result.tasks["lease_lost"] += len(tasks)
-                        continue
-                    try:
-                        completed = market_gap_fill_dao.commit_filled_group(
-                            tasks=filled,
-                            rows_by_date=rows_by_date,
-                            run_id=run_id,
-                            detail_by_date=detail_by_date,
-                        )
-                    except Exception as exc:
-                        self._fail_group(
-                            filled,
-                            run_id,
-                            "MARKET_TRANSACTION_FAILED",
-                            str(exc),
-                            result,
-                            config_signature,
-                            count_tickflow=False,
-                        )
-                        completed = []
-                    for item in completed:
-                        result.record_fill(
-                            group["asset_code"],
-                            item["trade_date"],
-                        )
-                    result.tasks["filled"] += len(completed)
-                remaining_tasks = [
-                    task for task in pending
-                    if task not in filled
-                ]
-                if remaining_tasks:
-                    candidates.append(
-                        {
-                            "exchange": group["exchange"],
-                            "asset_code": group["asset_code"],
-                            "tasks": remaining_tasks,
-                        }
-                    )
-                result.tasks["processed"] += len(tasks)
+                if candidate:
+                    candidates.append(candidate)
                 if (
                     processed_assets
                     >= settings.TDX_GAP_FILL_HEALTH_MIN_ASSETS
@@ -405,284 +294,166 @@ class MarketGapFillService:
         result.timing["tdx_seconds"] = self.clock() - tdx_started
         return candidates
 
-    def _run_tickflow_phase(
+    def _scan_gaps(
         self,
-        candidates: list[dict],
-        run_id: str,
+        target_date: str,
         options: MarketGapFillRunOptions,
         result: MarketGapFillResult,
-        run_started: float,
         progress_callback,
-    ) -> None:
-        result.tickflow["candidate_assets"] = len(candidates)
+    ) -> str:
+        """扫描历史缺口并登记扫描批次，返回 TickFlow 配置签名。"""
+        scan_started = self.clock()
+        _progress(progress_callback, 10, None, "扫描历史行情缺口")
+        scan_result = market_gap_scanner.run(target_date, options=options)
+        result.scan_batch_id = scan_result["scan_batch_id"]
+        result.generated_task_count = int(
+            scan_result["generated_task_count"] or 0
+        )
+        result.tasks["generated"] = result.generated_task_count
         config_signature = self._tickflow_config_signature()
-        catalog_version = market_gap_fill_dao.get_tickflow_catalog_version()
-        budget = settings.TICKFLOW_GAP_FILL_MAX_REQUESTS_PER_RUN
-        for index, group in enumerate(candidates):
-            tasks = group["tasks"]
-            result.tickflow["budget_remaining"] = budget
-            _progress(
-                progress_callback,
-                60,
-                f"{index}/{len(candidates)}",
-                f"TickFlow 历史补采，剩余预算 {budget}",
+        if options.force_tickflow_retry and options.asset_code:
+            market_gap_fill_dao.force_reopen_asset(
+                asset_code=options.asset_code,
+                start_date=options.start_date,
+                end_date=options.end_date,
             )
-            defer_code = self._tickflow_defer_code(
-                options,
-                result,
-                budget,
-                run_started,
+        result.timing["scan_seconds"] = self.clock() - scan_started
+        return config_signature
+
+    def _process_tdx_group(
+        self,
+        group: dict,
+        run_id: str,
+        result: MarketGapFillResult,
+        tdx_histories: dict[str, dict],
+        package_id,
+        config_signature: str,
+    ) -> tuple[int, int, dict | None, bool]:
+        """处理单个已认领任务组。
+
+        返回 (processed_assets 增量, file_error_assets 增量,
+        剩余候选组或 None, 租约是否丢失)；租约丢失时调用方跳过
+        候选收集与健康熔断判定（与提取前 continue 语义一致）。
+        """
+        tasks = group["tasks"]
+        processed_delta = 0
+        file_error_delta = 0
+        if not self._renew_group(tasks, run_id):
+            result.tasks["lease_lost"] += len(tasks)
+            return processed_delta, file_error_delta, None, True
+        existing = [
+            task for task in tasks
+            if market_gap_fill_dao.has_market_row(
+                task["asset_code"],
+                task["missing_date"],
             )
-            if defer_code:
-                self._defer_group(tasks, run_id, defer_code, result)
-                continue
+        ]
+        pending = [task for task in tasks if task not in existing]
+        filled = list(existing)
+        rows_by_date = {}
+        detail_by_date = {
+            task["missing_date"]: {
+                "final_reason": "existing_row",
+            }
+            for task in existing
+        }
+        if pending:
+            history = tdx_histories.get(group["asset_code"]) or {}
+            valid = history.get("valid") or {}
+            zero_dates = set(history.get("zero_dates") or [])
+            invalid_dates = set(
+                history.get("invalid_dates") or []
+            )
+            tdx_result = {
+                "file_status": history.get(
+                    "file_status", "missing"
+                ),
+                "date_results": {},
+            }
+            for task in pending:
+                trade_date = task["missing_date"]
+                if trade_date in valid:
+                    date_result = {
+                        "status": "hit",
+                        "bar": valid[trade_date],
+                    }
+                elif trade_date in zero_dates:
+                    date_result = {"status": "zero", "bar": None}
+                elif trade_date in invalid_dates:
+                    date_result = {"status": "invalid", "bar": None}
+                else:
+                    date_result = {"status": "empty", "bar": None}
+                tdx_result["date_results"][trade_date] = date_result
+            processed_delta += 1
+            result.tdx["processed_assets"] += 1
+            result.tdx["processed_tasks"] += len(pending)
+            if tdx_result["file_status"] == "missing":
+                result.tdx["file_missing_assets"] += 1
+                file_error_delta += 1
+            elif tdx_result["file_status"] == "invalid":
+                result.tdx["file_invalid_assets"] += 1
+                file_error_delta += 1
+            for task in pending:
+                date_result = tdx_result["date_results"].get(
+                    task["missing_date"],
+                    {"status": "empty", "bar": None},
+                )
+                status = date_result["status"]
+                if status == "hit":
+                    filled.append(task)
+                    rows_by_date[task["missing_date"]] = (
+                        date_result["bar"]
+                    )
+                    detail_by_date[task["missing_date"]] = {
+                        "final_reason": "tdx",
+                        "tdx_package_id": package_id,
+                    }
+                    result.tdx["filled_tasks"] += 1
+                elif status == "zero":
+                    result.tdx["zero_tasks"] += 1
+                else:
+                    result.tdx["empty_tasks"] += 1
+        if filled:
             if not self._renew_group(tasks, run_id):
                 result.tasks["lease_lost"] += len(tasks)
-                continue
-
-            cooling_tasks = [
-                task for task in tasks
-                if task.get("tickflow_retry_after")
-                and task["tickflow_retry_after"] > self._now_text()
-            ]
-            if cooling_tasks:
-                for cooling_task in cooling_tasks:
-                    self._skip_group(
-                        [cooling_task],
-                        run_id,
-                        "NO_SOURCE_DATA",
-                        "TickFlow no-data cooldown is still active",
-                        result,
-                        issue_status="CONFIRMED",
-                        catalog_version=catalog_version,
-                        config_signature=config_signature,
-                        retry_after=cooling_task["tickflow_retry_after"],
-                    )
-                tasks = [
-                    task for task in tasks
-                    if task not in cooling_tasks
-                ]
-                if not tasks:
-                    continue
-
-            asset_type = tasks[0].get("asset_type")
-            if asset_type == AssetType.LOF:
-                self._skip_group(
-                    tasks,
-                    run_id,
-                    "SKIPPED_UNSUPPORTED_LOF",
-                    "TickFlow does not support LOF",
-                    result,
-                    issue_status="CONFIRMED",
-                    catalog_version=catalog_version,
-                    config_signature=config_signature,
-                )
-                continue
-            catalog_status = market_gap_fill_dao.get_tickflow_catalog_status(
-                group["asset_code"]
-            )
-            if catalog_status != "active":
-                code = (
-                    "SKIPPED_NOT_IN_CATALOG"
-                    if catalog_status == "absent"
-                    else "SKIPPED_INACTIVE_CATALOG"
-                )
-                self._skip_group(
-                    tasks,
-                    run_id,
-                    code,
-                    f"TickFlow catalog status: {catalog_status}",
-                    result,
-                    issue_status="CONFIRMED",
-                    catalog_version=catalog_version,
-                    config_signature=config_signature,
-                )
-                continue
-
-            reservation = self._reserve_tickflow_request(
-                run_started,
-                config_signature,
-            )
-            if reservation.get("deadline_reached"):
-                result.tickflow["deadline_reached"] = True
-                self._defer_group(
-                    tasks,
-                    run_id,
-                    "TICKFLOW_DEADLINE",
-                    result,
-                )
-                continue
-            if reservation.get("breaker_open"):
-                result.tickflow["breaker_triggered"] = True
-                result.tickflow["breaker_reason"] = reservation.get(
-                    "breaker_reason"
-                )
-                self._defer_group(
-                    tasks,
-                    run_id,
-                    "TICKFLOW_BREAKER_OPEN",
-                    result,
-                )
-                continue
-
-            budget -= 1
-            result.tickflow["requested_assets"] += 1
-            result.tickflow["budget_remaining"] = budget
+                return processed_delta, file_error_delta, None, True
             try:
-                response = self.tickflow_adapter.fetch_daily_range(
-                    asset_code=group["asset_code"],
-                    exchange=group["exchange"],
-                    start_date=min(task["missing_date"] for task in tasks),
-                    end_date=max(task["missing_date"] for task in tasks),
+                completed = market_gap_fill_dao.commit_filled_group(
+                    tasks=filled,
+                    rows_by_date=rows_by_date,
+                    run_id=run_id,
+                    detail_by_date=detail_by_date,
                 )
-            except TickFlowGapFillError as exc:
-                breaker = tickflow_gap_fill_runtime_dao.record_error(
-                    exc.category,
-                    self._now_text(microseconds=True),
-                    config_signature,
-                )
-                if breaker["breaker_open"]:
-                    result.tickflow["breaker_triggered"] = True
-                    result.tickflow["breaker_reason"] = exc.category
+            except Exception as exc:
                 self._fail_group(
-                    tasks,
+                    filled,
                     run_id,
-                    exc.category,
+                    "MARKET_TRANSACTION_FAILED",
                     str(exc),
                     result,
                     config_signature,
+                    count_tickflow=False,
                 )
-                continue
-
-            tickflow_gap_fill_runtime_dao.record_success()
-            hits = []
-            invalid = []
-            no_data = []
-            rows_by_date = {}
-            details = {}
-            for task in tasks:
-                date_result = response.get(task["missing_date"])
-                if date_result and date_result["status"] == "hit":
-                    hits.append(task)
-                    rows_by_date[task["missing_date"]] = date_result["bar"]
-                    details[task["missing_date"]] = {
-                        "final_reason": "tickflow",
-                    }
-                elif date_result and date_result["status"] == "invalid":
-                    invalid.append(task)
-                else:
-                    no_data.append(task)
-            if hits:
-                if self._renew_group(tasks, run_id):
-                    try:
-                        completed = market_gap_fill_dao.commit_filled_group(
-                            tasks=hits,
-                            rows_by_date=rows_by_date,
-                            run_id=run_id,
-                            detail_by_date=details,
-                        )
-                    except Exception as exc:
-                        self._fail_group(
-                            hits,
-                            run_id,
-                            "MARKET_TRANSACTION_FAILED",
-                            str(exc),
-                            result,
-                            config_signature,
-                        )
-                        completed = []
-                    for item in completed:
-                        result.record_fill(
-                            group["asset_code"],
-                            item["trade_date"],
-                        )
-                    result.tickflow["filled_tasks"] += len(completed)
-                    result.tasks["filled"] += len(completed)
-                else:
-                    result.tasks["lease_lost"] += len(tasks)
-                    continue
-            if invalid:
-                breaker = tickflow_gap_fill_runtime_dao.record_error(
-                    "INVALID_RESPONSE",
-                    self._now_text(microseconds=True),
-                    config_signature,
+                completed = []
+            for item in completed:
+                result.record_fill(
+                    group["asset_code"],
+                    item["trade_date"],
                 )
-                if breaker["breaker_open"]:
-                    result.tickflow["breaker_triggered"] = True
-                    result.tickflow["breaker_reason"] = "INVALID_RESPONSE"
-                self._fail_group(
-                    invalid,
-                    run_id,
-                    "INVALID_RESPONSE",
-                    "TickFlow returned invalid daily bar",
-                    result,
-                    config_signature,
-                )
-            if no_data:
-                retry_after = (
-                    self.wall_clock()
-                    + timedelta(
-                        days=settings.TICKFLOW_GAP_FILL_NO_DATA_COOLDOWN_DAYS
-                    )
-                ).strftime("%Y-%m-%d %H:%M:%S")
-                self._skip_group(
-                    no_data,
-                    run_id,
-                    "NO_SOURCE_DATA",
-                    "TickFlow returned no target date bar",
-                    result,
-                    issue_status="CONFIRMED",
-                    catalog_version=catalog_version,
-                    config_signature=config_signature,
-                    retry_after=retry_after,
-                )
-                result.tickflow["no_data_tasks"] += len(no_data)
-
-    def _reserve_tickflow_request(
-        self,
-        run_started: float,
-        config_signature: str,
-    ) -> dict:
-        while True:
-            elapsed = self.clock() - run_started
-            if elapsed >= settings.TICKFLOW_GAP_FILL_MAX_SECONDS:
-                return {"deadline_reached": True}
-            reservation = (
-                tickflow_gap_fill_runtime_dao.reserve_request_start(
-                    now_text=self._now_text(microseconds=True),
-                    interval_seconds=settings.TICKFLOW_GAP_FILL_SLEEP_SECONDS,
-                    config_signature=config_signature,
-                )
-            )
-            wait_seconds = float(reservation.get("wait_seconds") or 0)
-            if wait_seconds <= 0:
-                return reservation
-            if (
-                elapsed + wait_seconds
-                >= settings.TICKFLOW_GAP_FILL_MAX_SECONDS
-            ):
-                return {"deadline_reached": True}
-            self.sleeper(wait_seconds)
-
-    def _tickflow_defer_code(
-        self,
-        options: MarketGapFillRunOptions,
-        result: MarketGapFillResult,
-        budget: int,
-        run_started: float,
-    ) -> str | None:
-        if options.no_external:
-            return "TICKFLOW_DISABLED_BY_CLI"
-        if not settings.TICKFLOW_GAP_FILL_ENABLED:
-            return "TICKFLOW_DISABLED"
-        if result.tdx["health_breaker_triggered"]:
-            return "TDX_HEALTH_BREAKER"
-        if budget <= 0:
-            return "TICKFLOW_BUDGET_EXHAUSTED"
-        if self.clock() - run_started >= settings.TICKFLOW_GAP_FILL_MAX_SECONDS:
-            result.tickflow["deadline_reached"] = True
-            return "TICKFLOW_DEADLINE"
-        return None
+            result.tasks["filled"] += len(completed)
+        remaining_tasks = [
+            task for task in pending
+            if task not in filled
+        ]
+        candidate = None
+        if remaining_tasks:
+            candidate = {
+                "exchange": group["exchange"],
+                "asset_code": group["asset_code"],
+                "tasks": remaining_tasks,
+            }
+        result.tasks["processed"] += len(tasks)
+        return processed_delta, file_error_delta, candidate, False
 
     def _renew_group(self, tasks: list[dict], run_id: str) -> bool:
         updated = market_gap_fill_dao.renew_group_lease(
@@ -693,59 +464,6 @@ class MarketGapFillService:
             now_text=self._now_text(),
         )
         return updated == len(tasks)
-
-    def _defer_group(
-        self,
-        tasks: list[dict],
-        run_id: str,
-        error_code: str,
-        result: MarketGapFillResult,
-    ) -> None:
-        for task in tasks:
-            updated = market_gap_fill_dao.defer_task(
-                task_id=task["task_id"],
-                run_id=run_id,
-                retry_delay_minutes=
-                    settings.MARKET_GAP_FILL_RETRY_DELAY_MINUTES,
-                error_code=error_code,
-                detail={"deferred_reason": error_code},
-            )
-            if updated == 1:
-                result.deferred_task_count += 1
-                result.tasks["deferred"] += 1
-            else:
-                result.tasks["lease_lost"] += 1
-
-    def _skip_group(
-        self,
-        tasks: list[dict],
-        run_id: str,
-        error_code: str,
-        error_message: str,
-        result: MarketGapFillResult,
-        issue_status: str,
-        catalog_version: str,
-        config_signature: str,
-        retry_after: str | None = None,
-    ) -> None:
-        for task in tasks:
-            updated = market_gap_fill_dao.mark_skipped(
-                task_id=task["task_id"],
-                run_id=run_id,
-                error_code=error_code,
-                error_message=error_message,
-                detail={"final_reason": error_code},
-                last_tdx_package_id=result.gate.get("package_id"),
-                last_tickflow_catalog_version=catalog_version,
-                last_tickflow_config_signature=config_signature,
-                tickflow_retry_after=retry_after,
-            )
-            if updated == 1:
-                result.skipped_task_count += 1
-                result.tasks["skipped"] += 1
-                self._sync_issue(task, issue_status)
-            else:
-                result.tasks["lease_lost"] += 1
 
     def _fail_group(
         self,

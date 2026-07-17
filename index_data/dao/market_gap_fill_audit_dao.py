@@ -6,7 +6,7 @@ from typing import Any
 
 from config.constants import DataSource
 from dao.base_dao import BaseDAO
-from dao.market_gap_fill_dao import _validate_market_row
+from dao.market_gap_fill.support import _validate_market_row
 from utils.validators import ValidationError
 
 
