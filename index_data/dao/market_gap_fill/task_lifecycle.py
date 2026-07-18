@@ -86,24 +86,6 @@ class TaskLifecycleMixin:
             )
             return changed
 
-    def claim_due_tasks(
-        self,
-        run_id: str,
-        limit: int,
-        running_ttl_minutes: int,
-        now_text: str,
-        options: Any | None = None,
-    ) -> list[dict]:
-        groups = self.claim_due_task_groups(
-            run_id=run_id,
-            batch_size=limit,
-            max_tasks=limit,
-            running_ttl_minutes=running_ttl_minutes,
-            now_text=now_text,
-            options=options,
-        )
-        return [task for group in groups for task in group["tasks"]]
-
     def claim_due_task_groups(
         self,
         run_id: str,

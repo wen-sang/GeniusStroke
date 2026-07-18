@@ -350,7 +350,7 @@ async def create_cash_flow(
 
 
 @router.post("/rebuild", response_model=RebuildResponse)
-async def rebuild_account(
+def rebuild_account(
     account_id: int = Query(1, description="账户ID"),
     as_of_date: Optional[str] = Query(None, description="估值日期 YYYY-MM-DD，按该日及之前最近有效收盘价估值"),
 ):
@@ -371,7 +371,7 @@ async def rebuild_account(
 
 
 @router.post("/rebuild/history", response_model=RebuildResponse)
-async def rebuild_account_history(
+def rebuild_account_history(
     account_id: int = Query(1, description="账户ID"),
     from_date: Optional[str] = Query(None, description="可选起始日期 YYYY-MM-DD"),
 ):
@@ -395,7 +395,7 @@ async def rebuild_account_history(
 
 
 @router.post("/import-rebuild", response_model=ImportRebuildResponse)
-async def import_and_rebuild_account(
+def import_and_rebuild_account(
     req: ImportRebuildRequest,
     admin_token: Optional[str] = Header(None, alias="X-Admin-Token"),
 ):
