@@ -55,6 +55,7 @@ async function loadPerformance(loadContext = null) {
     if (isStaleContentLoad(loadContext, 'performance')) return;
 
     resetPerformanceView();
+    loadPerformancePeriods(loadContext);
     const data = await fetchApi(`/account/performance?account_id=${state.currentAccount}`);
     if (isStaleContentLoad(loadContext, 'performance')) return;
     if (!data) return;
@@ -109,3 +110,153 @@ function formatHoldingDays(value) {
     if (value === null || value === undefined || isNaN(value)) return '--';
     return `${formatPerformanceNumber(value, 1)} 天`;
 }
+
+
+// ==================== 周期视图 ====================
+
+const performancePeriodState = {
+    period: 'month',
+    startDate: '',
+    endDate: ''
+};
+
+function initPerformancePeriodView() {
+    const switcher = document.getElementById('performance-period-switcher');
+    if (switcher) {
+        switcher.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-period]');
+            if (!btn || btn.dataset.period === performancePeriodState.period) return;
+            performancePeriodState.period = btn.dataset.period;
+            switcher.querySelectorAll('[data-period]').forEach((item) => {
+                const active = item === btn;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            if (typeof syncCapsuleSlider === 'function') syncCapsuleSlider(switcher);
+            togglePerformancePeriodRange();
+            loadPerformancePeriods(null);
+        });
+    }
+
+    const applyBtn = document.getElementById('performance-period-apply');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            const start = document.getElementById('performance-period-start').value;
+            const end = document.getElementById('performance-period-end').value;
+            if (!start || !end) {
+                if (typeof showToast === 'function') showToast('error', '请选择开始和结束日期');
+                return;
+            }
+            if (start > end) {
+                if (typeof showToast === 'function') showToast('error', '开始日期不能晚于结束日期');
+                return;
+            }
+            performancePeriodState.startDate = start;
+            performancePeriodState.endDate = end;
+            loadPerformancePeriods(null);
+        });
+    }
+
+    const resetBtn = document.getElementById('performance-period-reset');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            performancePeriodState.startDate = '';
+            performancePeriodState.endDate = '';
+            const startInput = document.getElementById('performance-period-start');
+            const endInput = document.getElementById('performance-period-end');
+            if (startInput) startInput.value = '';
+            if (endInput) endInput.value = '';
+            loadPerformancePeriods(null);
+        });
+    }
+}
+
+function togglePerformancePeriodRange() {
+    const range = document.querySelector('.performance-period-range');
+    if (range) range.classList.toggle('hidden', performancePeriodState.period !== 'custom');
+}
+
+async function loadPerformancePeriods(loadContext = null) {
+    if (!state.currentAccount || state.isEmptyAccountState) return;
+    if (isStaleContentLoad(loadContext, 'performance')) return;
+
+    if (performancePeriodState.period === 'custom'
+        && (!performancePeriodState.startDate || !performancePeriodState.endDate)) {
+        renderPerformancePeriodHint('请选择起止日期后点击查询');
+        return;
+    }
+
+    const params = new URLSearchParams({
+        account_id: state.currentAccount,
+        granularity: performancePeriodState.period
+    });
+    if (performancePeriodState.period === 'custom') {
+        params.set('start_date', performancePeriodState.startDate);
+        params.set('end_date', performancePeriodState.endDate);
+    }
+
+    const data = await fetchApi(`/account/performance/periods?${params.toString()}`);
+    if (isStaleContentLoad(loadContext, 'performance')) return;
+    if (!data) return;
+
+    renderPerformancePeriods(data.items || []);
+}
+
+function renderPerformancePeriodHint(text) {
+    const tbody = document.getElementById('performance-period-tbody');
+    if (!tbody) return;
+    tbody.textContent = '';
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 12;
+    cell.className = 'performance-period-empty';
+    cell.textContent = text;
+    row.appendChild(cell);
+    tbody.appendChild(row);
+}
+
+function renderPerformancePeriods(items) {
+    const tbody = document.getElementById('performance-period-tbody');
+    if (!tbody) return;
+    tbody.textContent = '';
+
+    if (!items.length) {
+        renderPerformancePeriodHint('暂无周期数据');
+        return;
+    }
+
+    items.slice().reverse().forEach((item) => {
+        const row = document.createElement('tr');
+        appendPeriodCell(row, item.period_label);
+        appendPeriodCell(row, `${formatPerformanceDateCompact(item.period_start)}~${formatPerformanceDateCompact(item.period_end)}`);
+        appendPeriodCell(row, formatPerformancePercent(item.cumulative_twr), item.cumulative_twr);
+        appendPeriodCell(row, formatPerformanceCurrency(item.period_pnl), item.period_pnl);
+        appendPeriodCell(row, formatPerformancePercent(item.annualized_twr), item.annualized_twr);
+        appendPeriodCell(row, formatPerformancePercent(item.annualized_xirr), item.annualized_xirr);
+        appendPeriodCell(
+            row,
+            formatPerformancePercent(item.max_drawdown, false),
+            item.max_drawdown ? -item.max_drawdown : null
+        );
+        appendPeriodCell(row, formatPerformancePercent(item.annualized_volatility, false));
+        appendPeriodCell(row, formatPerformancePercent(item.win_rate, false));
+        appendPeriodCell(
+            row,
+            item.profit_loss_ratio_is_infinite ? '∞' : formatPerformanceNumber(item.profit_loss_ratio, 2)
+        );
+        appendPeriodCell(row, String(item.total_trade_count || 0));
+        appendPeriodCell(row, formatHoldingDays(item.average_holding_days));
+        tbody.appendChild(row);
+    });
+}
+
+function appendPeriodCell(row, text, colorValue = null) {
+    const cell = document.createElement('td');
+    cell.textContent = text;
+    if (colorValue !== null && colorValue !== undefined && !isNaN(colorValue)) {
+        cell.style.color = colorValue > 0 ? 'var(--up-red)' : (colorValue < 0 ? 'var(--down-green)' : '');
+    }
+    row.appendChild(cell);
+}
+
+document.addEventListener('DOMContentLoaded', initPerformancePeriodView);

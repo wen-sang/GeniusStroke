@@ -690,6 +690,47 @@
                             </div>
                         </div>
                     </section>
+
+                    <section class="performance-section" id="performance-period-section">
+                        <h2 class="performance-group-title">周期视图</h2>
+                        <div class="performance-period-toolbar">
+                            <div class="sub-tabs" id="performance-period-switcher" role="tablist" aria-label="周期维度切换">
+                                <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-period="day" type="button">日</button>
+                                <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-period="week" type="button">周</button>
+                                <button class="sub-tab-item gs-capsule-item active" role="tab" aria-selected="true" data-period="month" type="button">月</button>
+                                <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-period="year" type="button">年</button>
+                                <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-period="custom" type="button">自定义</button>
+                            </div>
+                            <div class="performance-period-range hidden">
+                                <input type="date" id="performance-period-start" class="form-input" aria-label="开始日期">
+                                <span class="performance-period-range-sep">至</span>
+                                <input type="date" id="performance-period-end" class="form-input" aria-label="结束日期">
+                                <button id="performance-period-apply" class="performance-period-btn" type="button">查询</button>
+                                <button id="performance-period-reset" class="performance-period-btn performance-period-btn-ghost" type="button">重置</button>
+                            </div>
+                        </div>
+                        <div class="performance-period-table-wrap">
+                            <table class="performance-period-table" id="performance-period-table">
+                                <thead>
+                                    <tr>
+                                        <th>周期</th>
+                                        <th>区间</th>
+                                        <th>收益率</th>
+                                        <th>收益额</th>
+                                        <th>年化TWR</th>
+                                        <th>XIRR</th>
+                                        <th>最大回撤</th>
+                                        <th>波动率</th>
+                                        <th>胜率</th>
+                                        <th>盈亏比</th>
+                                        <th>交易数</th>
+                                        <th>平均持仓</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="performance-period-tbody"></tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
             </section>
         </div>
@@ -1459,7 +1500,7 @@
     <script src="/static/js/app-asset-catalog.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app-analysis-list.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app-asset-manager.js?v=20260717-refactor-r4"></script>
-    <script src="/static/js/app-performance.js?v=20260717-refactor-r4"></script>
+    <script src="/static/js/app-performance.js?v=20260722-period-r2"></script>
     <script src="/static/js/app-data-sync.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app.js?v=20260717-refactor-r4"></script>
 </body>

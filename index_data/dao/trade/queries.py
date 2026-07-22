@@ -113,6 +113,7 @@ class TradePositionQueryMixin:
         self,
         account_id: int,
         start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         conn=None,
     ) -> List[Dict]:
         """获取绩效口径的有效普通卖单样本。"""
@@ -137,6 +138,9 @@ class TradePositionQueryMixin:
         if start_date:
             sql = sql.replace("ORDER BY", "AND substr(sell.trade_time, 1, 10) >= ?\n        ORDER BY")
             params.append(start_date)
+        if end_date:
+            sql = sql.replace("ORDER BY", "AND substr(sell.trade_time, 1, 10) <= ?\n        ORDER BY")
+            params.append(end_date)
         if conn is not None:
             cursor = conn.cursor()
             cursor.execute(sql, tuple(params))

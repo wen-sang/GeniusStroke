@@ -752,6 +752,106 @@
     }
 }
 
+/* 绩效-周期视图 */
+.performance-period-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.performance-period-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.performance-period-range .form-input {
+    width: auto;
+    min-height: 32px;
+    padding: 4px 8px;
+}
+
+.performance-period-range-sep {
+    color: var(--text-tertiary);
+    font-size: 13px;
+}
+
+.performance-period-btn {
+    min-height: 32px;
+    padding: 4px 14px;
+    border: 1px solid var(--primary, #2563eb);
+    border-radius: var(--radius-md);
+    background: var(--primary, #2563eb);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.performance-period-btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+
+.performance-period-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+}
+
+.performance-period-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.performance-period-table th,
+.performance-period-table td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+}
+
+.performance-period-table th:first-child,
+.performance-period-table td:first-child,
+.performance-period-table th:nth-child(2),
+.performance-period-table td:nth-child(2) {
+    text-align: left;
+}
+
+.performance-period-table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+.performance-period-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.performance-period-empty {
+    padding: 24px 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .performance-period-toolbar {
+        display: block;
+    }
+
+    .performance-period-range {
+        margin-top: 12px;
+    }
+}
+
 @media (max-width: 768px) {
     .performance-header {
         display: block;

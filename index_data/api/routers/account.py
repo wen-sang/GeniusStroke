@@ -13,6 +13,7 @@ from api.routers.account_models import (
     AccountManageModel,
     AccountManageRequest,
     AccountManageResponse,
+    AccountPerformancePeriodsResponse,
     AccountPerformanceResponse,
     AccountSummaryResponse,
     AdjustRequest,
@@ -87,6 +88,34 @@ async def get_account_performance(account_id: int = Query(1, description="账户
         )
     except Exception as exc:
         raise_internal_http_error("账户绩效查询失败 account_id=%s", "账户绩效查询失败", exc, account_id)
+
+
+@router.get("/performance/periods", response_model=AccountPerformancePeriodsResponse)
+async def get_account_performance_periods(
+    account_id: int = Query(1, description="账户ID"),
+    granularity: str = Query("month", description="周期粒度 day/week/month/year/custom（custom 需起止日期）"),
+    start_date: Optional[str] = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
+):
+    """按日/周/月/年周期分桶的账户绩效指标。"""
+    try:
+        return AccountPerformancePeriodsResponse(
+            **account_performance_service.get_period_performance(
+                account_id,
+                granularity,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+    except ValidationError as exc:
+        raise_validation_http_error(
+            "账户周期绩效查询校验失败 account_id=%s detail=%s",
+            exc,
+            account_id,
+            detail_to_status=resolve_account_validation_status,
+        )
+    except Exception as exc:
+        raise_internal_http_error("账户周期绩效查询失败 account_id=%s", "账户周期绩效查询失败", exc, account_id)
 
 
 @router.post("", response_model=AccountManageResponse)

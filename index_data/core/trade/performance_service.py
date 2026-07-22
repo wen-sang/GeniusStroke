@@ -8,9 +8,11 @@ from __future__ import annotations
 from datetime import datetime
 from math import isfinite, sqrt
 from statistics import pstdev
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
+from core.trade.history_rebuild_calculator import AccountHistoryRebuildCalculator
 from dao.account_history_dao import account_history_dao
+from dao.cash_flow_dao import cash_flow_dao
 from dao.trade_dao import trade_dao
 from utils.validators import ValidationError
 
@@ -113,6 +115,184 @@ class AccountPerformanceService:
                 "messages": [],
             },
         }
+
+    def get_period_performance(
+        self,
+        account_id: int,
+        granularity: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Dict:
+        """按日/周/月/年/自定义区间分桶的绩效指标（实时聚合，口径与整体绩效一致）。"""
+        if granularity not in ("day", "week", "month", "year", "custom"):
+            raise ValidationError("granularity 必须是 day/week/month/year/custom")
+        if granularity == "custom" and (not start_date or not end_date):
+            raise ValidationError("自定义区间必须选择起止日期")
+        account = trade_dao.get_account(account_id)
+        if not account:
+            raise ValidationError("账户不存在")
+
+        history_rows = account_history_dao.get_complete_history(account_id)
+        segment_rows = self._current_segment_rows(history_rows)
+        segment_start_date = segment_rows[0]["trade_date"] if segment_rows else None
+        sell_orders = trade_dao.list_performance_sell_orders(
+            account_id, start_date=segment_start_date, end_date=end_date
+        )
+        cash_flows = cash_flow_dao.list_cash_flows(
+            account_id, start_date=segment_start_date, end_date=end_date, limit=100000
+        )
+
+        segment_index = {row["trade_date"]: idx for idx, row in enumerate(segment_rows)}
+        filtered_rows = [
+            row
+            for row in segment_rows
+            if (not start_date or row["trade_date"] >= start_date)
+            and (not end_date or row["trade_date"] <= end_date)
+        ]
+        if granularity == "custom":
+            buckets = [("自定义", filtered_rows)] if filtered_rows else []
+        else:
+            buckets = self._group_rows_by_period(filtered_rows, granularity)
+
+        items = []
+        for label, bucket_rows in buckets:
+            first_idx = segment_index[bucket_rows[0]["trade_date"]]
+            baseline_row = segment_rows[first_idx - 1] if first_idx > 0 else None
+            items.append(
+                self._build_period_item(label, bucket_rows, baseline_row, sell_orders, cash_flows)
+            )
+
+        return {
+            "account_id": account_id,
+            "granularity": granularity,
+            "start_date": start_date,
+            "end_date": end_date,
+            "items": items,
+        }
+
+    def _group_rows_by_period(self, rows: List[Dict], granularity: str) -> List[Tuple[str, List[Dict]]]:
+        """把按交易日升序的历史行分桶为 (period_label, rows) 列表。"""
+        buckets: List[Tuple[str, List[Dict]]] = []
+        current_label = None
+        for row in rows:
+            label = self._period_label(row["trade_date"], granularity)
+            if label != current_label:
+                buckets.append((label, []))
+                current_label = label
+            buckets[-1][1].append(row)
+        return buckets
+
+    def _period_label(self, trade_date: str, granularity: str) -> str:
+        if granularity == "day":
+            return trade_date
+        if granularity == "month":
+            return trade_date[:7]
+        if granularity == "year":
+            return trade_date[:4]
+        iso_year, iso_week, _ = datetime.strptime(trade_date, "%Y-%m-%d").date().isocalendar()
+        return f"{iso_year}-W{iso_week:02d}"
+
+    def _build_period_item(
+        self,
+        label: str,
+        bucket_rows: List[Dict],
+        baseline_row: Optional[Dict],
+        sell_orders: List[Dict],
+        cash_flows: List[Dict],
+    ) -> Dict:
+        period_start = bucket_rows[0]["trade_date"]
+        period_end = bucket_rows[-1]["trade_date"]
+        trade_days = len(bucket_rows)
+        calendar_days = self._calendar_days(period_start, period_end)
+
+        cumulative_twr = self._calculate_cumulative_twr(bucket_rows)
+        annualized_twr = self._annualize_twr(cumulative_twr, trade_days)
+        # 前置桶外最后一行作为回撤起点基准，避免漏算桶首日下跌
+        drawdown_rows = ([baseline_row] if baseline_row is not None else []) + bucket_rows
+        drawdown = self._calculate_max_drawdown(drawdown_rows)
+        annualized_volatility = self._calculate_annualized_volatility(bucket_rows)
+        annualized_xirr = (
+            self._calculate_period_xirr(bucket_rows, baseline_row, cash_flows)
+            if calendar_days >= 180
+            else None
+        )
+        cumulative_mwr = self._calculate_cumulative_mwr(annualized_xirr, calendar_days)
+
+        bucket_sell_orders = [
+            order
+            for order in sell_orders
+            if period_start <= str(order.get("trade_time") or "")[:10] <= period_end
+        ]
+        trade_quality = self._calculate_trade_quality(bucket_sell_orders)
+
+        return {
+            "period_label": label,
+            "period_start": period_start,
+            "period_end": period_end,
+            "trade_days": trade_days,
+            "period_pnl": self._sum_daily_return(bucket_rows),
+            "cumulative_twr": cumulative_twr,
+            "cumulative_mwr": cumulative_mwr,
+            "annualized_twr": annualized_twr,
+            "annualized_xirr": annualized_xirr,
+            "max_drawdown": drawdown["max_drawdown"],
+            "max_drawdown_start_date": drawdown["start_date"],
+            "max_drawdown_end_date": drawdown["end_date"],
+            "max_drawdown_recovery_date": drawdown["recovery_date"],
+            "annualized_volatility": annualized_volatility,
+            "win_rate": trade_quality["win_rate"],
+            "profit_loss_ratio": trade_quality["profit_loss_ratio"],
+            "profit_loss_ratio_is_infinite": trade_quality["profit_loss_ratio_is_infinite"],
+            "average_win_amount": trade_quality["average_win_amount"],
+            "average_loss_amount": trade_quality["average_loss_amount"],
+            "total_trade_count": len(bucket_sell_orders),
+            "average_holding_days": trade_quality["average_holding_days"],
+            "expectancy": trade_quality["expectancy"],
+            "trading_days": trade_days,
+            "calendar_days": calendar_days,
+        }
+
+    def _sum_daily_return(self, rows: List[Dict]) -> Optional[float]:
+        values = [
+            value
+            for value in (self._to_optional_float(row.get("daily_return")) for row in rows)
+            if value is not None
+        ]
+        return sum(values) if values else None
+
+    def _calculate_period_xirr(
+        self,
+        bucket_rows: List[Dict],
+        baseline_row: Optional[Dict],
+        cash_flows: List[Dict],
+    ) -> Optional[float]:
+        """周期 XIRR：期初市值（桶外末行 total_asset）作流出，桶内现金流，期末市值作终值。"""
+        period_start = bucket_rows[0]["trade_date"]
+        period_end = bucket_rows[-1]["trade_date"]
+        terminal_value = self._to_optional_float(bucket_rows[-1].get("total_asset"))
+        if terminal_value is None:
+            return None
+        flows: List[Tuple[str, float]] = []
+        opening_value = (
+            self._to_optional_float(baseline_row.get("total_asset")) if baseline_row else None
+        )
+        if opening_value:
+            flows.append((period_start, -opening_value))
+        for flow in cash_flows:
+            if flow.get("flow_type") not in ("DEPOSIT", "WITHDRAW", "ADJUST"):
+                continue
+            biz_date = str(flow.get("biz_date") or "")[:10]
+            if not (period_start <= biz_date <= period_end):
+                continue
+            amount = self._to_optional_float(flow.get("amount")) or 0.0
+            signed = amount if flow.get("direction") == "IN" else -amount
+            flows.append((biz_date, -signed))
+        flows.sort(key=lambda item: item[0])
+        return AccountHistoryRebuildCalculator()._calculate_xirr(
+            cash_flows=flows,
+            valuation_date=period_end,
+            terminal_value=terminal_value,
+        )
 
     def _current_segment_rows(self, history_rows: List[Dict]) -> List[Dict]:
         segment: List[Dict] = []

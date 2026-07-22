@@ -64,6 +64,45 @@ class AccountPerformanceResponse(BaseModel):
     data_quality: AccountPerformanceDataQuality
 
 
+class AccountPerformancePeriodItem(BaseModel):
+    """单周期桶绩效指标。"""
+
+    period_label: str
+    period_start: str
+    period_end: str
+    trade_days: int = 0
+    period_pnl: Optional[float] = None
+    cumulative_twr: Optional[float] = None
+    cumulative_mwr: Optional[float] = None
+    annualized_twr: Optional[float] = None
+    annualized_xirr: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    max_drawdown_start_date: Optional[str] = None
+    max_drawdown_end_date: Optional[str] = None
+    max_drawdown_recovery_date: Optional[str] = None
+    annualized_volatility: Optional[float] = None
+    win_rate: Optional[float] = None
+    profit_loss_ratio: Optional[float] = None
+    profit_loss_ratio_is_infinite: bool = False
+    average_win_amount: Optional[float] = None
+    average_loss_amount: Optional[float] = None
+    total_trade_count: int = 0
+    average_holding_days: Optional[float] = None
+    expectancy: Optional[float] = None
+    trading_days: int = 0
+    calendar_days: int = 0
+
+
+class AccountPerformancePeriodsResponse(BaseModel):
+    """账户周期绩效指标响应。"""
+
+    account_id: int
+    granularity: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    items: list[AccountPerformancePeriodItem] = Field(default_factory=list)
+
+
 class DepositRequest(BaseModel):
     """入金请求"""
 
