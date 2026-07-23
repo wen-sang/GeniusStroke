@@ -20,6 +20,9 @@ from utils.validators import ValidationError
 class AccountPerformanceService:
     """账户绩效指标计算。"""
 
+    # 周期桶内平仓卖单样本低于该值时，胜率/盈亏比不展示（小样本无统计意义）
+    MIN_TRADE_QUALITY_SAMPLES = 10
+
     def get_account_performance(self, account_id: int) -> Dict:
         account = trade_dao.get_account(account_id)
         if not account:
@@ -224,6 +227,10 @@ class AccountPerformanceService:
             if period_start <= str(order.get("trade_time") or "")[:10] <= period_end
         ]
         trade_quality = self._calculate_trade_quality(bucket_sell_orders)
+        if len(bucket_sell_orders) < self.MIN_TRADE_QUALITY_SAMPLES:
+            trade_quality["win_rate"] = None
+            trade_quality["profit_loss_ratio"] = None
+            trade_quality["profit_loss_ratio_is_infinite"] = False
 
         return {
             "period_label": label,
