@@ -567,6 +567,12 @@
                         <div class="performance-updated-to" id="performance-data-updated-to">数据更新至 --</div>
                     </div>
 
+                    <div class="sub-tabs performance-sub-tabs" role="tablist" aria-label="绩效子导航">
+                        <button class="sub-tab-item active" type="button" role="tab" aria-selected="true" aria-controls="performance-overview-panel" data-action="switch-tab" data-group="performance" data-tab="overview">整体概览</button>
+                        <button class="sub-tab-item" type="button" role="tab" aria-selected="false" aria-controls="performance-periods-panel" data-action="switch-tab" data-group="performance" data-tab="periods">周期视图</button>
+                    </div>
+                    <div id="performance-overview-panel">
+
                     <section class="performance-section">
                         <h2 class="performance-group-title">收益表现</h2>
                         <div class="performance-grid performance-grid-5">
@@ -690,9 +696,10 @@
                             </div>
                         </div>
                     </section>
+                    </div>
 
+                    <div id="performance-periods-panel" class="hidden">
                     <section class="performance-section" id="performance-period-section">
-                        <h2 class="performance-group-title">周期视图</h2>
                         <div class="performance-period-toolbar">
                             <div class="sub-tabs" id="performance-period-switcher" role="tablist" aria-label="周期维度切换">
                                 <button class="sub-tab-item gs-capsule-item" role="tab" aria-selected="false" data-period="day" type="button">日</button>
@@ -731,6 +738,7 @@
                             </table>
                         </div>
                     </section>
+                    </div>
                 </div>
             </section>
         </div>
@@ -1500,7 +1508,7 @@
     <script src="/static/js/app-asset-catalog.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app-analysis-list.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app-asset-manager.js?v=20260717-refactor-r4"></script>
-    <script src="/static/js/app-performance.js?v=20260722-period-r2"></script>
+    <script src="/static/js/app-performance.js?v=20260723-subtab-r1"></script>
     <script src="/static/js/app-data-sync.js?v=20260717-refactor-r4"></script>
     <script src="/static/js/app.js?v=20260717-refactor-r4"></script>
 </body>

@@ -55,7 +55,6 @@ async function loadPerformance(loadContext = null) {
     if (isStaleContentLoad(loadContext, 'performance')) return;
 
     resetPerformanceView();
-    loadPerformancePeriods(loadContext);
     const data = await fetchApi(`/account/performance?account_id=${state.currentAccount}`);
     if (isStaleContentLoad(loadContext, 'performance')) return;
     if (!data) return;
@@ -113,6 +112,33 @@ function formatHoldingDays(value) {
 
 
 // ==================== 周期视图 ====================
+
+let performanceSubTab = 'overview';
+
+function switchPerformanceTab(tabName, loadContext = null) {
+    performanceSubTab = tabName;
+    document.querySelectorAll('#view-performance .performance-sub-tabs .sub-tab-item').forEach((tab) => {
+        const isTarget = tab.getAttribute('data-tab') === tabName;
+        tab.classList.toggle('active', isTarget);
+        tab.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+    });
+    document.getElementById('performance-overview-panel')?.classList.toggle('hidden', tabName !== 'overview');
+    document.getElementById('performance-periods-panel')?.classList.toggle('hidden', tabName !== 'periods');
+    if (!state.currentAccount) return;
+    if (tabName === 'periods') {
+        loadPerformancePeriods(loadContext);
+    } else {
+        loadPerformance(loadContext);
+    }
+}
+
+function loadPerformanceTabData(loadContext = null) {
+    if (performanceSubTab === 'periods') {
+        loadPerformancePeriods(loadContext);
+    } else {
+        loadPerformance(loadContext);
+    }
+}
 
 const performancePeriodState = {
     period: 'month',

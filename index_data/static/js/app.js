@@ -54,6 +54,7 @@ function setupGlobalActionBindings() {
                 const group = actionEl.getAttribute('data-group');
                 const tabName = actionEl.getAttribute('data-tab');
                 if (group === 'transaction' && typeof switchTransactionTab === 'function') switchTransactionTab(tabName);
+                if (group === 'performance' && typeof switchPerformanceTab === 'function') switchPerformanceTab(tabName);
                 break;
             case 'close-modal':
                 e.preventDefault();

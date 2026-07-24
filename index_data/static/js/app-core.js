@@ -126,7 +126,7 @@ function loadCurrentTabData() {
     if (tab === 'positions') loadPositions(loadContext);
     if (tab === 'transactions') loadTransactions(loadContext);
     if (tab === 'analysis') loadAnalysis(loadContext);
-    if (tab === 'performance') loadPerformance(loadContext);
+    if (tab === 'performance') loadPerformanceTabData(loadContext);
 }
 
 function isStaleSummaryLoad(loadContext) {
